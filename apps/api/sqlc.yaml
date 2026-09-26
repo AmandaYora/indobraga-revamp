@@ -1,0 +1,23 @@
+version: "2"
+sql:
+  - engine: "mysql"
+    schema: "migrations"
+    queries: "internal/modules/auth/infrastructure/queries"
+    gen:
+      go:
+        package: "sqlc"
+        out: "internal/modules/auth/infrastructure/sqlc"
+  - engine: "mysql"
+    schema: "migrations"
+    queries: "internal/modules/users/infrastructure/queries"
+    gen:
+      go:
+        package: "sqlc"
+        out: "internal/modules/users/infrastructure/sqlc"
+  - engine: "mysql"
+    schema: "migrations"
+    queries: "internal/modules/order/infrastructure/queries"
+    gen:
+      go:
+        package: "sqlc"
+        out: "internal/modules/order/infrastructure/sqlc"
