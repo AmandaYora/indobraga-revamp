@@ -1,27 +1,43 @@
 # indobraga — Claude Code Gateway
 
-Project: indobraga. Backend: go (modular monolith). Frontend: React 19 + Tailwind 4.
+Revamp company profile + dashboard admin **Indobraga** (PT. Braga Indonesia Perkasa) dari legacy
+NestJS + TanStack Start (`../indobraga/`, read-only) menjadi Dimas Monorepo Standard:
+backend **Go modular monolith** (`apps/api`), frontend **React 19 SPA** (`apps/web`), kontrak
+OpenAPI (`packages/api-contract`), satu container Docker, MySQL di host, VPS baru.
 
-## Commands (run from root)
+**Syarat utama: tidak ada desain maupun kapabilitas legacy yang hilang.** Perubahan perilaku hanya
+yang tercatat sebagai BC di `knowledge/decisions/ADR-0012-legacy-behavior-changes.md`.
+
+## Perintah (dari root)
 
 ```bash
-npm run dev:web   # start frontend
-npm run dev:api   # start backend
+npm run dev:web          # frontend (Vite :5173, proxy /api)
+npm run dev:api          # backend (Air :8080) — terpisah, jangan digabung
+npm run build:web && npm run build:api
+npm run test:web && npm run test:api
+npm run lint:web && npm run lint:api
+npm run migrate:up       # golang-migrate (DB_DSN dari .env)
+npm run sqlc:generate
+npm run build -w @indobraga/api-contract   # bundle + lint + mapping + tipe TS kontrak
 ```
 
-## Critical architecture rules
+## Aturan arsitektur kritis
 
-- Backend is a **modular monolith**. A module exposes only `contracts/` to other modules.
-  No cross-module service/repository/domain imports, no cross-module DB joins or foreign keys.
-- Cross-module relations are stored as primitive IDs and resolved via module clients.
-- Frontend uses the `@/*` alias, lazy routes, Zustand, Zod, Axios. Theme color is centralized.
-- Docker = one app container; the database runs on the host.
+- Backend: modul hanya membuka `contracts/`; tanpa import internal modul lain, tanpa join/FK lintas
+  modul; relasi lintas modul = ID primitif; wiring di `internal/app/wire.go`.
+- Kontrak dulu: setiap endpoint ada di `packages/api-contract/openapi.yaml`; ubah kontrak sebelum kode.
+- Envelope `{success, message, data, meta}` / error `{success:false, code, message, errors, request_id}`.
+- Frontend: react-router lazy routes, Zustand, Zod, satu Axios instance, alias `@/*`, tema di
+  `src/theme/`; UI legacy adalah spesifikasi visual.
+- Docker: satu container app; database di host.
+- Repo GitHub bersifat **public**: jangan pernah commit secret, `.env`, dump DB, atau data pribadi.
 
-## Before changing code
+## Sebelum mengubah kode
 
-Read the relevant file in `knowledge/` first (start at `knowledge/INDEX.md`), and follow
-the path-scoped rules in `.claude/rules/`. Do not duplicate that knowledge here — this file
-is a gateway, not a documentation dump.
-
-If two sources of truth disagree, follow `knowledge/SOURCE_PRIORITY.md` — and report the
-conflict, don't silently pick one.
+1. Baca `knowledge/INDEX.md` lalu file `knowledge/` yang relevan, dan bagian plan yang sedang
+   dikerjakan di `plans/` (status di `plans/README.md`).
+2. Untuk perilaku yang terlihat user, cek baseline legacy di `analysis/000-legacy-inventory/` (dan kode
+   legacy bila perlu) — jangan menebak.
+3. Ikuti rule path-scoped di `.claude/rules/`.
+4. Bila dua sumber bertentangan, ikuti `knowledge/SOURCE_PRIORITY.md` dan laporkan konfliknya.
+5. Dokumentasi library terbaru: gunakan Context7 bila tersedia.

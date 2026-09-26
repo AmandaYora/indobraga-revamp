@@ -1,29 +1,28 @@
-# indobraga
+# Indobraga
 
-Monorepo generated to Dimas' standard (modular-monolith backend + React 19 frontend).
+Company profile, dashboard admin, dan API Indobraga (PT. Braga Indonesia Perkasa) — revamp dari
+aplikasi legacy ke **Dimas Monorepo Standard**: backend Go modular monolith, frontend React 19 SPA,
+satu container Docker, MySQL di host.
 
-## Development
-
-Run frontend and backend separately from the project root:
-
-```bash
-npm run dev:web
-npm run dev:api
+```txt
+apps/web              React 19 + Tailwind 4 SPA (publik + admin)
+apps/api              Go modular monolith (Air, golang-migrate, sqlc)
+packages/api-contract Kontrak OpenAPI v1 — sumber kebenaran antarmuka
+packages/shared       Kode lintas app yang benar-benar reusable
+knowledge/            Rak pengetahuan proyek (mulai dari knowledge/INDEX.md)
+plans/                Rencana revamp PLAN-01..05
+analysis/             Artefak analisis per requirement (000 = inventaris legacy)
+infra/                Docker & Nginx
 ```
 
-## Structure
+## Mulai
 
-- `apps/web` — React 19 + Tailwind 4 frontend
-- `apps/api` — go modular-monolith backend
-- `packages/` — shared code and API contract
-- `knowledge/` — the project's one knowledge base: brief, architecture, module map, API,
-  database, deployment, and locked decisions (read before editing; start at
-  `knowledge/INDEX.md`)
-- `.claude/rules/` — path-scoped technical rules
-- `analysis/` — per-requirement analysis artifacts (see `analysis/README.md`)
-- `infra/` — Docker and nginx
+```bash
+cp .env.example .env
+npm install
+npm run dev:api     # http://localhost:8080/api/v1/health
+npm run dev:web     # http://localhost:5173
+```
 
-## Deployment
-
-One Docker app container serving both the static frontend and the API on port 8080.
-The database runs on the host (see `knowledge/DEPLOYMENT.md`).
+Prasyarat toolchain & setup database: [`knowledge/DEPLOYMENT.md`](knowledge/DEPLOYMENT.md).
+Status revamp: [`plans/README.md`](plans/README.md).

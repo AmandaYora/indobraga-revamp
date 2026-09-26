@@ -1,17 +1,26 @@
 # Knowledge Index — indobraga
 
-Routing for the project's single knowledge base. Read the file relevant to your task before
-editing code. This is the only knowledge rack — there is no separate `docs/` for stakeholders;
-see `SOURCE_PRIORITY.md` for what to do when two sources disagree.
+Routing untuk satu-satunya rak pengetahuan proyek. Baca file yang relevan sebelum mengubah kode.
+Tidak ada `docs/` paralel; bila dua sumber bertentangan ikuti [SOURCE_PRIORITY.md](SOURCE_PRIORITY.md)
+dan laporkan konfliknya.
 
-- [SOURCE_PRIORITY.md](SOURCE_PRIORITY.md) — which source wins when two disagree
-- [PROJECT.md](PROJECT.md) — what this project is, why it exists, features, scope, user stories
-- [ARCHITECTURE.md](ARCHITECTURE.md) — apps, modules, data flow, boundaries
-- [MODULE_MAP.md](MODULE_MAP.md) — each module's responsibility, public contract, owned tables, external integrations
-- [GLOSSARY.md](GLOSSARY.md) — shared terminology
-- [API.md](API.md) — endpoint list and conventions for this project
-- [DATABASE.md](DATABASE.md) — tables, fields, ownership per module, relations as primitive IDs
-- [FRONTEND.md](FRONTEND.md) — frontend conventions specific to this project
-- [BACKEND.md](BACKEND.md) — backend conventions specific to this project
-- [DEPLOYMENT.md](DEPLOYMENT.md) — local run, build, Docker deploy, host DB, env
-- [decisions/](decisions/) — Architecture Decision Records
+| File | Isi | Baca saat |
+|---|---|---|
+| [SOURCE_PRIORITY.md](SOURCE_PRIORITY.md) | Sumber mana yang menang bila bertentangan | Ada keraguan fakta |
+| [PROJECT.md](PROJECT.md) | Tujuan bisnis, persona, fitur, lingkup | Memulai fitur apa pun |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Topologi, alur request, SEO shell, worker & event | Menyentuh lintas app/modul |
+| [MODULE_MAP.md](MODULE_MAP.md) | Modul backend & frontend: tanggung jawab, contract, tabel, integrasi | Menambah/mengubah modul |
+| [GLOSSARY.md](GLOSSARY.md) | Istilah domain Indonesia ↔ kode | Menamai hal baru, menulis teks UI |
+| [API.md](API.md) | Konvensi API v1 + indeks endpoint per modul | Menyentuh endpoint/kontrak |
+| [DATABASE.md](DATABASE.md) | Konvensi DB + tabel per modul | Menulis migration/query |
+| [FRONTEND.md](FRONTEND.md) | Struktur `apps/web`, desain, data, SEO client, test | Menyentuh `apps/web` |
+| [BACKEND.md](BACKEND.md) | Struktur `apps/api`, contracts, event, scheduler, error | Menyentuh `apps/api` |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Dev lokal, toolchain, env, build, Docker, VPS | Setup mesin, deploy, env |
+| [decisions/](decisions/) | ADR-0001..0013 | Sebelum mengubah keputusan apa pun |
+
+Di luar `knowledge/`:
+
+- `plans/` — rencana eksekusi revamp (PLAN-01..05) dan daftar perubahan perilaku (BC). Dibekukan ke
+  `analysis/001-revamp-plans/` setelah PLAN-05 selesai.
+- `analysis/000-legacy-inventory/` — snapshot sistem legacy (acuan paritas, tidak diedit).
+- `packages/api-contract/` — kontrak OpenAPI v1 (sumber kebenaran antarmuka, ADR-0004).
