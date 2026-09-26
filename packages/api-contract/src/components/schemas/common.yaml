@@ -1,0 +1,114 @@
+# Skema teknis lintas modul. Skema milik satu modul ditulis di components/schemas/<modul>.yaml.
+
+Id:
+  type: integer
+  format: int64
+  minimum: 1
+
+Timestamp:
+  type: string
+  format: date-time
+  description: ISO 8601 UTC dengan milidetik, mis. `2026-05-12T08:30:00.000Z`.
+  examples: ["2026-05-12T08:30:00.000Z"]
+
+NullableTimestamp:
+  type: [string, "null"]
+  format: date-time
+
+AdminRole:
+  type: string
+  enum: [super_admin, content_editor]
+
+Permission:
+  type: string
+  description: |
+    Permission admin (paritas legacy `auth.types.ts`). `super_admin` memiliki semua;
+    `content_editor` semua kecuali `email_campaign_logs.read` dan `activity.read`.
+  enum:
+    - dashboard.read
+    - users.manage
+    - site_settings.manage
+    - content.read
+    - content.manage
+    - media.manage
+    - leads.read
+    - leads.manage
+    - audience.read
+    - audience.export
+    - notifications.read
+    - email_accounts.read
+    - email_accounts.manage
+    - email_campaigns.read
+    - email_campaigns.manage
+    - email_campaigns.send
+    - email_campaign_logs.read
+    - seo.manage
+    - activity.read
+
+ContentStatus:
+  type: string
+  description: Status konten admin. `archived` hanya lewat endpoint arsip.
+  enum: [draft, published, inactive, archived]
+
+WritableContentStatus:
+  type: string
+  description: Status yang boleh di-set lewat create/update/status (bukan `archived`).
+  enum: [draft, published, inactive]
+
+MediaKind:
+  type: string
+  enum: [image, video, document]
+
+MediaStatus:
+  type: string
+  description: Status pemrosesan/siklus hidup media (`compression_status` di API).
+  enum: [processing, completed, failed, archived, pending_delete, deleted, cleanup_failed]
+
+MediaPreview:
+  type: object
+  description: |
+    Ringkasan media yang disematkan di respons modul lain (admin konten, settings).
+    URL bernilai null bila media belum `completed`.
+  required:
+    - id
+    - media_type
+    - mime_type
+    - original_file_name
+    - compression_status
+    - file_url
+    - thumbnail_url
+    - medium_url
+    - large_url
+    - poster_url
+    - video_url
+    - width
+    - height
+    - duration_seconds
+    - created_at
+    - updated_at
+  properties:
+    id: { $ref: '#/Id' }
+    media_type: { $ref: '#/MediaKind' }
+    mime_type: { type: [string, "null"], examples: ["image/webp"] }
+    original_file_name: { type: [string, "null"] }
+    compression_status: { $ref: '#/MediaStatus' }
+    file_url: { type: [string, "null"], format: uri }
+    thumbnail_url: { type: [string, "null"], format: uri }
+    medium_url: { type: [string, "null"], format: uri }
+    large_url: { type: [string, "null"], format: uri }
+    poster_url: { type: [string, "null"], format: uri }
+    video_url: { type: [string, "null"], format: uri }
+    width: { type: [integer, "null"] }
+    height: { type: [integer, "null"] }
+    duration_seconds: { type: [number, "null"] }
+    created_at: { $ref: '#/Timestamp' }
+    updated_at: { $ref: '#/Timestamp' }
+
+DeletedResult:
+  type: object
+  required: [id, status]
+  properties:
+    id: { $ref: '#/Id' }
+    status:
+      type: string
+      description: Hasil penghapusan, mis. `deleted`, `archived`, `disabled`, `permanently_deleted`.

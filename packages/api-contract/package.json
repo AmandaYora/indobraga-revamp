@@ -12,11 +12,15 @@
     "./openapi.yaml": "./openapi.yaml"
   },
   "scripts": {
+    "legacy:scan": "node scripts/legacy-endpoints.mjs",
     "build:content": "node scripts/build-content-paths.mjs",
-    "bundle": "npm run build:content && redocly bundle src/openapi.yaml -o openapi.yaml",
-    "lint": "redocly lint openapi.yaml",
+    "validate:fragment": "node scripts/validate-fragment.mjs",
+    "assemble": "node scripts/assemble.mjs",
+    "bundle": "node scripts/assemble.mjs && redocly bundle src/openapi.yaml -o openapi.yaml --config redocly.yaml",
+    "lint": "redocly lint openapi.yaml --config redocly.yaml",
     "generate": "openapi-typescript openapi.yaml -o generated/schema.d.ts",
-    "check": "node scripts/check-mapping.mjs"
+    "check": "node scripts/check-mapping.mjs",
+    "build": "npm run bundle && npm run lint && npm run check && npm run generate"
   },
   "devDependencies": {
     "@redocly/cli": "^2.0.0",

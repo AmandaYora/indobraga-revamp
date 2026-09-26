@@ -1,0 +1,40 @@
+extends:
+  - recommended
+
+rules:
+  operation-operationId: error
+  operation-operationId-unique: error
+  operation-summary: error
+  operation-4xx-response: error
+  operation-2xx-response: error
+  no-unused-components: warn
+  no-invalid-media-type-examples: error
+
+  # --- Ekstensi wajib per operasi (knowledge/API.md, PLAN-01 §1.6) ---------------------
+  rule/x-module:
+    subject: { type: Operation, property: x-module }
+    assertions:
+      defined: true
+      enum: [auth, users, audit, media, settings, profile, portfolio, gallery, news, site, leads, audience, notifications, emailaccounts, emailtemplates, campaigns, dashboard, health]
+    message: "Operasi wajib punya x-module (modul Go pemilik)."
+    severity: error
+  rule/x-permission:
+    subject: { type: Operation, property: x-permission }
+    assertions: { defined: true }
+    message: "Operasi wajib punya x-permission (null untuk publik/sesi saja)."
+    severity: error
+  rule/x-rate-limit:
+    subject: { type: Operation, property: x-rate-limit }
+    assertions: { defined: true }
+    message: "Operasi wajib punya x-rate-limit (default | exempt | {limit, window_seconds})."
+    severity: error
+  rule/x-cache-control:
+    subject: { type: Operation, property: x-cache-control }
+    assertions: { defined: true }
+    message: "Operasi wajib punya x-cache-control."
+    severity: error
+  rule/x-legacy:
+    subject: { type: Operation, property: x-legacy }
+    assertions: { defined: true }
+    message: "Operasi wajib punya x-legacy ({method, path, changes} atau null untuk operasi baru)."
+    severity: error

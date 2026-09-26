@@ -1,0 +1,23 @@
+XRequestId:
+  description: Request ID (selalu ada di setiap respons).
+  schema: { type: string }
+
+XRateLimitLimit:
+  description: Kuota request dalam jendela rate limit.
+  schema: { type: integer }
+
+XRateLimitRemaining:
+  description: Sisa kuota dalam jendela saat ini.
+  schema: { type: integer }
+
+XRateLimitReset:
+  description: Detik sampai jendela rate limit direset.
+  schema: { type: integer }
+
+RetryAfter:
+  description: Detik yang harus ditunggu sebelum mencoba lagi (pada 429).
+  schema: { type: integer }
+
+SetCookie:
+  description: Cookie sesi (httpOnly) dan/atau cookie CSRF (non-httpOnly).
+  schema: { type: string }

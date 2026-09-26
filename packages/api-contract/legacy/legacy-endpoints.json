@@ -1,0 +1,806 @@
+{
+  "generated_from": "indobraga/apps/api/src (NestJS legacy)",
+  "count": 160,
+  "endpoints": [
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/{resource}/{id}/archive",
+      "source": "admin-content/admin-content.controller.ts:549"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/{resource}/{id}/unarchive",
+      "source": "admin-content/admin-content.controller.ts:558"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/audience/contacts",
+      "source": "audience/audience.controller.ts:15"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/audience/export.csv",
+      "source": "audience/audience.controller.ts:27"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/audience/preview",
+      "source": "audience/audience.controller.ts:21"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/dashboard",
+      "source": "dashboard/dashboard.controller.ts:12"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/email-accounts",
+      "source": "email-accounts/email-accounts.controller.ts:23"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/email-accounts/{id}",
+      "source": "email-accounts/email-accounts.controller.ts:75"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/email-accounts/{id}",
+      "source": "email-accounts/email-accounts.controller.ts:57"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/email-accounts/{id}/disable",
+      "source": "email-accounts/email-accounts.controller.ts:69"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/email-accounts/{id}/reconnect",
+      "source": "email-accounts/email-accounts.controller.ts:63"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/email-accounts/google/oauth-url",
+      "source": "email-accounts/email-accounts.controller.ts:29"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/email-accounts/smtp",
+      "source": "email-accounts/email-accounts.controller.ts:51"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/email-accounts/smtp/test",
+      "source": "email-accounts/email-accounts.controller.ts:45"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/email-campaigns",
+      "source": "email-campaigns/email-campaigns.controller.ts:42"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/email-campaigns/{id}",
+      "source": "email-campaigns/email-campaigns.controller.ts:54"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/email-campaigns/{id}",
+      "source": "email-campaigns/email-campaigns.controller.ts:78"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/email-campaigns/{id}/logs",
+      "source": "email-campaigns/email-campaigns.controller.ts:102"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/email-campaigns/{id}/recipients",
+      "source": "email-campaigns/email-campaigns.controller.ts:96"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/email-campaigns/{id}/resend-failed",
+      "source": "email-campaigns/email-campaigns.controller.ts:90"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/email-campaigns/{id}/send",
+      "source": "email-campaigns/email-campaigns.controller.ts:84"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/email-campaigns/draft",
+      "source": "email-campaigns/email-campaigns.controller.ts:60"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/email-campaigns/draft/from-audience",
+      "source": "email-campaigns/email-campaigns.controller.ts:72"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/email-campaigns/draft/from-inquiries",
+      "source": "email-campaigns/email-campaigns.controller.ts:66"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/email-campaigns/recipient-sources/inquiries/preview",
+      "source": "email-campaigns/email-campaigns.controller.ts:48"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/email-templates",
+      "source": "email-templates/email-templates.controller.ts:20"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/email-templates",
+      "source": "email-templates/email-templates.controller.ts:26"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/email-templates/{id}",
+      "source": "email-templates/email-templates.controller.ts:38"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/email-templates/{id}",
+      "source": "email-templates/email-templates.controller.ts:32"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/gallery-items",
+      "source": "admin-content/admin-content.controller.ts:472"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/gallery-items",
+      "source": "admin-content/admin-content.controller.ts:487"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/gallery-items/{id}",
+      "source": "admin-content/admin-content.controller.ts:510"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/gallery-items/{id}",
+      "source": "admin-content/admin-content.controller.ts:482"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/gallery-items/{id}",
+      "source": "admin-content/admin-content.controller.ts:501"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/gallery-items/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:492"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/gallery-items/reorder",
+      "source": "admin-content/admin-content.controller.ts:477"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/hero",
+      "source": "admin-content/admin-content.controller.ts:46"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/hero",
+      "source": "admin-content/admin-content.controller.ts:56"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/hero-slides",
+      "source": "admin-content/admin-content.controller.ts:80"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/hero-slides",
+      "source": "admin-content/admin-content.controller.ts:95"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/hero-slides/{id}",
+      "source": "admin-content/admin-content.controller.ts:118"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/hero-slides/{id}",
+      "source": "admin-content/admin-content.controller.ts:90"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/hero-slides/{id}",
+      "source": "admin-content/admin-content.controller.ts:109"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/hero-slides/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:100"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/hero-slides/reorder",
+      "source": "admin-content/admin-content.controller.ts:85"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/hero/{id}",
+      "source": "admin-content/admin-content.controller.ts:75"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/hero/{id}",
+      "source": "admin-content/admin-content.controller.ts:51"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/hero/{id}",
+      "source": "admin-content/admin-content.controller.ts:70"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/hero/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:61"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/inquiries",
+      "source": "leads/leads.controller.ts:37"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/inquiries/{id}",
+      "source": "leads/leads.controller.ts:55"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/inquiries/{id}",
+      "source": "leads/leads.controller.ts:43"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/inquiries/{id}",
+      "source": "leads/leads.controller.ts:49"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/machines",
+      "source": "admin-content/admin-content.controller.ts:295"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/machines",
+      "source": "admin-content/admin-content.controller.ts:310"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/machines/{id}",
+      "source": "admin-content/admin-content.controller.ts:333"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/machines/{id}",
+      "source": "admin-content/admin-content.controller.ts:305"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/machines/{id}",
+      "source": "admin-content/admin-content.controller.ts:324"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/machines/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:315"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/machines/reorder",
+      "source": "admin-content/admin-content.controller.ts:300"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/media",
+      "source": "media/media.controller.ts:51"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/media",
+      "source": "media/media.controller.ts:34"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/media/{id}",
+      "source": "media/media.controller.ts:61"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/media/{id}",
+      "source": "media/media.controller.ts:56"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/media/{id}/archive",
+      "source": "media/media.controller.ts:66"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/media/{id}/retry",
+      "source": "media/media.controller.ts:76"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/media/{id}/unarchive",
+      "source": "media/media.controller.ts:71"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/news",
+      "source": "admin-content/admin-content.controller.ts:515"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/news",
+      "source": "admin-content/admin-content.controller.ts:525"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/news/{id}",
+      "source": "admin-content/admin-content.controller.ts:544"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/news/{id}",
+      "source": "admin-content/admin-content.controller.ts:520"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/news/{id}",
+      "source": "admin-content/admin-content.controller.ts:539"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/news/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:530"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/notifications",
+      "source": "notifications/notifications.controller.ts:36"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/notifications/{id}/read",
+      "source": "notifications/notifications.controller.ts:56"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/notifications/read-all",
+      "source": "notifications/notifications.controller.ts:62"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/notifications/stream",
+      "source": "notifications/notifications.controller.ts:48"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/notifications/unread-count",
+      "source": "notifications/notifications.controller.ts:42"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/partners",
+      "source": "admin-content/admin-content.controller.ts:123"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/partners",
+      "source": "admin-content/admin-content.controller.ts:138"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/partners/{id}",
+      "source": "admin-content/admin-content.controller.ts:161"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/partners/{id}",
+      "source": "admin-content/admin-content.controller.ts:133"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/partners/{id}",
+      "source": "admin-content/admin-content.controller.ts:152"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/partners/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:143"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/partners/reorder",
+      "source": "admin-content/admin-content.controller.ts:128"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/portfolio-categories",
+      "source": "admin-content/admin-content.controller.ts:209"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/portfolio-categories",
+      "source": "admin-content/admin-content.controller.ts:224"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/portfolio-categories/{id}",
+      "source": "admin-content/admin-content.controller.ts:247"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/portfolio-categories/{id}",
+      "source": "admin-content/admin-content.controller.ts:219"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/portfolio-categories/{id}",
+      "source": "admin-content/admin-content.controller.ts:238"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/portfolio-categories/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:229"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/portfolio-categories/reorder",
+      "source": "admin-content/admin-content.controller.ts:214"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/portfolios",
+      "source": "admin-content/admin-content.controller.ts:252"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/portfolios",
+      "source": "admin-content/admin-content.controller.ts:267"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/portfolios/{id}",
+      "source": "admin-content/admin-content.controller.ts:290"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/portfolios/{id}",
+      "source": "admin-content/admin-content.controller.ts:262"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/portfolios/{id}",
+      "source": "admin-content/admin-content.controller.ts:281"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/portfolios/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:272"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/portfolios/reorder",
+      "source": "admin-content/admin-content.controller.ts:257"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/printing-capacities",
+      "source": "admin-content/admin-content.controller.ts:338"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/printing-capacities",
+      "source": "admin-content/admin-content.controller.ts:353"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/printing-capacities/{id}",
+      "source": "admin-content/admin-content.controller.ts:376"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/printing-capacities/{id}",
+      "source": "admin-content/admin-content.controller.ts:348"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/printing-capacities/{id}",
+      "source": "admin-content/admin-content.controller.ts:367"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/printing-capacities/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:358"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/printing-capacities/reorder",
+      "source": "admin-content/admin-content.controller.ts:343"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/production-capacities",
+      "source": "admin-content/admin-content.controller.ts:381"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/production-capacities",
+      "source": "admin-content/admin-content.controller.ts:396"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/production-capacities/{id}",
+      "source": "admin-content/admin-content.controller.ts:424"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/production-capacities/{id}",
+      "source": "admin-content/admin-content.controller.ts:391"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/production-capacities/{id}",
+      "source": "admin-content/admin-content.controller.ts:415"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/production-capacities/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:401"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/production-capacities/reorder",
+      "source": "admin-content/admin-content.controller.ts:386"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/production-strengths",
+      "source": "admin-content/admin-content.controller.ts:166"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/production-strengths",
+      "source": "admin-content/admin-content.controller.ts:181"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/production-strengths/{id}",
+      "source": "admin-content/admin-content.controller.ts:204"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/production-strengths/{id}",
+      "source": "admin-content/admin-content.controller.ts:176"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/production-strengths/{id}",
+      "source": "admin-content/admin-content.controller.ts:195"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/production-strengths/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:186"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/production-strengths/reorder",
+      "source": "admin-content/admin-content.controller.ts:171"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/services",
+      "source": "admin-content/admin-content.controller.ts:429"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/services",
+      "source": "admin-content/admin-content.controller.ts:444"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/services/{id}",
+      "source": "admin-content/admin-content.controller.ts:467"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/services/{id}",
+      "source": "admin-content/admin-content.controller.ts:439"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/services/{id}",
+      "source": "admin-content/admin-content.controller.ts:458"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/services/{id}/status",
+      "source": "admin-content/admin-content.controller.ts:449"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/services/reorder",
+      "source": "admin-content/admin-content.controller.ts:434"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/site-settings",
+      "source": "admin-content/admin-content.controller.ts:34"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/site-settings",
+      "source": "admin-content/admin-content.controller.ts:40"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/users",
+      "source": "users/users.controller.ts:18"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/users",
+      "source": "users/users.controller.ts:28"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/users/{id}",
+      "source": "users/users.controller.ts:47"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/users/{id}",
+      "source": "users/users.controller.ts:23"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/users/{id}",
+      "source": "users/users.controller.ts:33"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/users/{id}/status",
+      "source": "users/users.controller.ts:38"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/whatsapp-leads",
+      "source": "leads/leads.controller.ts:61"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/admin/whatsapp-leads/{id}",
+      "source": "leads/leads.controller.ts:83"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/whatsapp-leads/{id}",
+      "source": "leads/leads.controller.ts:67"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/whatsapp-leads/{id}",
+      "source": "leads/leads.controller.ts:73"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "source": "auth/auth.controller.ts:20"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "source": "auth/auth.controller.ts:42"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "source": "auth/auth.controller.ts:57"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/health",
+      "source": "health/health.controller.ts:10"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/internal/revalidation/tick",
+      "source": "seo-assets/seo-assets.controller.ts:38"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/internal/workers/email-campaigns/tick",
+      "source": "email-campaigns/email-campaigns.controller.ts:108"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/internal/workers/notifications/tick",
+      "source": "notifications/notifications.controller.ts:68"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/oauth/google/email/callback",
+      "source": "email-accounts/email-accounts.controller.ts:35"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/facilities",
+      "source": "public-content/public-content.controller.ts:39"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/gallery",
+      "source": "public-content/public-content.controller.ts:45"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/home",
+      "source": "public-content/public-content.controller.ts:21"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/public/inquiries",
+      "source": "leads/leads.controller.ts:23"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/news",
+      "source": "public-content/public-content.controller.ts:51"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/news/{slug}",
+      "source": "public-content/public-content.controller.ts:57"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/portfolio",
+      "source": "public-content/public-content.controller.ts:27"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/portfolio-categories",
+      "source": "public-content/public-content.controller.ts:33"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/seo/{route}",
+      "source": "seo-assets/seo-assets.controller.ts:32"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/public/site-settings",
+      "source": "public-content/public-content.controller.ts:15"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/public/whatsapp-leads",
+      "source": "leads/leads.controller.ts:30"
+    },
+    {
+      "method": "GET",
+      "path": "/robots.txt",
+      "source": "seo-assets/seo-assets.controller.ts:20"
+    },
+    {
+      "method": "GET",
+      "path": "/sitemap.xml",
+      "source": "seo-assets/seo-assets.controller.ts:26"
+    }
+  ]
+}

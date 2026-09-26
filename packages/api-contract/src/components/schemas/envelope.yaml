@@ -1,0 +1,101 @@
+# Envelope respons (ADR-0004). Dipakai lewat allOf di setiap operasi:
+#
+#   schema:
+#     allOf:
+#       - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+#       - type: object
+#         required: [data]
+#         properties:
+#           data: { $ref: '../components/schemas/<modul>.yaml#/Thing' }
+#
+# List offset: tambahkan `meta: { $ref: '...envelope.yaml#/PaginationMeta' }` (required).
+# List cursor: tambahkan `meta: { $ref: '...envelope.yaml#/CursorMeta' }` (required).
+
+SuccessBase:
+  type: object
+  required: [success, message]
+  properties:
+    success:
+      type: boolean
+      const: true
+    message:
+      type: string
+      description: Pesan sukses berbahasa Indonesia, mis. "Data berhasil diambil."
+      examples: ["Data berhasil diambil."]
+
+PaginationMeta:
+  type: object
+  required: [page, limit, total, total_pages]
+  properties:
+    page: { type: integer, minimum: 1, examples: [1] }
+    limit: { type: integer, minimum: 1, examples: [10] }
+    total: { type: integer, minimum: 0, examples: [42] }
+    total_pages:
+      type: integer
+      minimum: 1
+      description: "`max(1, ceil(total / limit))`"
+      examples: [5]
+
+CursorMeta:
+  type: object
+  required: [limit, next_cursor, has_more]
+  properties:
+    limit: { type: integer, minimum: 1, examples: [8] }
+    next_cursor:
+      type: [string, "null"]
+      description: Cursor opaque (base64url JSON `{sort_order, id}`); null bila tidak ada halaman berikutnya.
+    has_more: { type: boolean }
+
+ErrorDetail:
+  type: object
+  required: [message]
+  properties:
+    field:
+      type: [string, "null"]
+      description: Path field bertitik, mis. `recipients.0.email`. Null untuk error non-field.
+      examples: ["email"]
+    message:
+      type: string
+      description: Pesan Indonesia, memakai label field (mis. "Email wajib diisi.").
+
+ErrorCode:
+  type: string
+  description: |
+    Kode error mesin. 13 kode inti (paritas legacy) + kode domain (BC-04).
+    UI bergantung pada kode ini (mis. `UNAUTHENTICATED` → redirect ke /login).
+  enum:
+    - BAD_REQUEST
+    - VALIDATION_ERROR
+    - UNAUTHENTICATED
+    - FORBIDDEN
+    - NOT_FOUND
+    - CONFLICT
+    - PAYLOAD_TOO_LARGE
+    - UNSUPPORTED_MEDIA_TYPE
+    - UNPROCESSABLE_ENTITY
+    - RATE_LIMITED
+    - INTERNAL_ERROR
+    - UPSTREAM_ERROR
+    - SERVICE_UNAVAILABLE
+    # --- kode domain ---
+    - MEDIA_CLEANUP_FAILED
+
+ErrorEnvelope:
+  type: object
+  required: [success, code, message, errors, request_id]
+  properties:
+    success:
+      type: boolean
+      const: false
+    code:
+      $ref: '#/ErrorCode'
+    message:
+      type: string
+      description: Pesan Indonesia yang aman ditampilkan ke user.
+      examples: ["Periksa kembali data yang diisi."]
+    errors:
+      type: array
+      items: { $ref: '#/ErrorDetail' }
+    request_id:
+      type: string
+      examples: ["req_4b5d9d6e-7d3a-4d3f-9a55-0c5b4f0c2f31"]

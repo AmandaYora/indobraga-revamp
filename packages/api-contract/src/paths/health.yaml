@@ -1,0 +1,45 @@
+# Fragmen contoh — acuan gaya untuk semua fragmen (lihat README.md "Menulis fragmen").
+/api/v1/health:
+  get:
+    operationId: healthCheck
+    tags: [health]
+    summary: Health check aplikasi
+    description: |
+      Database wajib sehat (gagal/timeout 2 dtk → 503 `SERVICE_UNAVAILABLE`, `errors[0].field = database`).
+      Storage hanya informatif: gagal/timeout 5 dtk → `status: degraded`, endpoint tetap 200.
+    x-module: health
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/health
+      changes: Tidak ada perubahan bentuk `data`.
+    security: []
+    responses:
+      '200':
+        description: Aplikasi melayani request.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+          Cache-Control: { schema: { type: string, const: no-store } }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/health.yaml#/HealthStatus' }
+            example:
+              success: true
+              message: Layanan berjalan normal.
+              data:
+                status: ok
+                service: indobraga-api
+                uptime_seconds: 3600
+                checks:
+                  database: { status: ok, latency_ms: 3 }
+                  storage: { status: ok, latency_ms: 41 }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+      '503': { $ref: '../components/responses.yaml#/ServiceUnavailable' }

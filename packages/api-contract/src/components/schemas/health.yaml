@@ -1,0 +1,28 @@
+HealthStatus:
+  type: object
+  required: [status, service, uptime_seconds, checks]
+  properties:
+    status:
+      type: string
+      enum: [ok, degraded]
+      description: "`degraded` bila storage gagal; database gagal → 503, bukan status ini."
+    service:
+      type: string
+      const: indobraga-api
+    uptime_seconds: { type: integer, minimum: 0 }
+    checks:
+      type: object
+      required: [database, storage]
+      properties:
+        database:
+          type: object
+          required: [status, latency_ms]
+          properties:
+            status: { type: string, const: ok }
+            latency_ms: { type: integer, minimum: 0 }
+        storage:
+          type: object
+          required: [status, latency_ms]
+          properties:
+            status: { type: string, enum: [ok, error] }
+            latency_ms: { type: integer, minimum: 0 }

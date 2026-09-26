@@ -1,0 +1,104 @@
+# Respons error standar. Pakai di operasi:  '400': { $ref: '../components/responses.yaml#/ValidationError' }
+# Semua membawa envelope error ADR-0004 dan header X-Request-Id.
+
+BadRequest:
+  description: Request tidak valid (`BAD_REQUEST`).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+
+ValidationError:
+  description: Validasi gagal (`VALIDATION_ERROR`) — `errors[]` berisi field & pesan; field asing ditolak.
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+      example:
+        success: false
+        code: VALIDATION_ERROR
+        message: Periksa kembali data yang diisi.
+        errors: [{ field: email, message: Email tidak valid. }]
+        request_id: req_4b5d9d6e-7d3a-4d3f-9a55-0c5b4f0c2f31
+
+Unauthenticated:
+  description: Belum login atau sesi tidak valid (`UNAUTHENTICATED`).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+
+Forbidden:
+  description: Tidak punya izin, atau token CSRF tidak cocok (`FORBIDDEN`).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+
+NotFound:
+  description: Data tidak ditemukan (`NOT_FOUND`).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+
+Conflict:
+  description: Konflik data — duplikat atau masih dipakai (`CONFLICT` atau kode domain).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+
+PayloadTooLarge:
+  description: Ukuran request/file melebihi batas (`PAYLOAD_TOO_LARGE`).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+
+UnsupportedMediaType:
+  description: Tipe file tidak didukung (`UNSUPPORTED_MEDIA_TYPE`).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+
+Unprocessable:
+  description: Aturan bisnis tidak terpenuhi (`UNPROCESSABLE_ENTITY`).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+
+RateLimited:
+  description: Terlalu banyak request (`RATE_LIMITED`).
+  headers:
+    X-Request-Id: { $ref: './headers.yaml#/XRequestId' }
+    Retry-After: { $ref: './headers.yaml#/RetryAfter' }
+    X-RateLimit-Limit: { $ref: './headers.yaml#/XRateLimitLimit' }
+    X-RateLimit-Remaining: { $ref: './headers.yaml#/XRateLimitRemaining' }
+    X-RateLimit-Reset: { $ref: './headers.yaml#/XRateLimitReset' }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+
+InternalError:
+  description: Kesalahan server (`INTERNAL_ERROR`).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+
+UpstreamError:
+  description: Layanan eksternal (Google, SMTP, S3) gagal (`UPSTREAM_ERROR`).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+
+ServiceUnavailable:
+  description: Dependensi utama tidak tersedia (`SERVICE_UNAVAILABLE`).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }

@@ -1,0 +1,45 @@
+# Parameter umum. Parameter `limit` sengaja TIDAK disediakan di sini karena default & maksimum
+# berbeda per endpoint — definisikan inline di operasi dengan `default` dan `maximum` yang benar.
+
+IdPath:
+  name: id
+  in: path
+  required: true
+  schema: { type: integer, format: int64, minimum: 1 }
+
+SlugPath:
+  name: slug
+  in: path
+  required: true
+  schema:
+    type: string
+    pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+    maxLength: 190
+
+Page:
+  name: page
+  in: query
+  required: false
+  description: Halaman (mulai 1). Nilai tidak valid → 1.
+  schema: { type: integer, minimum: 1, default: 1 }
+
+Q:
+  name: q
+  in: query
+  required: false
+  description: Kata kunci pencarian.
+  schema: { type: string, maxLength: 120 }
+
+Cursor:
+  name: cursor
+  in: query
+  required: false
+  description: Cursor dari `meta.next_cursor` respons sebelumnya.
+  schema: { type: string, maxLength: 512 }
+
+RequestIdHeader:
+  name: X-Request-Id
+  in: header
+  required: false
+  description: Request ID dari klien; dipakai bila cocok `^[A-Za-z0-9_.:-]{8,128}$`, selain itu server membuat `req_<uuid>`.
+  schema: { type: string, pattern: '^[A-Za-z0-9_.:-]{8,128}$' }

@@ -1,0 +1,72 @@
+openapi: 3.1.0
+info:
+  title: Indobraga API
+  version: 1.0.0
+  summary: Kontrak API v1 Indobraga — company profile, dashboard admin, email marketing.
+  description: |
+    Sumber kebenaran antarmuka `apps/web` ↔ `apps/api` (ADR-0004).
+
+    - Semua endpoint JSON berada di bawah `/api/v1`; `robots.txt` & `sitemap.xml` di root.
+    - Envelope sukses: `{ success: true, message, data }` (+ `meta` untuk list).
+    - Envelope error: `{ success: false, code, message, errors[], request_id }`.
+    - Setiap respons membawa header `X-Request-Id`.
+    - Ekstensi per operasi: `x-module`, `x-permission`, `x-rate-limit`, `x-cache-control`, `x-legacy`.
+  license:
+    name: UNLICENSED
+    identifier: UNLICENSED
+servers:
+  - url: /
+    description: Same-origin (Vite proxy di dev, satu container di produksi)
+tags:
+  - name: auth
+    description: "Login, logout, sesi admin"
+  - name: users
+    description: "Manajemen user admin"
+  - name: health
+    description: "Health check"
+  - name: dashboard
+    description: "Ringkasan dashboard admin"
+  - name: site
+    description: "Orkestrasi publik — beranda, fasilitas, SEO, robots, sitemap"
+  - name: settings
+    description: "Pengaturan situs"
+  - name: profile
+    description: "Hero, partner, keunggulan, mesin, kapasitas, layanan"
+  - name: portfolio
+    description: "Portofolio & kategori"
+  - name: gallery
+    description: "Galeri"
+  - name: news
+    description: "Berita"
+  - name: media
+    description: "Upload & pustaka media"
+  - name: leads
+    description: "Pesan kontak & prospek WhatsApp"
+  - name: audience
+    description: "Kontak marketing"
+  - name: notifications
+    description: "Notifikasi admin & SSE"
+  - name: emailaccounts
+    description: "Akun email Google & SMTP"
+  - name: emailtemplates
+    description: "Template email"
+  - name: campaigns
+    description: "Kampanye email & worker"
+security: []
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: indobraga_session
+      description: Cookie sesi admin (httpOnly, SameSite=Lax, Secure di produksi). Nama dapat diubah lewat `SESSION_COOKIE_NAME`.
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: x-csrf-token
+      description: Double-submit CSRF — nilai cookie `indobraga_csrf` (non-httpOnly) dikirim ulang di header ini untuk method non-aman.
+    workerSecret:
+      type: apiKey
+      in: header
+      name: x-internal-worker-secret
+      description: Secret untuk endpoint tick worker internal (`INTERNAL_WORKER_SECRET`).
