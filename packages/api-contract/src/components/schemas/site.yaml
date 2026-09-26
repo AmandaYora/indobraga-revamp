@@ -1,0 +1,222 @@
+# Skema site: publik (home dkk), dashboard, SEO. Field dari backend.md §public-content, §seo-assets, §dashboard.
+PublicSiteSettings:
+  type: object
+  required: [brand, show_brand_text]
+  properties:
+    brand: { type: [string, "null"], examples: ["Indobraga"] }
+    legal_name: { type: [string, "null"] }
+    email: { type: [string, "null"], format: email }
+    phone: { type: [string, "null"] }
+    whatsapp: { type: [string, "null"] }
+    instagram: { type: [string, "null"] }
+    contact_person: { type: [string, "null"] }
+    contact_role: { type: [string, "null"] }
+    address: { type: [string, "null"] }
+    show_brand_text: { type: boolean }
+    logo_url: { type: [string, "null"], format: uri }
+    footer_logo_url: { type: [string, "null"], format: uri }
+    contact_hero_image_url: { type: [string, "null"], format: uri }
+    seo:
+      type: object
+      required: [title, description]
+      properties:
+        title: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        og_image_url: { type: [string, "null"], format: uri }
+
+PublicHome:
+  type: object
+  required: [hero, partners, strengths, featured_portfolios, facilities_summary, latest_news]
+  properties:
+    hero:
+      type: object
+      required: [title, slides]
+      properties:
+        title: { type: [string, "null"] }
+        subtitle: { type: [string, "null"] }
+        primary_cta:
+          type: [object, "null"]
+          properties:
+            label: { type: string }
+            url: { type: string }
+        slides:
+          type: array
+          items: { $ref: './content.yaml#/HeroSlide' }
+    partners:
+      type: array
+      items: { $ref: './content.yaml#/Partner' }
+    strengths:
+      type: array
+      items: { $ref: './content.yaml#/ProductionStrength' }
+    featured_portfolios:
+      type: array
+      maxItems: 6
+      items: { $ref: './content.yaml#/Portfolio' }
+    facilities_summary:
+      type: object
+      required: [machines, printing_capacities, production_capacities, services]
+      properties:
+        machines: { type: array, maxItems: 3, items: { $ref: './content.yaml#/Machine' } }
+        printing_capacities: { type: array, maxItems: 3, items: { $ref: './content.yaml#/PrintingCapacity' } }
+        production_capacities: { type: array, maxItems: 6, items: { $ref: './content.yaml#/ProductionCapacity' } }
+        services: { type: array, maxItems: 10, items: { $ref: './content.yaml#/ServiceItem' } }
+    latest_news:
+      type: array
+      maxItems: 3
+      items: { $ref: './content.yaml#/NewsArticle' }
+
+PublicPortfolioItem:
+  type: object
+  required: [id, title, slug]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    title: { type: string }
+    slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
+    category: { type: [string, "null"] }
+    category_slug: { type: [string, "null"] }
+    thumbnail_url: { type: [string, "null"], format: uri }
+    medium_url: { type: [string, "null"], format: uri }
+    alt_text: { type: [string, "null"] }
+    short_description: { type: [string, "null"] }
+    images:
+      type: array
+      items: { type: string, format: uri }
+
+PublicPortfolioCategory:
+  type: object
+  required: [id, name, slug, count]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string }
+    slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
+    count: { type: integer, minimum: 0 }
+
+PublicFacilities:
+  type: object
+  required: [strengths, machines, printing_capacities, production_capacities, services]
+  properties:
+    strengths: { type: array, items: { $ref: './content.yaml#/ProductionStrength' } }
+    machines: { type: array, items: { $ref: './content.yaml#/Machine' } }
+    printing_capacities: { type: array, items: { $ref: './content.yaml#/PrintingCapacity' } }
+    production_capacities: { type: array, items: { $ref: './content.yaml#/ProductionCapacity' } }
+    services: { type: array, items: { $ref: './content.yaml#/ServiceItem' } }
+
+PublicGalleryItem:
+  type: object
+  required: [id, type]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    type: { type: string, enum: [image, video] }
+    thumbnail_url: { type: [string, "null"], format: uri }
+    media_url: { type: [string, "null"], format: uri }
+    caption: { type: [string, "null"] }
+    alt_text: { type: [string, "null"] }
+    published_at: { $ref: './common.yaml#/NullableTimestamp' }
+
+PublicNewsItem:
+  type: object
+  required: [id, title, slug]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    title: { type: string }
+    slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
+    category: { type: [string, "null"] }
+    thumbnail_url: { type: [string, "null"], format: uri }
+    excerpt: { type: [string, "null"] }
+    published_at: { $ref: './common.yaml#/NullableTimestamp' }
+
+PublicNewsDetail:
+  type: object
+  required: [id, title, slug, content]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    title: { type: string }
+    slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
+    category: { type: [string, "null"] }
+    thumbnail_url: { type: [string, "null"], format: uri }
+    excerpt: { type: [string, "null"] }
+    content: { type: array, items: { type: string } }
+    seo:
+      type: object
+      properties:
+        title: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        canonical_url: { type: [string, "null"], format: uri }
+        og_image_url: { type: [string, "null"], format: uri }
+    published_at: { $ref: './common.yaml#/NullableTimestamp' }
+
+SeoLegacy:
+  type: object
+  required: [title, description, canonical_url, noindex]
+  properties:
+    title: { type: string }
+    description: { type: string }
+    canonical_url: { type: string, format: uri }
+    og_image_url: { type: [string, "null"], format: uri }
+    noindex: { type: boolean, const: false }
+
+SeoByPath:
+  type: object
+  required: [title, description, canonical_url, robots, status]
+  properties:
+    title: { type: string }
+    description: { type: string }
+    canonical_url: { type: string, format: uri }
+    robots: { type: string, examples: ["index, follow"] }
+    og:
+      type: object
+      properties:
+        title: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        image: { type: [string, "null"], format: uri }
+        url: { type: [string, "null"], format: uri }
+    twitter:
+      type: object
+      properties:
+        card: { type: [string, "null"], examples: ["summary_large_image"] }
+        title: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        image: { type: [string, "null"] }
+    json_ld:
+      type: array
+      items: { type: object }
+    status: { type: integer, enum: [200, 404], examples: [200] }
+
+DashboardSummary:
+  type: object
+  required: [totals, latest_inquiries, latest_whatsapp_leads, latest_email_campaigns]
+  properties:
+    totals:
+      type: object
+      required: [inquiries, whatsapp_leads, published_gallery, published_news, active_portfolios, completed_media, failed_media, connected_email_accounts, email_campaigns, pending_email_campaigns, pending_revalidation]
+      properties:
+        inquiries: { type: integer, minimum: 0 }
+        whatsapp_leads: { type: integer, minimum: 0 }
+        published_gallery: { type: integer, minimum: 0 }
+        published_news: { type: integer, minimum: 0 }
+        active_portfolios: { type: integer, minimum: 0 }
+        completed_media: { type: integer, minimum: 0 }
+        failed_media: { type: integer, minimum: 0 }
+        connected_email_accounts: { type: integer, minimum: 0 }
+        email_campaigns: { type: integer, minimum: 0 }
+        pending_email_campaigns: { type: integer, minimum: 0 }
+        pending_revalidation: { type: integer, minimum: 0 }
+    latest_inquiries:
+      type: array
+      maxItems: 5
+      items: { $ref: './leads.yaml#/Inquiry' }
+    latest_whatsapp_leads:
+      type: array
+      maxItems: 5
+      items: { $ref: './leads.yaml#/WhatsAppLead' }
+    latest_email_campaigns:
+      type: array
+      maxItems: 5
+      items: { $ref: './email.yaml#/Campaign' }
+
+RevalidationTickResult:
+  type: object
+  required: [processed, cache_keys]
+  properties:
+    processed: { type: integer, minimum: 0, examples: [3] }
+    cache_keys: { type: array, items: { type: string }, examples: [["public:home"]] }

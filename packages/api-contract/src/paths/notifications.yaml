@@ -1,0 +1,194 @@
+# Fragmen notifications — 5 endpoint admin (tick ada di workers.yaml).
+/api/v1/admin/notifications:
+  get:
+    operationId: listNotifications
+    tags: [notifications]
+    summary: Daftar notifikasi
+    x-module: notifications
+    x-permission: notifications.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/notifications
+      changes: Tidak ada perubahan bentuk data selain envelope v1; limit default 10 maks 50.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 1 }
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 10, maximum: 50 }
+      - name: read
+        in: query
+        required: false
+        schema: { type: string, enum: [all, unread] }
+      - name: q
+        in: query
+        required: false
+        schema: { type: string }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data, meta]
+                  properties:
+                    data: { type: array, items: { $ref: '../components/schemas/notifications.yaml#/Notification' } }
+                    meta: { $ref: '../components/schemas/envelope.yaml#/PaginationMeta' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: [{ id: 1, type: inquiry_created, severity: info, title: Pesan kontak baru, message: Budi mengirim pesan., resource_type: inquiry, resource_id: 1, read: false, created_at: 2026-05-12T08:30:00.000Z }]
+              meta: { page: 1, limit: 10, total: 1, total_pages: 1 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/notifications/unread-count:
+  get:
+    operationId: getUnreadCount
+    tags: [notifications]
+    summary: Jumlah notifikasi belum dibaca
+    x-module: notifications
+    x-permission: notifications.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/notifications/unread-count
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [] }]
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/notifications.yaml#/UnreadCount' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { unread_count: 3 }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/notifications/stream:
+  get:
+    operationId: streamNotifications
+    tags: [notifications]
+    summary: Aliran notifikasi SSE
+    description: |
+      text/event-stream; event connected|heartbeat(30 dtk)|notification.created(broadcast)|notification.read(pribadi);
+      format `event:<type>\nid:<n>\ndata:<json>\n\n`; header X-Accel-Buffering:no; registry in-memory (single-instance).
+    x-module: notifications
+    x-permission: notifications.read
+    x-rate-limit: exempt
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/notifications/stream
+      changes: Sama persis (SSE tanpa envelope).
+    security: [{ sessionCookie: [] }]
+    responses:
+      '200':
+        description: Aliran event.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          text/event-stream:
+            schema: { type: string }
+            example: "event:connected\nid:1\ndata:{\"timestamp\":\"2026-05-12T08:30:00.000Z\"}\n\n"
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+/api/v1/admin/notifications/{id}/read:
+  post:
+    operationId: readNotification
+    tags: [notifications]
+    summary: Tandai notifikasi dibaca
+    x-module: notifications
+    x-permission: notifications.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/admin/notifications/{id}/read
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/notifications.yaml#/UnreadCount' }
+            example:
+              success: true
+              message: Notifikasi ditandai dibaca.
+              data: { unread_count: 2 }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/notifications/read-all:
+  post:
+    operationId: readAllNotifications
+    tags: [notifications]
+    summary: Tandai semua notifikasi dibaca
+    description: Maks 500 ditandai.
+    x-module: notifications
+    x-permission: notifications.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/admin/notifications/read-all
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/notifications.yaml#/ReadAllResult' }
+            example:
+              success: true
+              message: Semua notifikasi ditandai dibaca.
+              data: { marked_read: 3, unread_count: 0 }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }

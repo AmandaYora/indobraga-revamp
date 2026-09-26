@@ -1,0 +1,30 @@
+# Skema audience. Field dari backend.md §audience.
+MarketingContact:
+  type: object
+  required: [id, email, source, status, consent_status, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: [string, "null"] }
+    email: { type: string, format: email }
+    phone: { type: [string, "null"] }
+    company: { type: [string, "null"] }
+    source: { type: string, enum: [inquiry, whatsapp_lead, manual_import, manual] }
+    source_ref_id: { type: [integer, "null"] }
+    status: { type: string, enum: [active, unsubscribed, blocked] }
+    consent_status: { type: string, enum: [implied, explicit, unknown] }
+    last_interaction_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+AudiencePreview:
+  type: object
+  required: [total_contacts, eligible_recipients, excluded_unsubscribed, excluded_blocked, sample_recipients]
+  properties:
+    total_contacts: { type: integer, minimum: 0 }
+    eligible_recipients: { type: integer, minimum: 0 }
+    excluded_unsubscribed: { type: integer, minimum: 0 }
+    excluded_blocked: { type: integer, minimum: 0 }
+    sample_recipients:
+      type: array
+      maxItems: 5
+      items: { $ref: '#/MarketingContact' }

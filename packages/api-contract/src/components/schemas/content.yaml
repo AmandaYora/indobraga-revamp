@@ -1,0 +1,293 @@
+# Skema admin-content (12 resource + site-settings). Field dari analysis/000-legacy-inventory/backend.md.
+# Setiap item wajib: status, previous_status, archived_at, created_at, updated_at.
+# Slug memakai pola ^[a-z0-9]+(-[a-z0-9]+)*$.
+
+HeroSection:
+  type: object
+  required: [id, title, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    title: { type: string, maxLength: 190, examples: ["Jasa Cetak Kardus & Packaging"] }
+    subtitle: { type: [string, "null"], examples: ["Sejak 2010 melayani seluruh Indonesia."] }
+    cta_label: { type: [string, "null"], examples: ["Hubungi Kami"] }
+    cta_href: { type: [string, "null"], examples: ["/kontak"] }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+    slides:
+      type: array
+      description: Diisi pada detail; list tidak menyertakan slides.
+      items: { $ref: '#/HeroSlide' }
+
+HeroSlide:
+  type: object
+  required: [id, title, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    hero_section_id: { type: integer, minimum: 0, description: "0 = ikut hero pertama (sentinel form); id nyata > 0.", examples: [1] }
+    label: { type: [string, "null"], examples: ["Terpercaya"] }
+    title: { type: string, examples: ["Cetak Offset Berkualitas"] }
+    metric: { type: [string, "null"], examples: ["10.000+ pcs/hari"] }
+    alt_text: { type: [string, "null"] }
+    media_file_id: { type: [integer, "null"], minimum: 1 }
+    media:
+      $ref: './common.yaml#/MediaPreview'
+      description: Pratinjau media (URL null bila belum completed).
+    sort_order: { type: integer, minimum: 0, maximum: 1000000, examples: [1] }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+Partner:
+  type: object
+  required: [id, name, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string, maxLength: 190, examples: ["PT Maju Bersama"] }
+    segment: { type: [string, "null"], examples: ["FMCG"] }
+    logo_media_id: { type: [integer, "null"], minimum: 1 }
+    logo: { $ref: './common.yaml#/MediaPreview' }
+    sort_order: { type: integer, minimum: 0, maximum: 1000000, examples: [1] }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+ProductionStrength:
+  type: object
+  required: [id, label, value, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    label: { type: string, examples: ["Kapasitas Harian"] }
+    value: { type: string, examples: ["50.000"] }
+    suffix: { type: [string, "null"], examples: ["pcs"] }
+    sort_order: { type: integer, minimum: 0, maximum: 1000000, examples: [1] }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+PortfolioCategory:
+  type: object
+  required: [id, name, slug, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string, maxLength: 190, examples: ["Box & Karton"] }
+    slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 190, examples: ["box-karton"] }
+    sort_order: { type: integer, minimum: 0, maximum: 1000000, examples: [1] }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+Portfolio:
+  type: object
+  required: [id, title, slug, sort_order, is_featured, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    title: { type: string, examples: ["Kemasan Kopi Premium"] }
+    slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', examples: ["kemasan-kopi-premium"] }
+    category_id: { type: [integer, "null"], minimum: 1, description: "Wajib PUBLISHED saat create/publish.", examples: [2] }
+    category: { type: [string, "null"], description: "Teks denormalisasi.", examples: ["Box & Karton"] }
+    short_description: { type: [string, "null"] }
+    description: { type: [string, "null"] }
+    image_media_id: { type: [integer, "null"], minimum: 1, description: "Cover (gambar pertama)." }
+    cover_image: { $ref: './common.yaml#/MediaPreview' }
+    images:
+      type: array
+      description: Galeri (maks 10 saat input; diganti atomik hanya bila dikirim).
+      items: { $ref: './common.yaml#/MediaPreview' }
+    is_featured: { type: boolean, examples: [true] }
+    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    published_at: { $ref: './common.yaml#/NullableTimestamp' }
+    seo_title: { type: [string, "null"] }
+    seo_description: { type: [string, "null"] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+Machine:
+  type: object
+  required: [id, name, slug, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string, examples: ["Heidelberg Speedmaster"] }
+    slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', examples: ["heidelberg-speedmaster"] }
+    metric: { type: [string, "null"], examples: ["18.000 lbr/jam"] }
+    description: { type: [string, "null"] }
+    media_file_id: { type: [integer, "null"], minimum: 1 }
+    image: { $ref: './common.yaml#/MediaPreview' }
+    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+PrintingCapacity:
+  type: object
+  required: [id, label, value, unit, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    label: { type: string, examples: ["Offset Printing"] }
+    value: { type: string, examples: ["50.000"] }
+    unit: { type: string, examples: ["lembar/hari"] }
+    description: { type: [string, "null"] }
+    media_file_id: { type: [integer, "null"], minimum: 1 }
+    image: { $ref: './common.yaml#/MediaPreview' }
+    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+ProductionCapacity:
+  type: object
+  required: [id, product, value, unit, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    product: { type: string, examples: ["Kardus Box"] }
+    value: { type: string, examples: ["100.000"] }
+    unit: { type: string, examples: ["pcs/bulan"] }
+    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+ServiceItem:
+  type: object
+  required: [id, name, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string, examples: ["Desain Kemasan"] }
+    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+GalleryItem:
+  type: object
+  required: [id, media_file_id, media_type, caption, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    media_file_id: { type: integer, minimum: 1 }
+    media_type: { type: string, enum: [image, video] }
+    caption: { type: string, examples: ["Proses cetak offset"] }
+    poster_media_id: { type: [integer, "null"], minimum: 1 }
+    poster: { $ref: './common.yaml#/MediaPreview' }
+    media: { $ref: './common.yaml#/MediaPreview' }
+    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    published_at: { $ref: './common.yaml#/NullableTimestamp' }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+NewsArticle:
+  type: object
+  required: [id, title, slug, category, excerpt, content, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    title: { type: string, examples: ["Tips Memilih Kemasan"] }
+    slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', examples: ["tips-memilih-kemasan"] }
+    category: { type: string, examples: ["Tips"] }
+    excerpt: { type: string, examples: ["Ringkasan singkat artikel."] }
+    content: { type: array, items: { type: string }, description: "Paragraf (disimpan JSON)." }
+    thumbnail_media_file_id: { type: [integer, "null"], minimum: 1 }
+    thumbnail: { $ref: './common.yaml#/MediaPreview' }
+    og_image_media_file_id: { type: [integer, "null"], minimum: 1 }
+    og_image: { $ref: './common.yaml#/MediaPreview' }
+    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    status: { $ref: './common.yaml#/ContentStatus' }
+    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    published_at: { $ref: './common.yaml#/NullableTimestamp' }
+    seo_title: { type: [string, "null"] }
+    seo_description: { type: [string, "null"] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+SiteSettings:
+  type: object
+  required: [id, brand, show_brand_text, created_at, updated_at]
+  properties:
+    id: { type: integer, const: 1 }
+    brand: { type: [string, "null"], examples: ["Indobraga"] }
+    legal_name: { type: [string, "null"], examples: ["PT. Braga Indonesia Perkasa"] }
+    email: { type: [string, "null"], format: email, examples: ["info@indobraga.com"] }
+    phone: { type: [string, "null"], examples: ["022-123456"] }
+    whatsapp: { type: [string, "null"], examples: ["6281200000001"] }
+    instagram: { type: [string, "null"] }
+    contact_person: { type: [string, "null"] }
+    contact_role: { type: [string, "null"] }
+    address: { type: [string, "null"] }
+    seo_title: { type: [string, "null"] }
+    seo_description: { type: [string, "null"] }
+    show_brand_text: { type: boolean, examples: [false] }
+    logo_media_file_id: { type: [integer, "null"], minimum: 1 }
+    footer_logo_media_file_id: { type: [integer, "null"], minimum: 1 }
+    og_media_file_id: { type: [integer, "null"], minimum: 1 }
+    contact_hero_media_file_id: { type: [integer, "null"], minimum: 1 }
+    logo_url: { type: [string, "null"], format: uri }
+    footer_logo_url: { type: [string, "null"], format: uri }
+    og_image_url: { type: [string, "null"], format: uri }
+    contact_hero_image_url: { type: [string, "null"], format: uri }
+    logo: { $ref: './common.yaml#/MediaPreview' }
+    footer_logo: { $ref: './common.yaml#/MediaPreview' }
+    og_image: { $ref: './common.yaml#/MediaPreview' }
+    contact_hero_image: { $ref: './common.yaml#/MediaPreview' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+ContentStatusUpdate:
+  type: object
+  required: [status]
+  additionalProperties: false
+  properties:
+    status: { $ref: './common.yaml#/WritableContentStatus' }
+
+ReorderInput:
+  type: object
+  required: [items]
+  additionalProperties: false
+  properties:
+    items:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        required: [id, sort_order]
+        additionalProperties: false
+        properties:
+          id: { $ref: './common.yaml#/Id' }
+          sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+
+ReorderResult:
+  type: object
+  required: [status, count]
+  properties:
+    status: { type: string, const: updated }
+    count: { type: integer, minimum: 1, examples: [7] }
+
+ContentDeleteResult:
+  type: object
+  required: [id, status, cleanup_failed_media_count]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    status: { type: string, const: permanently_deleted }
+    cleanup_failed_media_count: { type: integer, minimum: 0, examples: [0] }

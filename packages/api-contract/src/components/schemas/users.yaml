@@ -1,0 +1,48 @@
+# Skema users. Field dari backend.md §users.
+SafeUser:
+  type: object
+  required: [id, name, email, role, status, permissions, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string, examples: ["Editor Konten"] }
+    email: { type: string, format: email, examples: ["editor@indobraga.com"] }
+    role: { $ref: './common.yaml#/AdminRole' }
+    status: { type: string, enum: [active, inactive], examples: ["active"] }
+    permissions:
+      type: array
+      items: { $ref: './common.yaml#/Permission' }
+    last_login_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+CreateUserInput:
+  type: object
+  required: [name, email, role, temporary_password]
+  additionalProperties: false
+  properties:
+    name: { type: string, minLength: 1, examples: ["Editor Baru"] }
+    email: { type: string, format: email, description: "Di-lowercase oleh server.", examples: ["Editor@Indobraga.com"] }
+    role: { $ref: './common.yaml#/AdminRole' }
+    temporary_password: { type: string, minLength: 8, maxLength: 200, examples: ["sementara123"] }
+
+UpdateUserInput:
+  type: object
+  additionalProperties: false
+  properties:
+    name: { type: string, minLength: 1 }
+    role: { $ref: './common.yaml#/AdminRole' }
+    new_password: { type: string, minLength: 8, maxLength: 200, description: "Mengganti password & mencabut sesi user tersebut." }
+
+UpdateUserStatusInput:
+  type: object
+  required: [status]
+  additionalProperties: false
+  properties:
+    status: { type: string, enum: [active, inactive] }
+
+DisableUserResult:
+  type: object
+  required: [id, status]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    status: { type: string, const: disabled }

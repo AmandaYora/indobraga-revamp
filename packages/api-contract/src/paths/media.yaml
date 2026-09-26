@@ -1,0 +1,319 @@
+# Fragmen media — 7 endpoint.
+/api/v1/admin/media:
+  get:
+    operationId: listMedia
+    tags: [media]
+    summary: Daftar media
+    description: Arsip/pending_delete/deleted/cleanup_failed disembunyikan by default.
+    x-module: media
+    x-permission: media.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/media
+      changes: Tidak ada perubahan bentuk data selain envelope v1; limit default 16.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 1 }
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 16, maximum: 100 }
+      - name: q
+        in: query
+        required: false
+        description: Cari nama file/mime.
+        schema: { type: string }
+      - name: media_type
+        in: query
+        required: false
+        schema: { type: string, enum: [image, video, document] }
+      - name: compression_status
+        in: query
+        required: false
+        schema: { type: string, enum: [processing, completed, failed, archived, pending_delete, deleted, cleanup_failed] }
+      - name: usage
+        in: query
+        required: false
+        schema: { type: string }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data, meta]
+                  properties:
+                    data: { type: array, items: { $ref: '../components/schemas/media.yaml#/MediaItem' } }
+                    meta: { $ref: '../components/schemas/envelope.yaml#/PaginationMeta' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: [{ id: 10, media_type: image, mime_type: image/webp, original_file_name: hero-1.jpg, compression_status: completed, file_url: https://media.indobraga.com/l.webp, thumbnail_url: null, medium_url: null, large_url: null, poster_url: null, video_url: null, width: 1600, height: 900, duration_seconds: null, original_size: 123456, optimized_size: 98765, error: null, archived_at: null, deleted_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }]
+              meta: { page: 1, limit: 16, total: 1, total_pages: 1 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+  post:
+    operationId: uploadMedia
+    tags: [media]
+    summary: Unggah media
+    description: multipart file (memori, batas 100MB) + usage hero|partner|portfolio|machine|gallery|news|og|other. Gambar 10MB, video 100MB; sniff magic bytes; varian WebP 480/960/1600 q82.
+    x-module: media
+    x-permission: media.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/admin/media
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required: [file, usage]
+            properties:
+              file: { type: string, format: binary, description: Gambar (≤10MB) atau video (≤100MB). }
+              usage: { $ref: '../components/schemas/media.yaml#/MediaUsage' }
+              alt_text: { type: string }
+              caption: { type: string }
+          encoding:
+            file: { contentType: application/octet-stream }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/media.yaml#/MediaItem' }
+            example:
+              success: true
+              message: Data berhasil dibuat.
+              data: { id: 10, media_type: image, mime_type: image/webp, original_file_name: hero-1.jpg, compression_status: completed, file_url: https://media.indobraga.com/l.webp, thumbnail_url: null, medium_url: null, large_url: null, poster_url: null, video_url: null, width: 1600, height: 900, duration_seconds: null, original_size: 123456, optimized_size: 98765, error: null, archived_at: null, deleted_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '413': { $ref: '../components/responses.yaml#/PayloadTooLarge' }
+      '415': { $ref: '../components/responses.yaml#/UnsupportedMediaType' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/media/{id}:
+  get:
+    operationId: getMedia
+    tags: [media]
+    summary: Detail media
+    x-module: media
+    x-permission: media.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/media/{id}
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/media.yaml#/MediaItem' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { id: 10, media_type: image, mime_type: image/webp, original_file_name: hero-1.jpg, compression_status: completed, file_url: https://media.indobraga.com/l.webp, thumbnail_url: null, medium_url: null, large_url: null, poster_url: null, video_url: null, width: 1600, height: 900, duration_seconds: null, original_size: 123456, optimized_size: 98765, error: null, archived_at: null, deleted_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+  delete:
+    operationId: deleteMedia
+    tags: [media]
+    summary: Hapus permanen media
+    description: Ditolak 409 bila masih dirujuk atau cleanup storage gagal (CLEANUP_FAILED).
+    x-module: media
+    x-permission: media.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: DELETE
+      path: /api/v1/admin/media/{id}
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/media.yaml#/DeleteMediaResult' }
+            example:
+              success: true
+              message: Data berhasil dihapus permanen.
+              data: { id: 10, status: permanently_deleted }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '409': { $ref: '../components/responses.yaml#/Conflict' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/media/{id}/archive:
+  patch:
+    operationId: archiveMedia
+    tags: [media]
+    summary: Arsipkan media
+    description: Ditolak 409 bila masih dirujuk.
+    x-module: media
+    x-permission: media.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: PATCH
+      path: /api/v1/admin/media/{id}/archive
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/media.yaml#/MediaItem' }
+            example:
+              success: true
+              message: Data berhasil diarsipkan.
+              data: { id: 10, media_type: image, mime_type: image/webp, original_file_name: hero-1.jpg, compression_status: archived, file_url: https://media.indobraga.com/l.webp, thumbnail_url: null, medium_url: null, large_url: null, poster_url: null, video_url: null, width: 1600, height: 900, duration_seconds: null, original_size: 123456, optimized_size: 98765, error: null, archived_at: 2026-05-12T08:30:00.000Z, deleted_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '409': { $ref: '../components/responses.yaml#/Conflict' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/media/{id}/unarchive:
+  patch:
+    operationId: unarchiveMedia
+    tags: [media]
+    summary: Batalkan arsip media
+    description: Kembali ke previousStatus atau COMPLETED.
+    x-module: media
+    x-permission: media.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: PATCH
+      path: /api/v1/admin/media/{id}/unarchive
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/media.yaml#/MediaItem' }
+            example:
+              success: true
+              message: Arsip berhasil dibatalkan.
+              data: { id: 10, media_type: image, mime_type: image/webp, original_file_name: hero-1.jpg, compression_status: completed, file_url: https://media.indobraga.com/l.webp, thumbnail_url: null, medium_url: null, large_url: null, poster_url: null, video_url: null, width: 1600, height: 900, duration_seconds: null, original_size: 123456, optimized_size: 98765, error: null, archived_at: null, deleted_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/media/{id}/retry:
+  post:
+    operationId: retryMedia
+    tags: [media]
+    summary: Coba lagi media gagal
+    description: Hanya bila FAILED; hanya menulis ulang pesan error (file asli tidak disimpan).
+    x-module: media
+    x-permission: media.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/admin/media/{id}/retry
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/media.yaml#/MediaItem' }
+            example:
+              success: true
+              message: Data berhasil diubah.
+              data: { id: 10, media_type: image, mime_type: image/webp, original_file_name: hero-1.jpg, compression_status: failed, file_url: null, thumbnail_url: null, medium_url: null, large_url: null, poster_url: null, video_url: null, width: null, height: null, duration_seconds: null, original_size: 123456, optimized_size: null, error: Gagal memproses., archived_at: null, deleted_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }

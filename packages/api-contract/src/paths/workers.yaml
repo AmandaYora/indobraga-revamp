@@ -1,0 +1,73 @@
+# Fragmen workers — revalidation tick + notifications tick.
+/api/v1/internal/revalidation/tick:
+  post:
+    operationId: tickRevalidation
+    tags: [site]
+    summary: Tick revalidasi cache
+    description: Pindahkan 50 event PENDING→PROCESSING→COMPLETED; mengembalikan cache_keys distinct. Tidak memanggil URL eksternal.
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/internal/revalidation/tick
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ workerSecret: [] }]
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/site.yaml#/RevalidationTickResult' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { processed: 3, cache_keys: [public:home, public:portfolio:list] }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/internal/workers/notifications/tick:
+  post:
+    operationId: tickNotifications
+    tags: [notifications]
+    summary: Tick worker notifikasi email
+    description: Klaim ≤20 job PENDING→PROCESSING; backoff linear attempt×60 dtk maks 3; tanpa scheduler in-app (cron tiap menit); tanpa recovery PROCESSING macet.
+    x-module: notifications
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/internal/workers/notifications/tick
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ workerSecret: [] }]
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/notifications.yaml#/NotificationsTickResult' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { processed: 5, sent: 4, failed: 1, retried: 0 }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }

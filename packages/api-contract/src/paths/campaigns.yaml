@@ -1,0 +1,605 @@
+# Fragmen campaigns — 12 endpoint (termasuk worker tick).
+/api/v1/admin/email-campaigns:
+  get:
+    operationId: listEmailCampaigns
+    tags: [campaigns]
+    summary: Daftar kampanye email
+    description: Status SENDING legacy diekspos sebagai processing.
+    x-module: campaigns
+    x-permission: email_campaigns.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/email-campaigns
+      changes: Prisma SENDING diekspos sebagai processing; selain itu hanya envelope v1.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 1 }
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 10, maximum: 100 }
+      - name: q
+        in: query
+        required: false
+        schema: { type: string }
+      - name: status
+        in: query
+        required: false
+        schema: { type: string, enum: [draft, pending, processing, completed, failed, cancelled] }
+      - name: email_account_id
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1 }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data, meta]
+                  properties:
+                    data: { type: array, items: { $ref: '../components/schemas/email.yaml#/Campaign' } }
+                    meta: { $ref: '../components/schemas/envelope.yaml#/PaginationMeta' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: [{ id: 1, title: Promo Lebaran, subject: Diskon, status: draft, total_recipients: 10, queued_count: 10, sent_count: 0, failed_count: 0, sender_account: { id: 1, provider: smtp, email_address: marketing@indobraga.com, display_name: Marketing, status: connected }, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }]
+              meta: { page: 1, limit: 10, total: 1, total_pages: 1 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/email-campaigns/recipient-sources/inquiries/preview:
+  get:
+    operationId: previewInquiryRecipients
+    tags: [campaigns]
+    summary: Pratinjau penerima dari inquiry
+    description: Batas hari Asia/Jakarta +07:00; limit 1000 (422 bila over).
+    x-module: campaigns
+    x-permission: email_campaigns.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/email-campaigns/recipient-sources/inquiries/preview
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - name: q
+        in: query
+        required: false
+        schema: { type: string, maxLength: 120 }
+      - name: status
+        in: query
+        required: false
+        schema: { type: string, enum: [new, contacted, in_progress, closed, spam] }
+      - name: date_from
+        in: query
+        required: false
+        schema: { type: string, format: date }
+      - name: date_to
+        in: query
+        required: false
+        schema: { type: string, format: date }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/InquiryRecipientPreview' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { total_inquiries: 10, eligible_recipients: 8, duplicate_emails: 1, invalid_emails: 1, recipient_limit: 1000, over_limit: false, sample_recipients: [] }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/email-campaigns/{id}:
+  get:
+    operationId: getEmailCampaign
+    tags: [campaigns]
+    summary: Detail kampanye email
+    x-module: campaigns
+    x-permission: email_campaigns.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/email-campaigns/{id}
+      changes: SENDING → processing; selain itu hanya envelope v1.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/Campaign' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { id: 1, title: Promo Lebaran, subject: Diskon, status: draft, total_recipients: 10, queued_count: 10, sent_count: 0, failed_count: 0, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+  patch:
+    operationId: updateEmailCampaign
+    tags: [campaigns]
+    summary: Ubah draf kampanye
+    description: Hanya draf (422 bila bukan); recipients mengganti semua.
+    x-module: campaigns
+    x-permission: email_campaigns.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: PATCH
+      path: /api/v1/admin/email-campaigns/{id}
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            properties:
+              title: { type: string, maxLength: 190 }
+              email_account_id: { type: integer, minimum: 1 }
+              subject: { type: string, maxLength: 255 }
+              body_text: { type: string }
+              body_html: { type: string }
+              recipients:
+                type: array
+                minItems: 1
+                maxItems: 1000
+                items: { $ref: '../components/schemas/email.yaml#/RecipientInput' }
+          example: { subject: Diskon Terbaru }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/Campaign' }
+            example:
+              success: true
+              message: Data berhasil diubah.
+              data: { id: 1, title: Promo Lebaran, subject: Diskon Terbaru, status: draft, total_recipients: 10, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/email-campaigns/draft:
+  post:
+    operationId: createCampaignDraft
+    tags: [campaigns]
+    summary: Buat draf kampanye manual
+    description: Penerima 1–1000, dedup email lowercase; akun pengirim wajib CONNECTED (422).
+    x-module: campaigns
+    x-permission: email_campaigns.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/admin/email-campaigns/draft
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../components/schemas/email.yaml#/CampaignDraftInput' }
+          example: { title: Promo Lebaran, email_account_id: 1, subject: Diskon, body_html: "<p>Halo {{ nama }}</p>", recipients: [{ email: budi@contoh.com, name: Budi }] }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/CampaignDraftResult' }
+            example:
+              success: true
+              message: Data berhasil dibuat.
+              data: { id: 1, status: draft, total_recipients: 1 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/email-campaigns/draft/from-inquiries:
+  post:
+    operationId: createCampaignDraftFromInquiries
+    tags: [campaigns]
+    summary: Buat draf dari inquiry
+    x-module: campaigns
+    x-permission: email_campaigns.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/admin/email-campaigns/draft/from-inquiries
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [title, email_account_id, subject, inquiry_filter]
+            additionalProperties: false
+            properties:
+              title: { type: string, minLength: 1, maxLength: 190 }
+              email_account_id: { type: integer, minimum: 1 }
+              subject: { type: string, minLength: 1, maxLength: 255 }
+              body_text: { type: string }
+              body_html: { type: string }
+              inquiry_filter:
+                type: object
+                additionalProperties: false
+                properties:
+                  q: { type: string, maxLength: 120 }
+                  status: { type: string, enum: [new, contacted, in_progress, closed, spam] }
+                  date_from: { type: string, format: date }
+                  date_to: { type: string, format: date }
+          example: { title: Promo, email_account_id: 1, subject: Diskon, inquiry_filter: { status: new } }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/CampaignDraftResult' }
+            example:
+              success: true
+              message: Data berhasil dibuat.
+              data: { id: 2, status: draft, total_recipients: 8 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/email-campaigns/draft/from-audience:
+  post:
+    operationId: createCampaignDraftFromAudience
+    tags: [campaigns]
+    summary: Buat draf dari audiens
+    description: Hanya kontak ACTIVE.
+    x-module: campaigns
+    x-permission: email_campaigns.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/admin/email-campaigns/draft/from-audience
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [title, email_account_id, subject, audience_filter]
+            additionalProperties: false
+            properties:
+              title: { type: string, minLength: 1, maxLength: 190 }
+              email_account_id: { type: integer, minimum: 1 }
+              subject: { type: string, minLength: 1, maxLength: 255 }
+              body_text: { type: string }
+              body_html: { type: string }
+              audience_filter:
+                type: object
+                additionalProperties: false
+                properties:
+                  q: { type: string, maxLength: 120 }
+                  source: { type: string, enum: [inquiry, whatsapp_lead, manual_import, manual] }
+                  status: { type: string, enum: [active, unsubscribed, blocked] }
+          example: { title: Promo, email_account_id: 1, subject: Diskon, audience_filter: { status: active } }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/CampaignDraftResult' }
+            example:
+              success: true
+              message: Data berhasil dibuat.
+              data: { id: 3, status: draft, total_recipients: 8 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/email-campaigns/{id}/send:
+  post:
+    operationId: sendEmailCampaign
+    tags: [campaigns]
+    summary: Kirim kampanye
+    description: PENDING + reset penerima ke QUEUED; drain fire-and-forget.
+    x-module: campaigns
+    x-permission: email_campaigns.send
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/admin/email-campaigns/{id}/send
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/Campaign' }
+            example:
+              success: true
+              message: Kampanye mulai dikirim.
+              data: { id: 1, title: Promo, subject: Diskon, status: pending, total_recipients: 10, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/email-campaigns/{id}/resend-failed:
+  post:
+    operationId: resendFailedEmailCampaign
+    tags: [campaigns]
+    summary: Kirim ulang penerima gagal
+    x-module: campaigns
+    x-permission: email_campaigns.send
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/admin/email-campaigns/{id}/resend-failed
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/Campaign' }
+            example:
+              success: true
+              message: Penerima gagal diantre ulang.
+              data: { id: 1, title: Promo, subject: Diskon, status: pending, total_recipients: 10, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/email-campaigns/{id}/recipients:
+  get:
+    operationId: listCampaignRecipients
+    tags: [campaigns]
+    summary: Daftar penerima kampanye
+    x-module: campaigns
+    x-permission: email_campaigns.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/email-campaigns/{id}/recipients
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+      - name: page
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 1 }
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 10, maximum: 100 }
+      - name: q
+        in: query
+        required: false
+        schema: { type: string }
+      - name: status
+        in: query
+        required: false
+        schema: { type: string, enum: [queued, sending, sent, failed, skipped] }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data, meta]
+                  properties:
+                    data: { type: array, items: { $ref: '../components/schemas/email.yaml#/CampaignRecipient' } }
+                    meta: { $ref: '../components/schemas/envelope.yaml#/PaginationMeta' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: [{ id: 1, campaign_id: 1, email: budi@contoh.com, name: Budi, status: sent, attempts: 1, next_attempt_at: null, sent_at: 2026-05-12T08:30:00.000Z, failed_at: null, error_code: null, error_message: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }]
+              meta: { page: 1, limit: 10, total: 1, total_pages: 1 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/email-campaigns/{id}/logs:
+  get:
+    operationId: listCampaignLogs
+    tags: [campaigns]
+    summary: Daftar log kirim kampanye
+    description: Hanya super_admin (email_campaign_logs.read).
+    x-module: campaigns
+    x-permission: email_campaign_logs.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/email-campaigns/{id}/logs
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+      - name: page
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 1 }
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 10, maximum: 100 }
+      - name: status
+        in: query
+        required: false
+        description: Teks bebas.
+        schema: { type: string }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data, meta]
+                  properties:
+                    data: { type: array, items: { $ref: '../components/schemas/email.yaml#/CampaignLog' } }
+                    meta: { $ref: '../components/schemas/envelope.yaml#/PaginationMeta' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: [{ id: 1, campaign_id: 1, recipient_id: 1, recipient_email: budi@contoh.com, provider: smtp, status: sent, message_id: mock-1, error_code: null, error_message: null, response_meta: null, created_at: 2026-05-12T08:30:00.000Z }]
+              meta: { page: 1, limit: 10, total: 1, total_pages: 1 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/internal/workers/email-campaigns/tick:
+  post:
+    operationId: tickEmailCampaigns
+    tags: [campaigns]
+    summary: Tick worker kampanye email
+    description: Klaim optimistis via updateMany; batch 50; tanpa throttle antar kirim.
+    x-module: campaigns
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/internal/workers/email-campaigns/tick
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ workerSecret: [] }]
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/EmailTickResult' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { claimed_campaign_id: 1, processed: 50, sent: 48, failed: 2, remaining: 0, status: completed }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }

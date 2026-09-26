@@ -1,0 +1,130 @@
+# Fragmen seo — robots, sitemap, seo legacy alias + endpoint baru seo by path.
+/robots.txt:
+  get:
+    operationId: getRobotsTxt
+    tags: [site]
+    summary: Ambil robots.txt
+    description: text/plain; melarang /admin, /login, /api/, /internal/ + daftar sitemap.
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=300, stale-while-revalidate=600
+    x-legacy:
+      method: GET
+      path: /robots.txt
+      changes: Sama persis (text/plain, tanpa envelope).
+    security: []
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          text/plain:
+            schema: { type: string }
+            example: "User-agent: *\nDisallow: /admin\nDisallow: /login\nDisallow: /api/\nDisallow: /internal/\nSitemap: https://indobraga.com/sitemap.xml\n"
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/sitemap.xml:
+  get:
+    operationId: getSitemapXml
+    tags: [site]
+    summary: Ambil sitemap.xml
+    description: application/xml; 6 halaman statis + /berita/<slug> (lastmod = updatedAt).
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=300, stale-while-revalidate=600
+    x-legacy:
+      method: GET
+      path: /sitemap.xml
+      changes: Sama persis (application/xml, tanpa envelope).
+    security: []
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/xml:
+            schema: { type: string }
+            example: "<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://indobraga.com/</loc></url></urlset>"
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/public/seo/{route}:
+  get:
+    operationId: getPublicSeoByRoute
+    tags: [site]
+    summary: Ambil SEO legacy per route (alias)
+    description: Alias yang dipertahankan; frontend baru memakai GET /public/seo?path. Route home|portfolio|fasilitas|galeri|berita|kontak|berita:<slug>.
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=300, stale-while-revalidate=600
+    x-legacy:
+      method: GET
+      path: /api/v1/public/seo/{route}
+      changes: Dipertahankan sebagai alias; tidak ada perubahan bentuk data selain envelope v1.
+    security: []
+    parameters:
+      - name: route
+        in: path
+        required: true
+        schema: { type: string, maxLength: 190 }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/site.yaml#/SeoLegacy' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { title: Indobraga — Cetak Kemasan, description: Jasa cetak kemasan., canonical_url: https://indobraga.com/, og_image_url: null, noindex: false }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/public/seo:
+  get:
+    operationId: getPublicSeoByPath
+    tags: [site]
+    summary: Ambil SEO SPA per path (baru)
+    description: Endpoint baru untuk SPA (menggantikan /public/seo/:route yang tidak dipakai frontend legacy).
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=300, stale-while-revalidate=600
+    x-legacy: null
+    security: []
+    parameters:
+      - name: path
+        in: query
+        required: true
+        description: Path SPA, mis. /berita/tips-memilih-kemasan.
+        schema: { type: string, maxLength: 500 }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/site.yaml#/SeoByPath' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { title: Tips Memilih Kemasan — Indobraga, description: Ringkasan., canonical_url: https://indobraga.com/berita/tips-memilih-kemasan, robots: 'index, follow', og: { title: Tips, description: Ringkasan., image: null, url: https://indobraga.com/berita/tips-memilih-kemasan }, twitter: { card: summary_large_image, title: Tips, description: Ringkasan., image: null }, json_ld: [], status: 200 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }

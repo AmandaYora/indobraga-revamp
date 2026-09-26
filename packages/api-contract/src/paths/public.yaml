@@ -1,0 +1,421 @@
+# Fragmen public — 10 endpoint publik (site-settings, home, portfolio, kategori, fasilitas, galeri, berita, berita-slug, inquiries, whatsapp-leads).
+/api/v1/public/site-settings:
+  get:
+    operationId: getPublicSiteSettings
+    tags: [site]
+    summary: Ambil pengaturan situs publik
+    description: Brand, kontak, logo, SEO.
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=300, stale-while-revalidate=600
+    x-legacy:
+      method: GET
+      path: /api/v1/public/site-settings
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: []
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+          Cache-Control: { schema: { type: string } }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/site.yaml#/PublicSiteSettings' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { brand: Indobraga, legal_name: PT. Braga Indonesia Perkasa, email: info@indobraga.com, phone: 022-123456, whatsapp: '6281200000001', instagram: '@indobraga', contact_person: Admin, contact_role: Marketing, address: 'Jl. Contoh No. 1, Bandung', show_brand_text: false, logo_url: https://media.indobraga.com/logo.webp, footer_logo_url: null, contact_hero_image_url: null, seo: { title: Indobraga — Cetak Kemasan, description: Jasa cetak kemasan., og_image_url: null } }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/public/home:
+  get:
+    operationId: getPublicHome
+    tags: [site]
+    summary: Ambil data beranda publik
+    description: Hero + partner + keunggulan + portofolio unggulan (≤6) + ringkasan fasilitas + berita terbaru (≤3).
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=60, stale-while-revalidate=300
+    x-legacy:
+      method: GET
+      path: /api/v1/public/home
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: []
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/site.yaml#/PublicHome' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { hero: { title: Jasa Cetak Kardus, subtitle: Sejak 2010., primary_cta: { label: Hubungi Kami, url: /kontak }, slides: [] }, partners: [], strengths: [], featured_portfolios: [], facilities_summary: { machines: [], printing_capacities: [], production_capacities: [], services: [] }, latest_news: [] }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/public/portfolio:
+  get:
+    operationId: listPublicPortfolios
+    tags: [site]
+    summary: Daftar portofolio publik (cursor)
+    description: Keyset (sort_order, id); cursor base64url JSON; limit ≤24 default 8.
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=60, stale-while-revalidate=300
+    x-legacy:
+      method: GET
+      path: /api/v1/public/portfolio
+      changes: List cursor menjadi data array + meta {limit, next_cursor, has_more} (legacy next_cursor di dalam data).
+    security: []
+    parameters:
+      - name: category
+        in: query
+        required: false
+        schema: { type: string }
+      - name: category_slug
+        in: query
+        required: false
+        schema: { type: string }
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 8, maximum: 24 }
+      - name: cursor
+        in: query
+        required: false
+        description: Cursor dari meta.next_cursor sebelumnya.
+        schema: { type: string, maxLength: 512 }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data, meta]
+                  properties:
+                    data: { type: array, items: { $ref: '../components/schemas/site.yaml#/PublicPortfolioItem' } }
+                    meta: { $ref: '../components/schemas/envelope.yaml#/CursorMeta' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: [{ id: 1, title: Kemasan Kopi Premium, slug: kemasan-kopi-premium, category: Box & Karton, category_slug: box-karton, thumbnail_url: https://media.indobraga.com/a.webp, medium_url: null, alt_text: Kemasan kopi, short_description: Kemasan 250gr, images: [] }]
+              meta: { limit: 8, next_cursor: null, has_more: false }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/public/portfolio-categories:
+  get:
+    operationId: listPublicPortfolioCategories
+    tags: [site]
+    summary: Daftar kategori portofolio publik
+    description: Hanya kategori published yang punya portofolio published.
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=60, stale-while-revalidate=300
+    x-legacy:
+      method: GET
+      path: /api/v1/public/portfolio-categories
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: []
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data:
+                      type: object
+                      required: [items]
+                      properties:
+                        items: { type: array, items: { $ref: '../components/schemas/site.yaml#/PublicPortfolioCategory' } }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { items: [{ id: 1, name: Box & Karton, slug: box-karton, count: 8 }] }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/public/facilities:
+  get:
+    operationId: getPublicFacilities
+    tags: [site]
+    summary: Ambil data fasilitas publik
+    description: Keunggulan, mesin, kapasitas cetak/produksi, layanan.
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=60, stale-while-revalidate=300
+    x-legacy:
+      method: GET
+      path: /api/v1/public/facilities
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: []
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/site.yaml#/PublicFacilities' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { strengths: [], machines: [], printing_capacities: [], production_capacities: [], services: [] }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/public/gallery:
+  get:
+    operationId: listPublicGallery
+    tags: [site]
+    summary: Daftar galeri publik (cursor)
+    description: Filter type image|video; limit ≤24 default 8.
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=60, stale-while-revalidate=300
+    x-legacy:
+      method: GET
+      path: /api/v1/public/gallery
+      changes: List cursor menjadi data array + meta {limit, next_cursor, has_more}.
+    security: []
+    parameters:
+      - name: type
+        in: query
+        required: false
+        schema: { type: string, enum: [image, video] }
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 8, maximum: 24 }
+      - name: cursor
+        in: query
+        required: false
+        schema: { type: string, maxLength: 512 }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data, meta]
+                  properties:
+                    data: { type: array, items: { $ref: '../components/schemas/site.yaml#/PublicGalleryItem' } }
+                    meta: { $ref: '../components/schemas/envelope.yaml#/CursorMeta' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: [{ id: 1, type: image, thumbnail_url: https://media.indobraga.com/t.webp, media_url: https://media.indobraga.com/l.webp, caption: Proses cetak, alt_text: null, published_at: 2026-05-12T08:30:00.000Z }]
+              meta: { limit: 8, next_cursor: null, has_more: false }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/public/news:
+  get:
+    operationId: listPublicNews
+    tags: [site]
+    summary: Daftar berita publik (offset)
+    description: Page/limit ≤24 default 6 + filter category.
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=60, stale-while-revalidate=300
+    x-legacy:
+      method: GET
+      path: /api/v1/public/news
+      changes: List offset menjadi data array + meta {page, limit, total, total_pages} (legacy data.items).
+    security: []
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 1 }
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 6, maximum: 24 }
+      - name: category
+        in: query
+        required: false
+        schema: { type: string }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data, meta]
+                  properties:
+                    data: { type: array, items: { $ref: '../components/schemas/site.yaml#/PublicNewsItem' } }
+                    meta: { $ref: '../components/schemas/envelope.yaml#/PaginationMeta' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: [{ id: 1, title: Tips Memilih Kemasan, slug: tips-memilih-kemasan, category: Tips, thumbnail_url: null, excerpt: Ringkasan., published_at: 2026-05-12T08:30:00.000Z }]
+              meta: { page: 1, limit: 6, total: 1, total_pages: 1 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/public/news/{slug}:
+  get:
+    operationId: getPublicNewsBySlug
+    tags: [site]
+    summary: Detail berita publik
+    description: Slug pola ^[a-z0-9]+(-[a-z0-9]+)*$.
+    x-module: site
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: public, max-age=300, stale-while-revalidate=600
+    x-legacy:
+      method: GET
+      path: /api/v1/public/news/{slug}
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: []
+    parameters:
+      - $ref: '../components/parameters.yaml#/SlugPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/site.yaml#/PublicNewsDetail' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { id: 1, title: Tips Memilih Kemasan, slug: tips-memilih-kemasan, category: Tips, thumbnail_url: null, excerpt: Ringkasan., content: [Paragraf 1.], seo: { title: Tips Memilih Kemasan, description: Ringkasan., canonical_url: https://indobraga.com/berita/tips-memilih-kemasan, og_image_url: null }, published_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/public/inquiries:
+  post:
+    operationId: createPublicInquiry
+    tags: [leads]
+    summary: Kirim pesan kontak
+    description: Honeypot website bila terisi mengembalikan id 0 tanpa menyimpan; menyimpan source & meta + upsert audiens + notifikasi.
+    x-module: leads
+    x-permission: null
+    x-rate-limit:
+      limit: 10
+      window_seconds: 60
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/public/inquiries
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../components/schemas/leads.yaml#/CreateInquiryInput' }
+          example: { name: Budi Santoso, email: budi@contoh.com, phone: 0812-3456-789, company: PT Contoh, message: 'Halo, saya butuh kemasan box untuk kopi 250gr sebanyak 5000 pcs.' }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/leads.yaml#/CreateInquiryResult' }
+            example:
+              success: true
+              message: Pesan berhasil dikirim.
+              data: { id: 12, status: new }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/public/whatsapp-leads:
+  post:
+    operationId: createPublicWhatsappLead
+    tags: [leads]
+    summary: Buat prospek WhatsApp
+    description: URL wa.me dibangun dari site_settings.whatsapp.
+    x-module: leads
+    x-permission: null
+    x-rate-limit:
+      limit: 10
+      window_seconds: 60
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/public/whatsapp-leads
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../components/schemas/leads.yaml#/CreateWhatsAppLeadInput' }
+          example: { name: Siti, phone: '08123456789', message: Saya ingin konsultasi kemasan. }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/leads.yaml#/CreateWhatsAppLeadResult' }
+            example:
+              success: true
+              message: Data berhasil dibuat.
+              data: { id: 3, status: new, whatsapp_url: https://wa.me/6281200000001?text=Halo%20Indobraga, generated_message: 'Halo Indobraga, saya Siti.' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }

@@ -1,0 +1,44 @@
+# Skema notifications. Field dari backend.md §notifications.
+NotificationType:
+  type: string
+  enum: [inquiry_created, whatsapp_lead_created, email_campaign_completed, email_campaign_failed, media_failed, smtp_invalid, system_warning]
+
+NotificationSeverity:
+  type: string
+  enum: [info, success, warning, error]
+
+Notification:
+  type: object
+  required: [id, type, severity, title, message, read, created_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    type: { $ref: '#/NotificationType' }
+    severity: { $ref: '#/NotificationSeverity' }
+    title: { type: string, examples: ["Pesan kontak baru"] }
+    message: { type: string }
+    resource_type: { type: [string, "null"], examples: ["inquiry"] }
+    resource_id: { type: [integer, "null"] }
+    read: { type: boolean }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+
+UnreadCount:
+  type: object
+  required: [unread_count]
+  properties:
+    unread_count: { type: integer, minimum: 0, examples: [3] }
+
+ReadAllResult:
+  type: object
+  required: [marked_read, unread_count]
+  properties:
+    marked_read: { type: integer, minimum: 0, maximum: 500, examples: [3] }
+    unread_count: { type: integer, const: 0 }
+
+NotificationsTickResult:
+  type: object
+  required: [processed, sent, failed, retried]
+  properties:
+    processed: { type: integer, minimum: 0 }
+    sent: { type: integer, minimum: 0 }
+    failed: { type: integer, minimum: 0 }
+    retried: { type: integer, minimum: 0 }

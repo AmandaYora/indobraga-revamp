@@ -1,0 +1,41 @@
+# Fragmen dashboard — 1 endpoint.
+/api/v1/admin/dashboard:
+  get:
+    operationId: getDashboard
+    tags: [dashboard]
+    summary: Ringkasan dashboard admin
+    description: Total + 5 inquiry, 5 whatsapp-lead, 5 kampanye terbaru.
+    x-module: dashboard
+    x-permission: dashboard.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/dashboard
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [] }]
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/site.yaml#/DashboardSummary' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data:
+                totals: { inquiries: 10, whatsapp_leads: 5, published_gallery: 9, published_news: 3, active_portfolios: 8, completed_media: 59, failed_media: 0, connected_email_accounts: 1, email_campaigns: 2, pending_email_campaigns: 0, pending_revalidation: 0 }
+                latest_inquiries: []
+                latest_whatsapp_leads: []
+                latest_email_campaigns: []
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }

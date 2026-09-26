@@ -1,0 +1,32 @@
+# Skema auth (login/logout/me). Field dari backend.md §auth.
+LoginInput:
+  type: object
+  required: [email, password]
+  additionalProperties: false
+  properties:
+    email: { type: string, format: email, maxLength: 190, examples: ["admin@indobraga.com"] }
+    password: { type: string, minLength: 1, maxLength: 200, examples: ["rahasia123"] }
+
+AuthUser:
+  type: object
+  required: [id, name, email, role, permissions]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string, examples: ["Admin Utama"] }
+    email: { type: string, format: email, examples: ["admin@indobraga.com"] }
+    role: { $ref: './common.yaml#/AdminRole' }
+    permissions:
+      type: array
+      items: { $ref: './common.yaml#/Permission' }
+
+LoginResult:
+  type: object
+  required: [user]
+  properties:
+    user: { $ref: '#/AuthUser' }
+
+LogoutResult:
+  type: object
+  required: [status]
+  properties:
+    status: { type: string, const: logged_out }

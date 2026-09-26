@@ -1,0 +1,88 @@
+# Skema leads (inquiry + whatsapp-lead). Field dari backend.md §leads.
+LeadStatus:
+  type: string
+  enum: [new, contacted, in_progress, closed, spam]
+
+Inquiry:
+  type: object
+  required: [id, name, email, phone, message, status, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string }
+    company: { type: [string, "null"] }
+    message: { type: string }
+    status: { $ref: '#/LeadStatus' }
+    internal_note: { type: [string, "null"] }
+    notification_status: { type: [string, "null"], examples: ["pending"] }
+    source: { type: [string, "null"] }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+WhatsAppLead:
+  type: object
+  required: [id, name, phone, status, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string }
+    phone: { type: string }
+    message: { type: [string, "null"] }
+    generated_message: { type: [string, "null"] }
+    whatsapp_url: { type: [string, "null"], format: uri }
+    status: { $ref: '#/LeadStatus' }
+    internal_note: { type: [string, "null"] }
+    source: { type: [string, "null"] }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+CreateInquiryInput:
+  type: object
+  required: [name, email, phone, message]
+  additionalProperties: false
+  properties:
+    name: { type: string, minLength: 2, maxLength: 120, examples: ["Budi Santoso"] }
+    email: { type: string, format: email, maxLength: 190, examples: ["budi@contoh.com"] }
+    phone: { type: string, pattern: '^[0-9+()\-\s]{7,30}$', examples: ["0812-3456-789"] }
+    company: { type: string, maxLength: 190 }
+    message: { type: string, minLength: 10, maxLength: 5000, examples: ["Halo, saya butuh kemasan box untuk kopi 250gr sebanyak 5000 pcs."] }
+    website: { type: string, maxLength: 190, description: "Honeypot — biarkan kosong; bila terisi API mengembalikan id 0 tanpa menyimpan." }
+
+CreateInquiryResult:
+  type: object
+  required: [id, status]
+  properties:
+    id: { type: integer, minimum: 0, examples: [12] }
+    status: { $ref: '#/LeadStatus' }
+
+CreateWhatsAppLeadInput:
+  type: object
+  required: [name, phone]
+  additionalProperties: false
+  properties:
+    name: { type: string, minLength: 2, maxLength: 120, examples: ["Siti"] }
+    phone: { type: string, pattern: '^[0-9+()\-\s]{7,30}$', examples: ["08123456789"] }
+    message: { type: string, maxLength: 700 }
+
+CreateWhatsAppLeadResult:
+  type: object
+  required: [id, status, whatsapp_url, generated_message]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    status: { $ref: '#/LeadStatus' }
+    whatsapp_url: { type: string, format: uri, examples: ["https://wa.me/6281200000001?text=Halo%20Indobraga"] }
+    generated_message: { type: string }
+
+UpdateLeadInput:
+  type: object
+  additionalProperties: false
+  properties:
+    status: { $ref: '#/LeadStatus' }
+    internal_note: { type: string, maxLength: 5000 }
+
+ArchiveLeadResult:
+  type: object
+  required: [id, status]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    status: { type: string, const: archived }

@@ -1,0 +1,150 @@
+# Fragmen audience — 3 endpoint.
+/api/v1/admin/audience/contacts:
+  get:
+    operationId: listAudienceContacts
+    tags: [audience]
+    summary: Daftar kontak marketing
+    x-module: audience
+    x-permission: audience.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/audience/contacts
+      changes: Tidak ada perubahan bentuk data selain envelope v1; limit di-clamp 100.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 1 }
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 10, maximum: 100 }
+      - name: q
+        in: query
+        required: false
+        schema: { type: string, maxLength: 120 }
+      - name: source
+        in: query
+        required: false
+        schema: { type: string, enum: [inquiry, whatsapp_lead, manual_import, manual] }
+      - name: status
+        in: query
+        required: false
+        schema: { type: string, enum: [active, unsubscribed, blocked] }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data, meta]
+                  properties:
+                    data: { type: array, items: { $ref: '../components/schemas/audience.yaml#/MarketingContact' } }
+                    meta: { $ref: '../components/schemas/envelope.yaml#/PaginationMeta' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: [{ id: 1, name: Budi, email: budi@contoh.com, phone: '08123456789', company: null, source: inquiry, source_ref_id: 1, status: active, consent_status: implied, last_interaction_at: 2026-05-12T08:30:00.000Z, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }]
+              meta: { page: 1, limit: 10, total: 1, total_pages: 1 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/audience/preview:
+  get:
+    operationId: previewAudience
+    tags: [audience]
+    summary: Pratinjau audiens
+    x-module: audience
+    x-permission: audience.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/audience/preview
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - name: q
+        in: query
+        required: false
+        schema: { type: string, maxLength: 120 }
+      - name: source
+        in: query
+        required: false
+        schema: { type: string, enum: [inquiry, whatsapp_lead, manual_import, manual] }
+      - name: status
+        in: query
+        required: false
+        schema: { type: string, enum: [active, unsubscribed, blocked] }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/audience.yaml#/AudiencePreview' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { total_contacts: 10, eligible_recipients: 8, excluded_unsubscribed: 1, excluded_blocked: 1, sample_recipients: [] }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/audience/export.csv:
+  get:
+    operationId: exportAudienceCsv
+    tags: [audience]
+    summary: Ekspor audiens CSV
+    description: text/csv attachment indobraga-audience.csv; BOM UTF-8, CRLF, semua sel quoted; maks 10.000 baris.
+    x-module: audience
+    x-permission: audience.export
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/audience/export.csv
+      changes: Sama persis (text/csv tanpa envelope).
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - name: q
+        in: query
+        required: false
+        schema: { type: string, maxLength: 120 }
+      - name: source
+        in: query
+        required: false
+        schema: { type: string, enum: [inquiry, whatsapp_lead, manual_import, manual] }
+      - name: status
+        in: query
+        required: false
+        schema: { type: string, enum: [active, unsubscribed, blocked] }
+    responses:
+      '200':
+        description: File CSV.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          text/csv:
+            schema: { type: string }
+            example: "\"Nama\",\"Email\",\"Telepon\",\"Perusahaan\",\"Sumber\",\"Status\",\"Consent\",\"Interaksi Terakhir\",\"Dibuat\"\n\"Budi\",\"budi@contoh.com\",\"08123456789\",\"\",\"inquiry\",\"active\",\"implied\",\"2026-05-12\",\"2026-05-12\"\n"
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }

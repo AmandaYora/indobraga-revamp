@@ -1,0 +1,180 @@
+# Fragmen email-templates — 4 endpoint.
+/api/v1/admin/email-templates:
+  get:
+    operationId: listEmailTemplates
+    tags: [emailtemplates]
+    summary: Daftar template email
+    x-module: emailtemplates
+    x-permission: email_campaigns.read
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/email-templates
+      changes: Tidak ada perubahan bentuk data selain envelope v1; limit default 50 maks 100.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 1 }
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 50, maximum: 100 }
+      - name: q
+        in: query
+        required: false
+        schema: { type: string }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data, meta]
+                  properties:
+                    data: { type: array, items: { $ref: '../components/schemas/email.yaml#/EmailTemplate' } }
+                    meta: { $ref: '../components/schemas/envelope.yaml#/PaginationMeta' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: [{ id: 1, name: Promo Lebaran, subject: Diskon Kemasan, content_mode: html, body_text: null, body_html: "<p>Halo</p>", created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }]
+              meta: { page: 1, limit: 50, total: 1, total_pages: 1 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+  post:
+    operationId: createEmailTemplate
+    tags: [emailtemplates]
+    summary: Buat template email
+    description: Mode html butuh body_html; mode text butuh body_text (422 bila tidak).
+    x-module: emailtemplates
+    x-permission: email_campaigns.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/admin/email-templates
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../components/schemas/email.yaml#/CreateEmailTemplateInput' }
+          example: { name: Promo Lebaran, subject: Diskon Kemasan, content_mode: html, body_html: "<p>Halo {{ nama }}</p>" }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/EmailTemplate' }
+            example:
+              success: true
+              message: Data berhasil dibuat.
+              data: { id: 1, name: Promo Lebaran, subject: Diskon Kemasan, content_mode: html, body_text: null, body_html: "<p>Halo</p>", created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/email-templates/{id}:
+  patch:
+    operationId: updateEmailTemplate
+    tags: [emailtemplates]
+    summary: Ubah template email
+    x-module: emailtemplates
+    x-permission: email_campaigns.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: PATCH
+      path: /api/v1/admin/email-templates/{id}
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../components/schemas/email.yaml#/UpdateEmailTemplateInput' }
+          example: { subject: Diskon Kemasan Terbaru }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/EmailTemplate' }
+            example:
+              success: true
+              message: Data berhasil diubah.
+              data: { id: 1, name: Promo Lebaran, subject: Diskon Kemasan Terbaru, content_mode: html, body_text: null, body_html: "<p>Halo</p>", created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+  delete:
+    operationId: deleteEmailTemplate
+    tags: [emailtemplates]
+    summary: Hapus template email
+    description: Hard-delete; template tidak dirender server-side.
+    x-module: emailtemplates
+    x-permission: email_campaigns.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: DELETE
+      path: /api/v1/admin/email-templates/{id}
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/email.yaml#/DeleteEmailTemplateResult' }
+            example:
+              success: true
+              message: Data berhasil dihapus.
+              data: { id: 1, status: deleted }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }

@@ -1,0 +1,340 @@
+# FILE GENERATED oleh scripts/assemble.mjs — jangan diedit manual.
+openapi: 3.1.0
+info:
+  title: Indobraga API
+  version: 1.0.0
+  summary: Kontrak API v1 Indobraga — company profile, dashboard admin, email marketing.
+  description: |
+    Sumber kebenaran antarmuka `apps/web` ↔ `apps/api` (ADR-0004).
+
+    - Semua endpoint JSON berada di bawah `/api/v1`; `robots.txt` & `sitemap.xml` di root.
+    - Envelope sukses: `{ success: true, message, data }` (+ `meta` untuk list).
+    - Envelope error: `{ success: false, code, message, errors[], request_id }`.
+    - Setiap respons membawa header `X-Request-Id`.
+    - Ekstensi per operasi: `x-module`, `x-permission`, `x-rate-limit`, `x-cache-control`, `x-legacy`.
+  license:
+    name: UNLICENSED
+    identifier: UNLICENSED
+servers:
+  - url: /
+    description: Same-origin (Vite proxy di dev, satu container di produksi)
+tags:
+  - name: auth
+    description: Login, logout, sesi admin
+  - name: users
+    description: Manajemen user admin
+  - name: health
+    description: Health check
+  - name: dashboard
+    description: Ringkasan dashboard admin
+  - name: site
+    description: Orkestrasi publik — beranda, fasilitas, SEO, robots, sitemap
+  - name: settings
+    description: Pengaturan situs
+  - name: profile
+    description: Hero, partner, keunggulan, mesin, kapasitas, layanan
+  - name: portfolio
+    description: Portofolio & kategori
+  - name: gallery
+    description: Galeri
+  - name: news
+    description: Berita
+  - name: media
+    description: Upload & pustaka media
+  - name: leads
+    description: Pesan kontak & prospek WhatsApp
+  - name: audience
+    description: Kontak marketing
+  - name: notifications
+    description: Notifikasi admin & SSE
+  - name: emailaccounts
+    description: Akun email Google & SMTP
+  - name: emailtemplates
+    description: Template email
+  - name: campaigns
+    description: Kampanye email & worker
+security: []
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: indobraga_session
+      description: Cookie sesi admin (httpOnly, SameSite=Lax, Secure di produksi). Nama dapat diubah lewat `SESSION_COOKIE_NAME`.
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: x-csrf-token
+      description: Double-submit CSRF — nilai cookie `indobraga_csrf` (non-httpOnly) dikirim ulang di header ini untuk method non-aman.
+    workerSecret:
+      type: apiKey
+      in: header
+      name: x-internal-worker-secret
+      description: Secret untuk endpoint tick worker internal (`INTERNAL_WORKER_SECRET`).
+paths:
+  /api/v1/admin/audience/contacts:
+    $ref: ./paths/audience.yaml#/~1api~1v1~1admin~1audience~1contacts
+  /api/v1/admin/audience/export.csv:
+    $ref: ./paths/audience.yaml#/~1api~1v1~1admin~1audience~1export.csv
+  /api/v1/admin/audience/preview:
+    $ref: ./paths/audience.yaml#/~1api~1v1~1admin~1audience~1preview
+  /api/v1/admin/dashboard:
+    $ref: ./paths/dashboard.yaml#/~1api~1v1~1admin~1dashboard
+  /api/v1/admin/email-accounts:
+    $ref: ./paths/emailaccounts.yaml#/~1api~1v1~1admin~1email-accounts
+  /api/v1/admin/email-accounts/google/oauth-url:
+    $ref: ./paths/emailaccounts.yaml#/~1api~1v1~1admin~1email-accounts~1google~1oauth-url
+  /api/v1/admin/email-accounts/smtp:
+    $ref: ./paths/emailaccounts.yaml#/~1api~1v1~1admin~1email-accounts~1smtp
+  /api/v1/admin/email-accounts/smtp/test:
+    $ref: ./paths/emailaccounts.yaml#/~1api~1v1~1admin~1email-accounts~1smtp~1test
+  /api/v1/admin/email-accounts/{id}:
+    $ref: ./paths/emailaccounts.yaml#/~1api~1v1~1admin~1email-accounts~1%7Bid%7D
+  /api/v1/admin/email-accounts/{id}/disable:
+    $ref: ./paths/emailaccounts.yaml#/~1api~1v1~1admin~1email-accounts~1%7Bid%7D~1disable
+  /api/v1/admin/email-accounts/{id}/reconnect:
+    $ref: ./paths/emailaccounts.yaml#/~1api~1v1~1admin~1email-accounts~1%7Bid%7D~1reconnect
+  /api/v1/admin/email-campaigns:
+    $ref: ./paths/campaigns.yaml#/~1api~1v1~1admin~1email-campaigns
+  /api/v1/admin/email-campaigns/draft:
+    $ref: ./paths/campaigns.yaml#/~1api~1v1~1admin~1email-campaigns~1draft
+  /api/v1/admin/email-campaigns/draft/from-audience:
+    $ref: ./paths/campaigns.yaml#/~1api~1v1~1admin~1email-campaigns~1draft~1from-audience
+  /api/v1/admin/email-campaigns/draft/from-inquiries:
+    $ref: ./paths/campaigns.yaml#/~1api~1v1~1admin~1email-campaigns~1draft~1from-inquiries
+  /api/v1/admin/email-campaigns/recipient-sources/inquiries/preview:
+    $ref: ./paths/campaigns.yaml#/~1api~1v1~1admin~1email-campaigns~1recipient-sources~1inquiries~1preview
+  /api/v1/admin/email-campaigns/{id}:
+    $ref: ./paths/campaigns.yaml#/~1api~1v1~1admin~1email-campaigns~1%7Bid%7D
+  /api/v1/admin/email-campaigns/{id}/logs:
+    $ref: ./paths/campaigns.yaml#/~1api~1v1~1admin~1email-campaigns~1%7Bid%7D~1logs
+  /api/v1/admin/email-campaigns/{id}/recipients:
+    $ref: ./paths/campaigns.yaml#/~1api~1v1~1admin~1email-campaigns~1%7Bid%7D~1recipients
+  /api/v1/admin/email-campaigns/{id}/resend-failed:
+    $ref: ./paths/campaigns.yaml#/~1api~1v1~1admin~1email-campaigns~1%7Bid%7D~1resend-failed
+  /api/v1/admin/email-campaigns/{id}/send:
+    $ref: ./paths/campaigns.yaml#/~1api~1v1~1admin~1email-campaigns~1%7Bid%7D~1send
+  /api/v1/admin/email-templates:
+    $ref: ./paths/emailtemplates.yaml#/~1api~1v1~1admin~1email-templates
+  /api/v1/admin/email-templates/{id}:
+    $ref: ./paths/emailtemplates.yaml#/~1api~1v1~1admin~1email-templates~1%7Bid%7D
+  /api/v1/admin/gallery-items:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1gallery-items
+  /api/v1/admin/gallery-items/reorder:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1gallery-items~1reorder
+  /api/v1/admin/gallery-items/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1gallery-items~1%7Bid%7D
+  /api/v1/admin/gallery-items/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1gallery-items~1%7Bid%7D~1archive
+  /api/v1/admin/gallery-items/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1gallery-items~1%7Bid%7D~1status
+  /api/v1/admin/gallery-items/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1gallery-items~1%7Bid%7D~1unarchive
+  /api/v1/admin/hero:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1hero
+  /api/v1/admin/hero-slides:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1hero-slides
+  /api/v1/admin/hero-slides/reorder:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1hero-slides~1reorder
+  /api/v1/admin/hero-slides/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1hero-slides~1%7Bid%7D
+  /api/v1/admin/hero-slides/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1hero-slides~1%7Bid%7D~1archive
+  /api/v1/admin/hero-slides/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1hero-slides~1%7Bid%7D~1status
+  /api/v1/admin/hero-slides/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1hero-slides~1%7Bid%7D~1unarchive
+  /api/v1/admin/hero/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1hero~1%7Bid%7D
+  /api/v1/admin/hero/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1hero~1%7Bid%7D~1archive
+  /api/v1/admin/hero/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1hero~1%7Bid%7D~1status
+  /api/v1/admin/hero/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1hero~1%7Bid%7D~1unarchive
+  /api/v1/admin/inquiries:
+    $ref: ./paths/leads.yaml#/~1api~1v1~1admin~1inquiries
+  /api/v1/admin/inquiries/{id}:
+    $ref: ./paths/leads.yaml#/~1api~1v1~1admin~1inquiries~1%7Bid%7D
+  /api/v1/admin/machines:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1machines
+  /api/v1/admin/machines/reorder:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1machines~1reorder
+  /api/v1/admin/machines/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1machines~1%7Bid%7D
+  /api/v1/admin/machines/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1machines~1%7Bid%7D~1archive
+  /api/v1/admin/machines/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1machines~1%7Bid%7D~1status
+  /api/v1/admin/machines/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1machines~1%7Bid%7D~1unarchive
+  /api/v1/admin/media:
+    $ref: ./paths/media.yaml#/~1api~1v1~1admin~1media
+  /api/v1/admin/media/{id}:
+    $ref: ./paths/media.yaml#/~1api~1v1~1admin~1media~1%7Bid%7D
+  /api/v1/admin/media/{id}/archive:
+    $ref: ./paths/media.yaml#/~1api~1v1~1admin~1media~1%7Bid%7D~1archive
+  /api/v1/admin/media/{id}/retry:
+    $ref: ./paths/media.yaml#/~1api~1v1~1admin~1media~1%7Bid%7D~1retry
+  /api/v1/admin/media/{id}/unarchive:
+    $ref: ./paths/media.yaml#/~1api~1v1~1admin~1media~1%7Bid%7D~1unarchive
+  /api/v1/admin/news:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1news
+  /api/v1/admin/news/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1news~1%7Bid%7D
+  /api/v1/admin/news/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1news~1%7Bid%7D~1archive
+  /api/v1/admin/news/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1news~1%7Bid%7D~1status
+  /api/v1/admin/news/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1news~1%7Bid%7D~1unarchive
+  /api/v1/admin/notifications:
+    $ref: ./paths/notifications.yaml#/~1api~1v1~1admin~1notifications
+  /api/v1/admin/notifications/read-all:
+    $ref: ./paths/notifications.yaml#/~1api~1v1~1admin~1notifications~1read-all
+  /api/v1/admin/notifications/stream:
+    $ref: ./paths/notifications.yaml#/~1api~1v1~1admin~1notifications~1stream
+  /api/v1/admin/notifications/unread-count:
+    $ref: ./paths/notifications.yaml#/~1api~1v1~1admin~1notifications~1unread-count
+  /api/v1/admin/notifications/{id}/read:
+    $ref: ./paths/notifications.yaml#/~1api~1v1~1admin~1notifications~1%7Bid%7D~1read
+  /api/v1/admin/partners:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1partners
+  /api/v1/admin/partners/reorder:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1partners~1reorder
+  /api/v1/admin/partners/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1partners~1%7Bid%7D
+  /api/v1/admin/partners/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1partners~1%7Bid%7D~1archive
+  /api/v1/admin/partners/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1partners~1%7Bid%7D~1status
+  /api/v1/admin/partners/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1partners~1%7Bid%7D~1unarchive
+  /api/v1/admin/portfolio-categories:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolio-categories
+  /api/v1/admin/portfolio-categories/reorder:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolio-categories~1reorder
+  /api/v1/admin/portfolio-categories/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolio-categories~1%7Bid%7D
+  /api/v1/admin/portfolio-categories/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolio-categories~1%7Bid%7D~1archive
+  /api/v1/admin/portfolio-categories/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolio-categories~1%7Bid%7D~1status
+  /api/v1/admin/portfolio-categories/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolio-categories~1%7Bid%7D~1unarchive
+  /api/v1/admin/portfolios:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolios
+  /api/v1/admin/portfolios/reorder:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolios~1reorder
+  /api/v1/admin/portfolios/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolios~1%7Bid%7D
+  /api/v1/admin/portfolios/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolios~1%7Bid%7D~1archive
+  /api/v1/admin/portfolios/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolios~1%7Bid%7D~1status
+  /api/v1/admin/portfolios/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1portfolios~1%7Bid%7D~1unarchive
+  /api/v1/admin/printing-capacities:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1printing-capacities
+  /api/v1/admin/printing-capacities/reorder:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1printing-capacities~1reorder
+  /api/v1/admin/printing-capacities/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1printing-capacities~1%7Bid%7D
+  /api/v1/admin/printing-capacities/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1printing-capacities~1%7Bid%7D~1archive
+  /api/v1/admin/printing-capacities/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1printing-capacities~1%7Bid%7D~1status
+  /api/v1/admin/printing-capacities/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1printing-capacities~1%7Bid%7D~1unarchive
+  /api/v1/admin/production-capacities:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-capacities
+  /api/v1/admin/production-capacities/reorder:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-capacities~1reorder
+  /api/v1/admin/production-capacities/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-capacities~1%7Bid%7D
+  /api/v1/admin/production-capacities/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-capacities~1%7Bid%7D~1archive
+  /api/v1/admin/production-capacities/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-capacities~1%7Bid%7D~1status
+  /api/v1/admin/production-capacities/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-capacities~1%7Bid%7D~1unarchive
+  /api/v1/admin/production-strengths:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-strengths
+  /api/v1/admin/production-strengths/reorder:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-strengths~1reorder
+  /api/v1/admin/production-strengths/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-strengths~1%7Bid%7D
+  /api/v1/admin/production-strengths/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-strengths~1%7Bid%7D~1archive
+  /api/v1/admin/production-strengths/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-strengths~1%7Bid%7D~1status
+  /api/v1/admin/production-strengths/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1production-strengths~1%7Bid%7D~1unarchive
+  /api/v1/admin/services:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1services
+  /api/v1/admin/services/reorder:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1services~1reorder
+  /api/v1/admin/services/{id}:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1services~1%7Bid%7D
+  /api/v1/admin/services/{id}/archive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1services~1%7Bid%7D~1archive
+  /api/v1/admin/services/{id}/status:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1services~1%7Bid%7D~1status
+  /api/v1/admin/services/{id}/unarchive:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1services~1%7Bid%7D~1unarchive
+  /api/v1/admin/site-settings:
+    $ref: ./paths/admin-content.yaml#/~1api~1v1~1admin~1site-settings
+  /api/v1/admin/users:
+    $ref: ./paths/users.yaml#/~1api~1v1~1admin~1users
+  /api/v1/admin/users/{id}:
+    $ref: ./paths/users.yaml#/~1api~1v1~1admin~1users~1%7Bid%7D
+  /api/v1/admin/users/{id}/status:
+    $ref: ./paths/users.yaml#/~1api~1v1~1admin~1users~1%7Bid%7D~1status
+  /api/v1/admin/whatsapp-leads:
+    $ref: ./paths/leads.yaml#/~1api~1v1~1admin~1whatsapp-leads
+  /api/v1/admin/whatsapp-leads/{id}:
+    $ref: ./paths/leads.yaml#/~1api~1v1~1admin~1whatsapp-leads~1%7Bid%7D
+  /api/v1/auth/login:
+    $ref: ./paths/auth.yaml#/~1api~1v1~1auth~1login
+  /api/v1/auth/logout:
+    $ref: ./paths/auth.yaml#/~1api~1v1~1auth~1logout
+  /api/v1/auth/me:
+    $ref: ./paths/auth.yaml#/~1api~1v1~1auth~1me
+  /api/v1/health:
+    $ref: ./paths/health.yaml#/~1api~1v1~1health
+  /api/v1/internal/revalidation/tick:
+    $ref: ./paths/workers.yaml#/~1api~1v1~1internal~1revalidation~1tick
+  /api/v1/internal/workers/email-campaigns/tick:
+    $ref: ./paths/campaigns.yaml#/~1api~1v1~1internal~1workers~1email-campaigns~1tick
+  /api/v1/internal/workers/notifications/tick:
+    $ref: ./paths/workers.yaml#/~1api~1v1~1internal~1workers~1notifications~1tick
+  /api/v1/oauth/google/email/callback:
+    $ref: ./paths/emailaccounts.yaml#/~1api~1v1~1oauth~1google~1email~1callback
+  /api/v1/public/facilities:
+    $ref: ./paths/public.yaml#/~1api~1v1~1public~1facilities
+  /api/v1/public/gallery:
+    $ref: ./paths/public.yaml#/~1api~1v1~1public~1gallery
+  /api/v1/public/home:
+    $ref: ./paths/public.yaml#/~1api~1v1~1public~1home
+  /api/v1/public/inquiries:
+    $ref: ./paths/public.yaml#/~1api~1v1~1public~1inquiries
+  /api/v1/public/news:
+    $ref: ./paths/public.yaml#/~1api~1v1~1public~1news
+  /api/v1/public/news/{slug}:
+    $ref: ./paths/public.yaml#/~1api~1v1~1public~1news~1%7Bslug%7D
+  /api/v1/public/portfolio:
+    $ref: ./paths/public.yaml#/~1api~1v1~1public~1portfolio
+  /api/v1/public/portfolio-categories:
+    $ref: ./paths/public.yaml#/~1api~1v1~1public~1portfolio-categories
+  /api/v1/public/seo:
+    $ref: ./paths/seo.yaml#/~1api~1v1~1public~1seo
+  /api/v1/public/seo/{route}:
+    $ref: ./paths/seo.yaml#/~1api~1v1~1public~1seo~1%7Broute%7D
+  /api/v1/public/site-settings:
+    $ref: ./paths/public.yaml#/~1api~1v1~1public~1site-settings
+  /api/v1/public/whatsapp-leads:
+    $ref: ./paths/public.yaml#/~1api~1v1~1public~1whatsapp-leads
+  /robots.txt:
+    $ref: ./paths/seo.yaml#/~1robots.txt
+  /sitemap.xml:
+    $ref: ./paths/seo.yaml#/~1sitemap.xml

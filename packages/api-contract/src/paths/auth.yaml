@@ -1,0 +1,121 @@
+# Fragmen auth — login/logout/me.
+/api/v1/auth/login:
+  post:
+    operationId: login
+    tags: [auth]
+    summary: Login admin
+    description: |
+      Login dengan email & password; mengeset cookie sesi (httpOnly) dan cookie CSRF (non-httpOnly).
+      Rate limit ketat 5/60 dtk per IP.
+    x-module: auth
+    x-permission: null
+    x-rate-limit:
+      limit: 5
+      window_seconds: 60
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/auth/login
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../components/schemas/auth.yaml#/LoginInput' }
+          example: { email: admin@indobraga.com, password: rahasia123 }
+    responses:
+      '200':
+        description: Login berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+          Set-Cookie: { $ref: '../components/headers.yaml#/SetCookie' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/auth.yaml#/LoginResult' }
+            example:
+              success: true
+              message: Login berhasil.
+              data:
+                user: { id: 1, name: Admin Utama, email: admin@indobraga.com, role: super_admin, permissions: [dashboard.read, users.manage] }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/auth/logout:
+  post:
+    operationId: logout
+    tags: [auth]
+    summary: Logout admin
+    description: Mencabut sesi dan membersihkan kedua cookie.
+    x-module: auth
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/auth/logout
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    responses:
+      '200':
+        description: Logout berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/auth.yaml#/LogoutResult' }
+            example:
+              success: true
+              message: Logout berhasil.
+              data: { status: logged_out }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/auth/me:
+  get:
+    operationId: getSessionUser
+    tags: [auth]
+    summary: Ambil user sesi
+    description: Mengembalikan user dari sesi aktif.
+    x-module: auth
+    x-permission: null
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/auth/me
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [] }]
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/auth.yaml#/LoginResult' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data:
+                user: { id: 1, name: Admin Utama, email: admin@indobraga.com, role: super_admin, permissions: [dashboard.read] }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }

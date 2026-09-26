@@ -1,0 +1,38 @@
+# Skema media. Field dari backend.md §media.
+MediaItem:
+  type: object
+  required: [id, media_type, mime_type, original_file_name, compression_status, created_at, updated_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    media_type: { $ref: './common.yaml#/MediaKind' }
+    mime_type: { type: [string, "null"], examples: ["image/webp"] }
+    original_file_name: { type: [string, "null"], examples: ["hero-1.jpg"] }
+    compression_status: { $ref: './common.yaml#/MediaStatus' }
+    previous_status: { type: [string, "null"], enum: [processing, completed, failed, archived, pending_delete, deleted, cleanup_failed, null] }
+    file_url: { type: [string, "null"], format: uri }
+    thumbnail_url: { type: [string, "null"], format: uri }
+    medium_url: { type: [string, "null"], format: uri }
+    large_url: { type: [string, "null"], format: uri }
+    poster_url: { type: [string, "null"], format: uri }
+    video_url: { type: [string, "null"], format: uri }
+    width: { type: [integer, "null"] }
+    height: { type: [integer, "null"] }
+    duration_seconds: { type: [number, "null"] }
+    original_size: { type: [integer, "null"], description: "Byte (BIGINT)." }
+    optimized_size: { type: [integer, "null"] }
+    error: { type: [string, "null"] }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    deleted_at: { $ref: './common.yaml#/NullableTimestamp' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+    updated_at: { $ref: './common.yaml#/Timestamp' }
+
+MediaUsage:
+  type: string
+  enum: [hero, partner, portfolio, machine, gallery, news, og, other]
+
+DeleteMediaResult:
+  type: object
+  required: [id, status]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    status: { type: string, const: permanently_deleted }

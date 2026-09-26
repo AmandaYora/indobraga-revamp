@@ -1,0 +1,275 @@
+# Fragmen users — 6 endpoint.
+/api/v1/admin/users:
+  get:
+    operationId: listUsers
+    tags: [users]
+    summary: Daftar user admin
+    description: List offset user (content_editor tidak melihat super_admin).
+    x-module: users
+    x-permission: users.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/users
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - name: page
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 1 }
+      - name: limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, default: 10, maximum: 100 }
+      - name: search
+        in: query
+        required: false
+        schema: { type: string }
+      - name: role
+        in: query
+        required: false
+        schema: { type: string, enum: [super_admin, content_editor] }
+      - name: status
+        in: query
+        required: false
+        schema: { type: string, enum: [active, inactive] }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data, meta]
+                  properties:
+                    data: { type: array, items: { $ref: '../components/schemas/users.yaml#/SafeUser' } }
+                    meta: { $ref: '../components/schemas/envelope.yaml#/PaginationMeta' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data:
+                - { id: 1, name: Admin Utama, email: admin@indobraga.com, role: super_admin, status: active, permissions: [dashboard.read], last_login_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+              meta: { page: 1, limit: 10, total: 1, total_pages: 1 }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+  post:
+    operationId: createUser
+    tags: [users]
+    summary: Buat user admin
+    description: Email di-lowercase; bcrypt cost 12; 409 bila duplikat.
+    x-module: users
+    x-permission: users.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: POST
+      path: /api/v1/admin/users
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../components/schemas/users.yaml#/CreateUserInput' }
+          example: { name: Editor Baru, email: editor@indobraga.com, role: content_editor, temporary_password: sementara123 }
+    responses:
+      '200':
+        description: User dibuat.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/users.yaml#/SafeUser' }
+            example:
+              success: true
+              message: Data berhasil dibuat.
+              data: { id: 2, name: Editor Baru, email: editor@indobraga.com, role: content_editor, status: active, permissions: [dashboard.read], last_login_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '409': { $ref: '../components/responses.yaml#/Conflict' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/users/{id}:
+  get:
+    operationId: getUser
+    tags: [users]
+    summary: Detail user admin
+    description: Content_editor mendapat 404 untuk super_admin.
+    x-module: users
+    x-permission: users.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: GET
+      path: /api/v1/admin/users/{id}
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/users.yaml#/SafeUser' }
+            example:
+              success: true
+              message: Data berhasil diambil.
+              data: { id: 2, name: Editor Baru, email: editor@indobraga.com, role: content_editor, status: active, permissions: [dashboard.read], last_login_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+  patch:
+    operationId: updateUser
+    tags: [users]
+    summary: Ubah user admin
+    description: Ganti nama/role/password; ganti password user lain mencabut sesinya.
+    x-module: users
+    x-permission: users.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: PATCH
+      path: /api/v1/admin/users/{id}
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../components/schemas/users.yaml#/UpdateUserInput' }
+          example: { name: Editor Senior }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/users.yaml#/SafeUser' }
+            example:
+              success: true
+              message: Data berhasil diubah.
+              data: { id: 2, name: Editor Senior, email: editor@indobraga.com, role: content_editor, status: active, permissions: [dashboard.read], last_login_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+  delete:
+    operationId: disableUser
+    tags: [users]
+    summary: Nonaktifkan user admin
+    description: Soft-disable + cabut sesi; tidak bisa menonaktifkan diri sendiri / super admin terakhir.
+    x-module: users
+    x-permission: users.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: DELETE
+      path: /api/v1/admin/users/{id}
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/users.yaml#/DisableUserResult' }
+            example:
+              success: true
+              message: User berhasil dinonaktifkan.
+              data: { id: 2, status: disabled }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
+/api/v1/admin/users/{id}/status:
+  patch:
+    operationId: updateUserStatus
+    tags: [users]
+    summary: Ubah status user admin
+    description: Aktif/nonaktif; aturan proteksi sama dengan hapus.
+    x-module: users
+    x-permission: users.manage
+    x-rate-limit: default
+    x-cache-control: no-store
+    x-legacy:
+      method: PATCH
+      path: /api/v1/admin/users/{id}/status
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
+    security: [{ sessionCookie: [], csrfHeader: [] }]
+    parameters:
+      - $ref: '../components/parameters.yaml#/IdPath'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '../components/schemas/users.yaml#/UpdateUserStatusInput' }
+          example: { status: inactive }
+    responses:
+      '200':
+        description: Berhasil.
+        headers:
+          X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../components/schemas/envelope.yaml#/SuccessBase'
+                - type: object
+                  required: [data]
+                  properties:
+                    data: { $ref: '../components/schemas/users.yaml#/SafeUser' }
+            example:
+              success: true
+              message: Status berhasil diubah.
+              data: { id: 2, name: Editor Baru, email: editor@indobraga.com, role: content_editor, status: inactive, permissions: [dashboard.read], last_login_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '429': { $ref: '../components/responses.yaml#/RateLimited' }
