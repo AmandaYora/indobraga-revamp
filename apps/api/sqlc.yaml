@@ -1,4 +1,7 @@
 version: "2"
+# Satu blok `sql:` per modul (standar: sqlc per modul, tidak ada paket sqlc bersama).
+# Setiap modul baru yang punya folder queries/ WAJIB menambah bloknya di sini —
+# archtest (PLAN-03 §3.2) menggagalkan build bila ada modul yang terlewat.
 sql:
   - engine: "mysql"
     schema: "migrations"
@@ -14,10 +17,3 @@ sql:
       go:
         package: "sqlc"
         out: "internal/modules/users/infrastructure/sqlc"
-  - engine: "mysql"
-    schema: "migrations"
-    queries: "internal/modules/order/infrastructure/queries"
-    gen:
-      go:
-        package: "sqlc"
-        out: "internal/modules/order/infrastructure/sqlc"

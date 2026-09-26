@@ -1,5 +1,26 @@
 {
   "name": "@indobraga/api-contract",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "description": "Kontrak API v1 Indobraga (OpenAPI 3.1) — sumber kebenaran antarmuka web ↔ api.",
+  "type": "module",
+  "types": "./generated/schema.d.ts",
+  "exports": {
+    ".": {
+      "types": "./generated/schema.d.ts"
+    },
+    "./openapi.yaml": "./openapi.yaml"
+  },
+  "scripts": {
+    "build:content": "node scripts/build-content-paths.mjs",
+    "bundle": "npm run build:content && redocly bundle src/openapi.yaml -o openapi.yaml",
+    "lint": "redocly lint openapi.yaml",
+    "generate": "openapi-typescript openapi.yaml -o generated/schema.d.ts",
+    "check": "node scripts/check-mapping.mjs"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.0.0",
+    "openapi-typescript": "^7.9.0",
+    "yaml": "^2.8.0"
+  }
 }

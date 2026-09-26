@@ -1,0 +1,16 @@
+# Normalisasi line ending: repo selalu LF (CI & container Linux), Windows tetap bisa checkout.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.mp4 binary
+*.woff binary
+*.woff2 binary
+*.xlsx binary
+
+# Snapshot visual (baseline legacy & test) disimpan lewat Git LFS.
+apps/web/e2e/**/__screenshots__/** filter=lfs diff=lfs merge=lfs -text

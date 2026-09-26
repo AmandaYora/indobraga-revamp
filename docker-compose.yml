@@ -3,10 +3,19 @@ services:
     build:
       context: .
       dockerfile: infra/docker/Dockerfile
+    # Hanya Nginx di host yang membuka port publik; container cukup di loopback.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     # Copy .env.example to .env before running compose.
     env_file:
       - .env
+    # MySQL berjalan di host (bukan Docker): DB_DSN memakai host.docker.internal.
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
