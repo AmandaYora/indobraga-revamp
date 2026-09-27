@@ -1,0 +1,62 @@
+﻿HTTP/1.1 200 
+Server: nginx/1.24.0 (Ubuntu)
+Date: Sat, 26 Sep 2026 08:35:30 GMT
+Content-Type: text/html; charset=utf-8
+Connection: keep-alive
+
+HTTP/1.1 200 OK
+Server: nginx/1.24.0 (Ubuntu)
+Date: Sat, 26 Sep 2026 08:35:30 GMT
+Content-Type: application/json; charset=utf-8
+Content-Length: 15618
+Connection: keep-alive
+Content-Security-Policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-origin
+Origin-Agent-Cluster: ?1
+Referrer-Policy: no-referrer
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Content-Type-Options: nosniff
+X-DNS-Prefetch-Control: off
+X-Download-Options: noopen
+X-Frame-Options: SAMEORIGIN
+X-Permitted-Cross-Domain-Policies: none
+X-XSS-Protection: 0
+Vary: Origin
+Access-Control-Allow-Credentials: true
+X-Request-Id: req_0d5dd404-3335-4af1-9a5c-3687aac8784b
+X-RateLimit-Limit: 120
+X-RateLimit-Remaining: 119
+X-RateLimit-Reset: 60
+Cache-Control: public, max-age=60, stale-while-revalidate=300
+ETag: W/"3d02-hzHyuY1gBEpsuZwFl+C8USaQyCs"
+
+HTTP/1.1 200 OK
+Server: nginx/1.24.0 (Ubuntu)
+Date: Sat, 26 Sep 2026 08:35:31 GMT
+Content-Type: application/xml; charset=utf-8
+Content-Length: 975
+Connection: keep-alive
+Content-Security-Policy: default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Resource-Policy: same-origin
+Origin-Agent-Cluster: ?1
+Referrer-Policy: no-referrer
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Content-Type-Options: nosniff
+X-DNS-Prefetch-Control: off
+X-Download-Options: noopen
+X-Frame-Options: SAMEORIGIN
+X-Permitted-Cross-Domain-Policies: none
+X-XSS-Protection: 0
+Vary: Origin
+Access-Control-Allow-Credentials: true
+X-Request-Id: req_29c15f17-bbcb-4195-bbfc-b0c523c3ce2e
+X-RateLimit-Limit: 120
+X-RateLimit-Remaining: 118
+X-RateLimit-Reset: 59
+Cache-Control: max-age=600
+ETag: W/"3cf-gwWTkhvPhlldFUEJM8g5ixW+ewY"
+Expires: Sat, 26 Sep 2026 08:45:31 GMT
+Cache-Control: public, max-age=600
+

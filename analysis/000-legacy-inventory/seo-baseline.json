@@ -1,0 +1,182 @@
+{
+  "generated_at": "2026-09-26T08:35:41.505Z",
+  "source": "https://indobraga.com",
+  "pages": {
+    "/": {
+      "status": 200,
+      "title": "Indobraga - Solusi Produksi Garment Profesional untuk Bisnis Anda",
+      "canonical": "https://indobraga.com/",
+      "metas": [
+        "<meta charSet=\"utf-8\"/>",
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>",
+        "<meta name=\"author\" content=\"PT. Braga Indonesia Perkasa\"/>",
+        "<meta name=\"description\" content=\"Profil perusahaan Indobraga, mitra produksi garment, apparel manufacturing, cetak kain custom, dan portofolio apparel multiproduk.\"/>",
+        "<meta name=\"robots\" content=\"index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1\"/>",
+        "<meta property=\"og:site_name\" content=\"Indobraga\"/>",
+        "<meta property=\"og:title\" content=\"Indobraga - Solusi Produksi Garment Profesional untuk Bisnis Anda\"/>",
+        "<meta property=\"og:description\" content=\"Profil perusahaan Indobraga, mitra produksi garment, apparel manufacturing, cetak kain custom, dan portofolio apparel multiproduk.\"/>",
+        "<meta property=\"og:type\" content=\"website\"/>",
+        "<meta property=\"og:url\" content=\"https://indobraga.com/\"/>",
+        "<meta name=\"twitter:card\" content=\"summary_large_image\"/>",
+        "<meta name=\"twitter:title\" content=\"Indobraga - Solusi Produksi Garment Profesional untuk Bisnis Anda\"/>",
+        "<meta name=\"twitter:description\" content=\"Profil perusahaan Indobraga, mitra produksi garment, apparel manufacturing, cetak kain custom, dan portofolio apparel multiproduk.\"/>"
+      ],
+      "json_ld": [
+        "{\"@context\":\"https://schema.org\",\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\",\"alternateName\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"description\":\"Dipercaya oleh lebih dari 250+ bisnis. Indobraga melayani produksi jersey, polo, jaket, wearpack, seragam, bag merchandise, dan cetak kain custom.\",\"contactPoint\":{\"@type\":\"ContactPoint\",\"contactType\":\"customer service\",\"email\":\"indobraga@gmail.com\",\"telephone\":\"+62-851-5870-0895\",\"areaServed\":\"ID\",\"availableLanguage\":[\"id\"]},\"sameAs\":[\"https://www.instagram.com/indobraga\"]}",
+        "{\"@context\":\"https://schema.org\",\"@type\":\"WebSite\",\"name\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"publisher\":{\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\"},\"inLanguage\":\"id-ID\"}"
+      ]
+    },
+    "/portfolio": {
+      "status": 200,
+      "title": "Portofolio Produk Garment - Indobraga",
+      "canonical": "https://indobraga.com/portfolio",
+      "metas": [
+        "<meta charSet=\"utf-8\"/>",
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>",
+        "<meta name=\"author\" content=\"PT. Braga Indonesia Perkasa\"/>",
+        "<meta name=\"description\" content=\"Portofolio produksi Indobraga untuk jersey, polo, wearpack, jaket, hoodie, seragam, kaos, dan merchandise custom.\"/>",
+        "<meta name=\"robots\" content=\"index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1\"/>",
+        "<meta property=\"og:site_name\" content=\"Indobraga\"/>",
+        "<meta property=\"og:title\" content=\"Portofolio Produk Garment - Indobraga\"/>",
+        "<meta property=\"og:description\" content=\"Portofolio produksi Indobraga untuk jersey, polo, wearpack, jaket, hoodie, seragam, kaos, dan merchandise custom.\"/>",
+        "<meta property=\"og:type\" content=\"website\"/>",
+        "<meta property=\"og:url\" content=\"https://indobraga.com/portfolio\"/>",
+        "<meta name=\"twitter:card\" content=\"summary_large_image\"/>",
+        "<meta name=\"twitter:title\" content=\"Portofolio Produk Garment - Indobraga\"/>",
+        "<meta name=\"twitter:description\" content=\"Portofolio produksi Indobraga untuk jersey, polo, wearpack, jaket, hoodie, seragam, kaos, dan merchandise custom.\"/>"
+      ],
+      "json_ld": [
+        "{\"@context\":\"https://schema.org\",\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\",\"alternateName\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"description\":\"Dipercaya oleh lebih dari 250+ bisnis. Indobraga melayani produksi jersey, polo, jaket, wearpack, seragam, bag merchandise, dan cetak kain custom.\",\"contactPoint\":{\"@type\":\"ContactPoint\",\"contactType\":\"customer service\",\"email\":\"indobraga@gmail.com\",\"telephone\":\"+62-851-5870-0895\",\"areaServed\":\"ID\",\"availableLanguage\":[\"id\"]},\"sameAs\":[\"https://www.instagram.com/indobraga\"]}",
+        "{\"@context\":\"https://schema.org\",\"@type\":\"WebSite\",\"name\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"publisher\":{\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\"},\"inLanguage\":\"id-ID\"}"
+      ]
+    },
+    "/fasilitas": {
+      "status": 200,
+      "title": "Fasilitas Produksi - Indobraga",
+      "canonical": "https://indobraga.com/fasilitas",
+      "metas": [
+        "<meta charSet=\"utf-8\"/>",
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>",
+        "<meta name=\"author\" content=\"PT. Braga Indonesia Perkasa\"/>",
+        "<meta name=\"description\" content=\"Fasilitas produksi Indobraga mencakup garment, sublimation, press, DTF, pattern making, sample, QC, finishing, dan packing.\"/>",
+        "<meta name=\"robots\" content=\"index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1\"/>",
+        "<meta property=\"og:site_name\" content=\"Indobraga\"/>",
+        "<meta property=\"og:title\" content=\"Fasilitas Produksi - Indobraga\"/>",
+        "<meta property=\"og:description\" content=\"Fasilitas produksi Indobraga mencakup garment, sublimation, press, DTF, pattern making, sample, QC, finishing, dan packing.\"/>",
+        "<meta property=\"og:type\" content=\"website\"/>",
+        "<meta property=\"og:url\" content=\"https://indobraga.com/fasilitas\"/>",
+        "<meta name=\"twitter:card\" content=\"summary_large_image\"/>",
+        "<meta name=\"twitter:title\" content=\"Fasilitas Produksi - Indobraga\"/>",
+        "<meta name=\"twitter:description\" content=\"Fasilitas produksi Indobraga mencakup garment, sublimation, press, DTF, pattern making, sample, QC, finishing, dan packing.\"/>"
+      ],
+      "json_ld": [
+        "{\"@context\":\"https://schema.org\",\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\",\"alternateName\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"description\":\"Dipercaya oleh lebih dari 250+ bisnis. Indobraga melayani produksi jersey, polo, jaket, wearpack, seragam, bag merchandise, dan cetak kain custom.\",\"contactPoint\":{\"@type\":\"ContactPoint\",\"contactType\":\"customer service\",\"email\":\"indobraga@gmail.com\",\"telephone\":\"+62-851-5870-0895\",\"areaServed\":\"ID\",\"availableLanguage\":[\"id\"]},\"sameAs\":[\"https://www.instagram.com/indobraga\"]}",
+        "{\"@context\":\"https://schema.org\",\"@type\":\"WebSite\",\"name\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"publisher\":{\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\"},\"inLanguage\":\"id-ID\"}"
+      ]
+    },
+    "/galeri": {
+      "status": 200,
+      "title": "Galeri Perusahaan - Indobraga",
+      "canonical": "https://indobraga.com/galeri",
+      "metas": [
+        "<meta charSet=\"utf-8\"/>",
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>",
+        "<meta name=\"author\" content=\"PT. Braga Indonesia Perkasa\"/>",
+        "<meta name=\"description\" content=\"Dokumentasi visual aktivitas produksi, fasilitas, dan event Indobraga dalam format galeri perusahaan.\"/>",
+        "<meta name=\"robots\" content=\"index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1\"/>",
+        "<meta property=\"og:site_name\" content=\"Indobraga\"/>",
+        "<meta property=\"og:title\" content=\"Galeri Perusahaan - Indobraga\"/>",
+        "<meta property=\"og:description\" content=\"Dokumentasi visual aktivitas produksi, fasilitas, dan event Indobraga dalam format galeri perusahaan.\"/>",
+        "<meta property=\"og:type\" content=\"website\"/>",
+        "<meta property=\"og:url\" content=\"https://indobraga.com/galeri\"/>",
+        "<meta name=\"twitter:card\" content=\"summary_large_image\"/>",
+        "<meta name=\"twitter:title\" content=\"Galeri Perusahaan - Indobraga\"/>",
+        "<meta name=\"twitter:description\" content=\"Dokumentasi visual aktivitas produksi, fasilitas, dan event Indobraga dalam format galeri perusahaan.\"/>"
+      ],
+      "json_ld": [
+        "{\"@context\":\"https://schema.org\",\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\",\"alternateName\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"description\":\"Dipercaya oleh lebih dari 250+ bisnis. Indobraga melayani produksi jersey, polo, jaket, wearpack, seragam, bag merchandise, dan cetak kain custom.\",\"contactPoint\":{\"@type\":\"ContactPoint\",\"contactType\":\"customer service\",\"email\":\"indobraga@gmail.com\",\"telephone\":\"+62-851-5870-0895\",\"areaServed\":\"ID\",\"availableLanguage\":[\"id\"]},\"sameAs\":[\"https://www.instagram.com/indobraga\"]}",
+        "{\"@context\":\"https://schema.org\",\"@type\":\"WebSite\",\"name\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"publisher\":{\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\"},\"inLanguage\":\"id-ID\"}"
+      ]
+    },
+    "/berita": {
+      "status": 200,
+      "title": "Berita - Indobraga",
+      "canonical": "https://indobraga.com/berita",
+      "metas": [
+        "<meta charSet=\"utf-8\"/>",
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>",
+        "<meta name=\"author\" content=\"PT. Braga Indonesia Perkasa\"/>",
+        "<meta name=\"description\" content=\"Kabar terbaru Indobraga seputar fasilitas produksi, portofolio apparel, kapasitas manufaktur, dan kegiatan perusahaan.\"/>",
+        "<meta name=\"robots\" content=\"index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1\"/>",
+        "<meta property=\"og:site_name\" content=\"Indobraga\"/>",
+        "<meta property=\"og:title\" content=\"Berita - Indobraga\"/>",
+        "<meta property=\"og:description\" content=\"Kabar terbaru Indobraga seputar fasilitas produksi, portofolio apparel, kapasitas manufaktur, dan kegiatan perusahaan.\"/>",
+        "<meta property=\"og:type\" content=\"website\"/>",
+        "<meta property=\"og:url\" content=\"https://indobraga.com/berita\"/>",
+        "<meta name=\"twitter:card\" content=\"summary_large_image\"/>",
+        "<meta name=\"twitter:title\" content=\"Berita - Indobraga\"/>",
+        "<meta name=\"twitter:description\" content=\"Kabar terbaru Indobraga seputar fasilitas produksi, portofolio apparel, kapasitas manufaktur, dan kegiatan perusahaan.\"/>"
+      ],
+      "json_ld": [
+        "{\"@context\":\"https://schema.org\",\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\",\"alternateName\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"description\":\"Dipercaya oleh lebih dari 250+ bisnis. Indobraga melayani produksi jersey, polo, jaket, wearpack, seragam, bag merchandise, dan cetak kain custom.\",\"contactPoint\":{\"@type\":\"ContactPoint\",\"contactType\":\"customer service\",\"email\":\"indobraga@gmail.com\",\"telephone\":\"+62-851-5870-0895\",\"areaServed\":\"ID\",\"availableLanguage\":[\"id\"]},\"sameAs\":[\"https://www.instagram.com/indobraga\"]}",
+        "{\"@context\":\"https://schema.org\",\"@type\":\"WebSite\",\"name\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"publisher\":{\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\"},\"inLanguage\":\"id-ID\"}"
+      ]
+    },
+    "/kontak": {
+      "status": 200,
+      "title": "Kontak - Indobraga",
+      "canonical": "https://indobraga.com/kontak",
+      "metas": [
+        "<meta charSet=\"utf-8\"/>",
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>",
+        "<meta name=\"author\" content=\"PT. Braga Indonesia Perkasa\"/>",
+        "<meta name=\"description\" content=\"Hubungi tim marketing Indobraga untuk diskusi kebutuhan garment, cetak kain custom, kapasitas produksi, material, dan timeline order.\"/>",
+        "<meta name=\"robots\" content=\"index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1\"/>",
+        "<meta property=\"og:site_name\" content=\"Indobraga\"/>",
+        "<meta property=\"og:title\" content=\"Kontak - Indobraga\"/>",
+        "<meta property=\"og:description\" content=\"Hubungi tim marketing Indobraga untuk diskusi kebutuhan garment, cetak kain custom, kapasitas produksi, material, dan timeline order.\"/>",
+        "<meta property=\"og:type\" content=\"website\"/>",
+        "<meta property=\"og:url\" content=\"https://indobraga.com/kontak\"/>",
+        "<meta property=\"og:image\" content=\"https://is3.cloudhost.id/indobraga/upload/prod/hero/2026-06-19/73cb86c7-a539-422b-b2f7-6ba2e01d6e10-large.webp\"/>",
+        "<meta name=\"twitter:card\" content=\"summary_large_image\"/>",
+        "<meta name=\"twitter:title\" content=\"Kontak - Indobraga\"/>",
+        "<meta name=\"twitter:description\" content=\"Hubungi tim marketing Indobraga untuk diskusi kebutuhan garment, cetak kain custom, kapasitas produksi, material, dan timeline order.\"/>",
+        "<meta name=\"twitter:image\" content=\"https://is3.cloudhost.id/indobraga/upload/prod/hero/2026-06-19/73cb86c7-a539-422b-b2f7-6ba2e01d6e10-large.webp\"/>"
+      ],
+      "json_ld": [
+        "{\"@context\":\"https://schema.org\",\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\",\"alternateName\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"description\":\"Dipercaya oleh lebih dari 250+ bisnis. Indobraga melayani produksi jersey, polo, jaket, wearpack, seragam, bag merchandise, dan cetak kain custom.\",\"contactPoint\":{\"@type\":\"ContactPoint\",\"contactType\":\"customer service\",\"email\":\"indobraga@gmail.com\",\"telephone\":\"+62-851-5870-0895\",\"areaServed\":\"ID\",\"availableLanguage\":[\"id\"]},\"sameAs\":[\"https://www.instagram.com/indobraga\"]}",
+        "{\"@context\":\"https://schema.org\",\"@type\":\"WebSite\",\"name\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"publisher\":{\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\"},\"inLanguage\":\"id-ID\"}"
+      ]
+    },
+    "/berita/kapasitas-produksi-90000-pcs": {
+      "status": 200,
+      "title": "Kapasitas Produksi Mencapai 90.000 Pcs per Bulan - Indobraga",
+      "canonical": "https://indobraga.com/berita/kapasitas-produksi-90000-pcs",
+      "metas": [
+        "<meta charSet=\"utf-8\"/>",
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>",
+        "<meta name=\"author\" content=\"PT. Braga Indonesia Perkasa\"/>",
+        "<meta name=\"description\" content=\"Kapasitas produksi bulanan mencakup jackets, t-shirts, shirts, backpack, dan slingbag.\"/>",
+        "<meta name=\"robots\" content=\"index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1\"/>",
+        "<meta property=\"og:site_name\" content=\"Indobraga\"/>",
+        "<meta property=\"og:title\" content=\"Kapasitas Produksi Mencapai 90.000 Pcs per Bulan - Indobraga\"/>",
+        "<meta property=\"og:description\" content=\"Kapasitas produksi bulanan mencakup jackets, t-shirts, shirts, backpack, dan slingbag.\"/>",
+        "<meta property=\"og:type\" content=\"article\"/>",
+        "<meta property=\"og:url\" content=\"https://indobraga.com/berita/kapasitas-produksi-90000-pcs\"/>",
+        "<meta property=\"og:image\" content=\"https://is3.cloudhost.id/indobraga/upload/prod/seo/2026-09-21/444046a6-b340-4520-a650-95c1fae9fb82-large.webp\"/>",
+        "<meta name=\"twitter:card\" content=\"summary_large_image\"/>",
+        "<meta name=\"twitter:title\" content=\"Kapasitas Produksi Mencapai 90.000 Pcs per Bulan - Indobraga\"/>",
+        "<meta name=\"twitter:description\" content=\"Kapasitas produksi bulanan mencakup jackets, t-shirts, shirts, backpack, dan slingbag.\"/>",
+        "<meta name=\"twitter:image\" content=\"https://is3.cloudhost.id/indobraga/upload/prod/seo/2026-09-21/444046a6-b340-4520-a650-95c1fae9fb82-large.webp\"/>",
+        "<meta property=\"article:published_time\" content=\"2026-09-20T18:00:13.791Z\"/>",
+        "<meta property=\"article:modified_time\" content=\"2026-09-20T18:00:13.791Z\"/>",
+        "<meta property=\"article:section\" content=\"Produksi\"/>"
+      ],
+      "json_ld": [
+        "{\"@context\":\"https://schema.org\",\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\",\"alternateName\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"description\":\"Dipercaya oleh lebih dari 250+ bisnis. Indobraga melayani produksi jersey, polo, jaket, wearpack, seragam, bag merchandise, dan cetak kain custom.\",\"contactPoint\":{\"@type\":\"ContactPoint\",\"contactType\":\"customer service\",\"email\":\"indobraga@gmail.com\",\"telephone\":\"+62-851-5870-0895\",\"areaServed\":\"ID\",\"availableLanguage\":[\"id\"]},\"sameAs\":[\"https://www.instagram.com/indobraga\"]}",
+        "{\"@context\":\"https://schema.org\",\"@type\":\"WebSite\",\"name\":\"Indobraga\",\"url\":\"https://indobraga.com\",\"publisher\":{\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\"},\"inLanguage\":\"id-ID\"}",
+        "{\"@context\":\"https://schema.org\",\"@type\":\"Article\",\"headline\":\"Kapasitas Produksi Mencapai 90.000 Pcs per Bulan\",\"description\":\"Kapasitas produksi bulanan mencakup jackets, t-shirts, shirts, backpack, dan slingbag.\",\"image\":\"https://is3.cloudhost.id/indobraga/upload/prod/seo/2026-09-21/444046a6-b340-4520-a650-95c1fae9fb82-large.webp\",\"datePublished\":\"2026-09-20T18:00:13.791Z\",\"dateModified\":\"2026-09-20T18:00:13.791Z\",\"articleSection\":\"Produksi\",\"mainEntityOfPage\":\"https://indobraga.com/berita/kapasitas-produksi-90000-pcs\",\"author\":{\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\"},\"publisher\":{\"@type\":\"Organization\",\"name\":\"PT. Braga Indonesia Perkasa\"},\"inLanguage\":\"id-ID\"}"
+      ]
+    }
+  }
+}
