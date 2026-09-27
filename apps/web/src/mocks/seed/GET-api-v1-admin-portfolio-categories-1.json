@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "id": 1,
+    "name": "Kemasan",
+    "slug": "kemasan",
+    "sort_order": 0,
+    "status": "published",
+    "previous_status": null,
+    "archived_at": null,
+    "created_at": "2026-01-15T10:00:00.000Z",
+    "updated_at": "2026-01-15T10:00:00.000Z"
+  }
+}

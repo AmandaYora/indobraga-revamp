@@ -1,0 +1,334 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "strengths": [
+      {
+        "id": 1,
+        "label": "Kapasitas Produksi",
+        "value": "90K",
+        "suffix": "pcs / bulan",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 2,
+        "label": "Pengalaman Garment",
+        "value": "14+",
+        "suffix": "tahun produksi",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 3,
+        "label": "Kapasitas Printing",
+        "value": "12K",
+        "suffix": "meter / hari",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 4,
+        "label": "Berdiri Sejak",
+        "value": "2010",
+        "suffix": "asal Indonesia",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      }
+    ],
+    "machines": [
+      {
+        "id": 5,
+        "name": "Indobraga Perkuat Produksi dengan Mesin Bordir Multi-Head",
+        "slug": "indobraga-perkuat-produksi-dengan-mesin-bordir-multi-head",
+        "metric": "1000 pcs/ hari",
+        "description": "Presisi Bordir untuk Setiap Detail Produk\nDidukung teknologi mesin bordir multi-head untuk menghasilkan detail yang rapi dan konsisten.",
+        "image_url": "https://is3.cloudhost.id/indobraga/upload/prod/mesin/2026-09-22/6d353930-c279-4dec-94e9-4ff9b8c29edc-medium.webp",
+        "alt_text": "Indobraga Perkuat Produksi dengan Mesin Bordir Multi-Head",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 1,
+        "name": "Atexco Model X Plus",
+        "slug": "atexco-model-x-plus",
+        "metric": "5.000 m/hari",
+        "description": "Mesin fabric sublimation berkapasitas besar untuk output konsisten dan standar internasional.",
+        "image_url": "https://is3.cloudhost.id/indobraga/upload/prod/mesin/2026-06-19/81387b9b-414a-4818-819e-dc839d57bf75-medium.webp",
+        "alt_text": "Atexco Model X Plus",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 2,
+        "name": "DTF Production",
+        "slug": "dtf-production",
+        "metric": "7.000 m/hari",
+        "description": "Kapasitas press 5.000 meter per hari dan DTF 2.000 meter per hari untuk kebutuhan printing.",
+        "image_url": "https://is3.cloudhost.id/indobraga/upload/prod/mesin/2026-06-19/ac7205cd-49dd-43a3-b78e-55da3ed1e771-medium.webp",
+        "alt_text": "DTF Production",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 3,
+        "name": "Cutting & Pattern Area",
+        "slug": "cutting-and-pattern-area",
+        "metric": "In-house",
+        "description": "Pattern making, cutting, dan sample development dikerjakan internal untuk menjaga presisi.",
+        "image_url": "https://is3.cloudhost.id/indobraga/upload/prod/mesin/2026-09-10/b915cfee-369a-4da1-ab39-be816b9ce0d9-medium.webp",
+        "alt_text": "Cutting & Pattern Area",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 4,
+        "name": "Sewing & Quality Control",
+        "slug": "sewing-and-quality-control",
+        "metric": "QC ketat",
+        "description": "Proses jahit, finishing, packing, dan quality control bertahap untuk produksi skala bisnis.",
+        "image_url": "https://is3.cloudhost.id/indobraga/upload/prod/mesin/2026-09-10/7a09ec33-0ab0-4dd7-8287-c0cf9585a06d-medium.webp",
+        "alt_text": "Sewing & Quality Control",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      }
+    ],
+    "printing_capacities": [
+      {
+        "id": 1,
+        "label": "Sublim",
+        "value": "5.000",
+        "unit": "meter / hari",
+        "description": "Mesin sublimasi Atexco Model X Plus dengan certified ink dan output konsisten.",
+        "image_url": "https://is3.cloudhost.id/indobraga/upload/prod/mesin/2026-09-10/f14808f1-3199-4454-9c02-4033e75a0b74-medium.webp",
+        "alt_text": "Sublim",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 2,
+        "label": "Press",
+        "value": "5.000",
+        "unit": "meter / hari",
+        "description": "Heat press industrial untuk transfer print dengan presisi suhu dan tekanan.",
+        "image_url": "https://is3.cloudhost.id/indobraga/upload/prod/mesin/2026-09-10/0fd6829d-9bfe-4798-a442-2126aeac5f8f-medium.webp",
+        "alt_text": "Press",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 3,
+        "label": "DTF",
+        "value": "2.000",
+        "unit": "meter / hari",
+        "description": "Direct-to-Film printing untuk desain detail dengan warna tajam pada beragam material.",
+        "image_url": "https://is3.cloudhost.id/indobraga/upload/prod/mesin/2026-09-10/080b9f0c-3374-463a-9715-7208b2c45e63-medium.webp",
+        "alt_text": "DTF",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      }
+    ],
+    "production_capacities": [
+      {
+        "id": 1,
+        "product": "Jackets",
+        "value": "6.000",
+        "unit": "pcs / bulan",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 2,
+        "product": "T-shirts",
+        "value": "45.000",
+        "unit": "pcs / bulan",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 3,
+        "product": "Shirts",
+        "value": "10.000",
+        "unit": "pcs / bulan",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 4,
+        "product": "Backpack",
+        "value": "9.000",
+        "unit": "pcs / bulan",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 5,
+        "product": "Slingbag",
+        "value": "20.000",
+        "unit": "pcs / bulan",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      }
+    ],
+    "services": [
+      {
+        "id": 1,
+        "name": "Full production package",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 2,
+        "name": "CMT",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 3,
+        "name": "Pattern making",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 4,
+        "name": "Garment sample",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 5,
+        "name": "Research & development",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 6,
+        "name": "Garment quality control",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 7,
+        "name": "Cetak Kain Custom",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 8,
+        "name": "Manufacturing consulting",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      },
+      {
+        "id": 9,
+        "name": "Apparel photography",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z"
+      }
+    ]
+  }
+}

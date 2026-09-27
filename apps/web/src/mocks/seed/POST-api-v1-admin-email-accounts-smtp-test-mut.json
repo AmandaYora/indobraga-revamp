@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "valid": true,
+    "message": "Koneksi SMTP berhasil."
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "name": "Kemasan",
+        "slug": "kemasan",
+        "sort_order": 0,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-01-15T10:00:00.000Z",
+        "updated_at": "2026-01-15T10:00:00.000Z"
+      },
+      {
+        "id": 2,
+        "name": "Label",
+        "slug": "label",
+        "sort_order": 1,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-01-15T10:00:00.000Z",
+        "updated_at": "2026-01-15T10:00:00.000Z"
+      },
+      {
+        "id": 3,
+        "name": "Dus",
+        "slug": "dus",
+        "sort_order": 2,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-01-15T10:00:00.000Z",
+        "updated_at": "2026-01-15T10:00:00.000Z"
+      },
+      {
+        "id": 4,
+        "name": "Paper Bag",
+        "slug": "paper-bag",
+        "sort_order": 3,
+        "status": "published",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-01-15T10:00:00.000Z",
+        "updated_at": "2026-01-15T10:00:00.000Z"
+      },
+      {
+        "id": 5,
+        "name": "Stiker",
+        "slug": "stiker",
+        "sort_order": 4,
+        "status": "draft",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-01-15T10:00:00.000Z",
+        "updated_at": "2026-01-15T10:00:00.000Z"
+      },
+      {
+        "id": 6,
+        "name": "Kalender",
+        "slug": "kalender",
+        "sort_order": 5,
+        "status": "inactive",
+        "previous_status": null,
+        "archived_at": null,
+        "created_at": "2026-01-15T10:00:00.000Z",
+        "updated_at": "2026-01-15T10:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 6,
+      "total_pages": 1
+    }
+  },
+  "meta": {
+    "request_id": "req_6c5ae16e-a7dc-4a23-b76d-fd695cec6e46",
+    "timestamp": "2026-09-26T08:36:59.943Z"
+  }
+}

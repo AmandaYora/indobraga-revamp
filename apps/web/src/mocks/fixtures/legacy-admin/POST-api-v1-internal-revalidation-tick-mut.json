@@ -1,0 +1,19 @@
+{
+  "_status": 201,
+  "success": true,
+  "data": {
+    "processed": 50,
+    "cache_keys": [
+      "public:news:list",
+      "public:home",
+      "public:facilities",
+      "public:portfolio:list",
+      "public:portfolio:categories",
+      "sitemap"
+    ]
+  },
+  "meta": {
+    "request_id": "req_6e68d9c7-5595-4948-8cf5-0097bc1331e0",
+    "timestamp": "2026-09-26T08:37:05.949Z"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "_status": 201,
+  "success": true,
+  "data": {
+    "valid": true,
+    "message": "Koneksi SMTP berhasil."
+  },
+  "meta": {
+    "request_id": "req_c037906f-0836-4b91-b1d8-e58b76b0d68a",
+    "timestamp": "2026-09-26T08:37:04.679Z"
+  }
+}

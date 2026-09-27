@@ -28,7 +28,9 @@
     "typecheck:web": "npm run typecheck -w @indobraga/web",
     "test:web": "npm run test -w @indobraga/web",
     "test:api": "cd apps/api && go test ./...",
-    "vuln:api": "cd apps/api && govulncheck ./...",
-    "e2e:web": "npm run e2e -w @indobraga/web"
+    "vuln:api": "cd apps/api && govulncheck ./..."
+  },
+  "devDependencies": {
+    "eslint": "^10.11.0"
   }
 }

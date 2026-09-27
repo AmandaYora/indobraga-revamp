@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "title": "Kontak - Indobraga",
+    "description": "Hubungi Indobraga untuk konsultasi produksi garment dan cetak kain.",
+    "canonical_url": "https://indobraga.com/kontak",
+    "og_image_url": "https://is3.cloudhost.id/indobraga/upload/prod/hero/default/hero-garment-large.webp",
+    "noindex": false
+  }
+}

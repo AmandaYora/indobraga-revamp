@@ -1,0 +1,52 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": [
+    {
+      "id": 4,
+      "name": "Pengumuman Libur",
+      "subject": "Jadwal libur produksi",
+      "content_mode": "html",
+      "body_text": null,
+      "body_html": "<p>Halo {{nama}}, jadwal libur produksi contoh.</p>",
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "name": "Newsletter Contoh",
+      "subject": "Kabar produksi {{nama}}",
+      "content_mode": "html",
+      "body_text": null,
+      "body_html": "<p>Halo {{nama}}, kabar produksi contoh bulan ini.</p>",
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "name": "Follow Up Penawaran",
+      "subject": "Tindak lanjut penawaran {{nama}}",
+      "content_mode": "text",
+      "body_text": "Halo {{nama}}, berikut tindak lanjut penawaran contoh.",
+      "body_html": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 1,
+      "name": "Promo Bulanan",
+      "subject": "Promo kemasan bulan ini, {{nama}}!",
+      "content_mode": "text",
+      "body_text": "Halo {{nama}}, dapatkan promo {{promo}} untuk kemasan contoh.",
+      "body_html": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 50,
+    "total": 4,
+    "total_pages": 1
+  }
+}

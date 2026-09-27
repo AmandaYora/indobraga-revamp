@@ -1,0 +1,74 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": [
+    {
+      "id": 2,
+      "name": "Editor Sintetis",
+      "email": "editor@example.test",
+      "role": "content_editor",
+      "status": "active",
+      "permissions": [
+        "dashboard.read",
+        "users.manage",
+        "site_settings.manage",
+        "content.read",
+        "content.manage",
+        "media.manage",
+        "leads.read",
+        "leads.manage",
+        "audience.read",
+        "audience.export",
+        "notifications.read",
+        "email_accounts.read",
+        "email_accounts.manage",
+        "email_campaigns.read",
+        "email_campaigns.manage",
+        "email_campaigns.send",
+        "seo.manage"
+      ],
+      "last_login_at": "2026-09-26T08:16:43.511Z",
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-09-26T08:16:43.555Z",
+      "message": "Pesan tidak tersedia."
+    },
+    {
+      "id": 1,
+      "name": "Admin Sintetis",
+      "email": "admin@example.test",
+      "role": "super_admin",
+      "status": "active",
+      "permissions": [
+        "dashboard.read",
+        "users.manage",
+        "site_settings.manage",
+        "content.read",
+        "content.manage",
+        "media.manage",
+        "leads.read",
+        "leads.manage",
+        "audience.read",
+        "audience.export",
+        "notifications.read",
+        "email_accounts.read",
+        "email_accounts.manage",
+        "email_campaigns.read",
+        "email_campaigns.manage",
+        "email_campaigns.send",
+        "email_campaign_logs.read",
+        "seo.manage",
+        "activity.read"
+      ],
+      "last_login_at": "2026-09-26T08:36:58.942Z",
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-09-26T08:36:58.979Z",
+      "message": "Pesan tidak tersedia."
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 2,
+    "total_pages": 1
+  }
+}

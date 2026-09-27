@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "marked_read": 5,
+    "unread_count": 0
+  }
+}

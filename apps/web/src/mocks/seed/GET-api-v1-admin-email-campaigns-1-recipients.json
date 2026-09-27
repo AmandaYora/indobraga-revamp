@@ -1,0 +1,60 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": [
+    {
+      "id": 1,
+      "campaign_id": 1,
+      "email": "budi.contoh01@example.test",
+      "name": "Budi Contoh",
+      "status": "queued",
+      "attempts": 0,
+      "next_attempt_at": null,
+      "sent_at": null,
+      "failed_at": null,
+      "error_code": null,
+      "error_message": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z",
+      "message": "Pesan tidak tersedia."
+    },
+    {
+      "id": 2,
+      "campaign_id": 1,
+      "email": "sinta.fiktif02@example.test",
+      "name": "Sinta Fiktif",
+      "status": "queued",
+      "attempts": 0,
+      "next_attempt_at": null,
+      "sent_at": null,
+      "failed_at": null,
+      "error_code": null,
+      "error_message": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z",
+      "message": "Pesan tidak tersedia."
+    },
+    {
+      "id": 3,
+      "campaign_id": 1,
+      "email": "impor.satu@example.test",
+      "name": "Impor Satu",
+      "status": "queued",
+      "attempts": 0,
+      "next_attempt_at": null,
+      "sent_at": null,
+      "failed_at": null,
+      "error_code": null,
+      "error_message": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z",
+      "message": "Pesan tidak tersedia."
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 3,
+    "total_pages": 1
+  }
+}

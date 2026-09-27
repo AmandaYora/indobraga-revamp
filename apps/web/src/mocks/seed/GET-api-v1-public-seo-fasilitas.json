@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "title": "Mesin & Fasilitas - Indobraga",
+    "description": "Mesin, fasilitas, dan kapasitas produksi Indobraga.",
+    "canonical_url": "https://indobraga.com/fasilitas",
+    "og_image_url": "https://is3.cloudhost.id/indobraga/upload/prod/hero/default/hero-garment-large.webp",
+    "noindex": false
+  }
+}

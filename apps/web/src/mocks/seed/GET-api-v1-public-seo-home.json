@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "title": "Indobraga - Solusi Produksi Garment Profesional",
+    "description": "Indobraga melayani produksi jersey, polo, jaket, wearpack, seragam, bag merchandise, dan cetak kain custom.",
+    "canonical_url": "https://indobraga.com",
+    "og_image_url": "https://is3.cloudhost.id/indobraga/upload/prod/hero/default/hero-garment-large.webp",
+    "noindex": false
+  }
+}

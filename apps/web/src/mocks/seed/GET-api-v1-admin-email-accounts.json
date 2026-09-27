@@ -1,0 +1,63 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": [
+    {
+      "id": 3,
+      "provider": "google",
+      "auth_type": "oauth",
+      "email_address": "google@example.test",
+      "display_name": "Google Sintetis",
+      "status": "connected",
+      "smtp_host": null,
+      "smtp_port": null,
+      "smtp_security": null,
+      "smtp_username": null,
+      "last_validated_at": "2026-01-15T10:00:00.000Z",
+      "connected_at": "2026-01-15T10:00:00.000Z",
+      "last_error": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "provider": "smtp",
+      "auth_type": "smtp",
+      "email_address": "kadaluarsa@example.test",
+      "display_name": "SMTP Kadaluarsa",
+      "status": "needs_reconnect",
+      "smtp_host": "smtp.example.test",
+      "smtp_port": 587,
+      "smtp_security": "starttls",
+      "smtp_username": "kadaluarsa@example.test",
+      "last_validated_at": "2026-01-14T10:00:00.000Z",
+      "connected_at": "2026-01-10T10:00:00.000Z",
+      "last_error": "Sintetis: autentikasi gagal (kasus uji NEEDS_RECONNECT).",
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T11:00:00.000Z"
+    },
+    {
+      "id": 1,
+      "provider": "smtp",
+      "auth_type": "smtp",
+      "email_address": "smtp@example.test",
+      "display_name": "SMTP Sintetis",
+      "status": "connected",
+      "smtp_host": "smtp.example.test",
+      "smtp_port": 465,
+      "smtp_security": "ssl_tls",
+      "smtp_username": "smtp@example.test",
+      "last_validated_at": "2026-01-15T10:00:00.000Z",
+      "connected_at": "2026-01-15T10:00:00.000Z",
+      "last_error": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 3,
+    "total_pages": 1
+  }
+}

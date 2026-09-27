@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /login
+Disallow: /api/
+Disallow: /internal/
+
+Sitemap: https://indobraga.com/sitemap.xml

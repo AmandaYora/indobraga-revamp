@@ -1,0 +1,32 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "id": 31,
+    "title": "Scratch Portofolio",
+    "slug": "scratch-portofolio",
+    "category_id": 1,
+    "category": "Kemasan",
+    "category_slug": "kemasan",
+    "short_description": null,
+    "media_file_id": null,
+    "media_file": null,
+    "media_file_ids": [],
+    "media_files": [],
+    "images": [],
+    "is_featured": false,
+    "sort_order": 99,
+    "status": "archived",
+    "previous_status": "inactive",
+    "archived_at": "2026-09-26T08:37:01.875Z",
+    "published_at": null,
+    "seo_title": null,
+    "seo_description": null,
+    "created_at": "2026-09-26T08:37:01.741Z",
+    "updated_at": "2026-09-26T08:37:01.880Z"
+  },
+  "meta": {
+    "request_id": "req_4c9b5dbc-d5be-4b9e-a1e9-728a34d4c8e8",
+    "timestamp": "2026-09-26T08:37:01.907Z"
+  }
+}

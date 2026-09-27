@@ -1,0 +1,20 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "id": 7,
+    "label": "Scratch",
+    "value": "99",
+    "suffix": null,
+    "sort_order": 99,
+    "status": "inactive",
+    "previous_status": null,
+    "archived_at": null,
+    "created_at": "2026-09-26T08:37:01.195Z",
+    "updated_at": "2026-09-26T08:37:01.378Z"
+  },
+  "meta": {
+    "request_id": "req_88c40dd7-2299-45ac-8d53-51ec6de8a5a8",
+    "timestamp": "2026-09-26T08:37:01.409Z"
+  }
+}

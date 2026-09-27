@@ -1,0 +1,11 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "status": "logged_out"
+  },
+  "meta": {
+    "request_id": "req_cf1b4ca1-93b6-463b-a9a1-09d6927b6f5f",
+    "timestamp": "2026-09-26T08:37:05.988Z"
+  }
+}

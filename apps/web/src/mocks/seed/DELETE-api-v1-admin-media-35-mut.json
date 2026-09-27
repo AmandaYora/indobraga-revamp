@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "id": 35,
+    "status": "permanently_deleted"
+  }
+}

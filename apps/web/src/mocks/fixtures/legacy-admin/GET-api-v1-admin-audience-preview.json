@@ -1,0 +1,46 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "total_contacts": 12,
+    "eligible_recipients": 8,
+    "excluded_unsubscribed": 2,
+    "excluded_blocked": 2,
+    "sample_recipients": [
+      {
+        "id": 4,
+        "name": "Dewi Fiktif",
+        "email": "dewi.fiktif04@example.test",
+        "company": "PT Contoh Abadi"
+      },
+      {
+        "id": 7,
+        "name": "Galih Contoh",
+        "email": "galih.contoh@example.test",
+        "company": null
+      },
+      {
+        "id": 3,
+        "name": "Andi Contoh",
+        "email": "andi.contoh03@example.test",
+        "company": null
+      },
+      {
+        "id": 6,
+        "name": "Salsa Fiktif",
+        "email": "salsa.fiktif@example.test",
+        "company": null
+      },
+      {
+        "id": 2,
+        "name": "Sinta Fiktif",
+        "email": "sinta.fiktif02@example.test",
+        "company": "CV Fiktif Jaya"
+      }
+    ]
+  },
+  "meta": {
+    "request_id": "req_5c65c5ec-67d1-419e-9ed5-6e933cdd9e16",
+    "timestamp": "2026-09-26T08:36:59.368Z"
+  }
+}

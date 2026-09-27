@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "processed": 50,
+    "cache_keys": [
+      "public:news:list",
+      "public:home",
+      "public:facilities",
+      "public:portfolio:list",
+      "public:portfolio:categories",
+      "sitemap"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "status": "updated",
+    "count": 2
+  }
+}

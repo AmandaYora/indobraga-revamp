@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "id": 35,
+    "media_type": "image",
+    "mime_type": "image/png",
+    "original_file_name": "scratch.png",
+    "compression_status": "completed",
+    "file_url": "https://is3.cloudhost.id/indobraga/upload/prod/lainnya/2026-09-26/96a2f1de-39d1-4cfe-a715-9ee3a21e3e68-large.webp",
+    "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/lainnya/2026-09-26/96a2f1de-39d1-4cfe-a715-9ee3a21e3e68-thumbnail.webp",
+    "medium_url": "https://is3.cloudhost.id/indobraga/upload/prod/lainnya/2026-09-26/96a2f1de-39d1-4cfe-a715-9ee3a21e3e68-medium.webp",
+    "large_url": "https://is3.cloudhost.id/indobraga/upload/prod/lainnya/2026-09-26/96a2f1de-39d1-4cfe-a715-9ee3a21e3e68-large.webp",
+    "poster_url": null,
+    "video_url": null,
+    "width": 1,
+    "height": 1,
+    "duration_seconds": null,
+    "original_size": 70,
+    "optimized_size": 288,
+    "error": null,
+    "archived_at": null,
+    "deleted_at": null,
+    "created_at": "2026-09-26T08:37:05.322Z",
+    "updated_at": "2026-09-26T08:37:05.322Z"
+  }
+}

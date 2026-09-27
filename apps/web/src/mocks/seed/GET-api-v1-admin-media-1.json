@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "id": 1,
+    "media_type": "image",
+    "mime_type": "image/png",
+    "original_file_name": "logo-sintetis.png",
+    "compression_status": "completed",
+    "file_url": "https://media.example.test/upload/dev/baseline/logo/2026-01-15/logo-sintetis-large.webp",
+    "thumbnail_url": "https://media.example.test/upload/dev/baseline/logo/2026-01-15/logo-sintetis-thumbnail.webp",
+    "medium_url": "https://media.example.test/upload/dev/baseline/logo/2026-01-15/logo-sintetis-medium.webp",
+    "large_url": "https://media.example.test/upload/dev/baseline/logo/2026-01-15/logo-sintetis-large.webp",
+    "poster_url": null,
+    "video_url": null,
+    "width": 1592,
+    "height": 390,
+    "duration_seconds": null,
+    "original_size": 245000,
+    "optimized_size": 180000,
+    "error": null,
+    "archived_at": null,
+    "deleted_at": null,
+    "created_at": "2026-01-15T10:00:00.000Z",
+    "updated_at": "2026-01-15T10:00:00.000Z"
+  }
+}

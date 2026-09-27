@@ -22,6 +22,13 @@ stack nyata (PLAN-04).
       legacy, ADR-0004/0005/0010/0011/0012.
 - [ ] Skill `frontend-design` tersedia (sudah terpasang) — dipakai sesuai ADR-0010.
 
+> AMANDEMEN OWNER (2026-09-26): tooling browser/Playwright dikeluarkan dari repo
+> (termasuk screenshot baseline & visual regression otomatis PLAN-01 §1.7).
+> Paritas visual diganti UAT manual terhadap produksi + fixture JSON.
+> Dependensi `@playwright/test` / `@axe-core/playwright` dan script `e2e` /
+> `e2e:update` di §2.1 TIDAK berlaku sampai diputuskan sebaliknya; uji
+> aksesibilitas dialihkan ke audit manual + `eslint-plugin-jsx-a11y` bila dipasang.
+
 ---
 
 ## 2.1 Stack & konfigurasi

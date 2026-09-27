@@ -1,0 +1,12 @@
+{
+  "_status": 201,
+  "success": true,
+  "data": {
+    "marked_read": 5,
+    "unread_count": 0
+  },
+  "meta": {
+    "request_id": "req_edee4152-f940-48bb-bef7-d5b20c7df82f",
+    "timestamp": "2026-09-26T08:37:04.565Z"
+  }
+}

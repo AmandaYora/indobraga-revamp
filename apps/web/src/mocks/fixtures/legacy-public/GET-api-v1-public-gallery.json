@@ -1,0 +1,50 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "type": "image",
+        "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/galeri/2026-09-10/4941b94c-e603-4876-9b0d-390d6052a171-thumbnail.webp",
+        "media_url": "https://is3.cloudhost.id/indobraga/upload/prod/galeri/2026-09-10/4941b94c-e603-4876-9b0d-390d6052a171-large.webp",
+        "caption": "Lini sublimasi Atexco Model X Plus dalam operasi harian.",
+        "alt_text": "Lini sublimasi Atexco Model X Plus dalam operasi harian.",
+        "published_at": "2026-09-10T02:01:18.062Z"
+      },
+      {
+        "id": 2,
+        "type": "image",
+        "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/galeri/2026-09-21/a43cbcda-9f78-4918-b92a-149b7a1c8f2f-thumbnail.webp",
+        "media_url": "https://is3.cloudhost.id/indobraga/upload/prod/galeri/2026-09-21/a43cbcda-9f78-4918-b92a-149b7a1c8f2f-large.webp",
+        "caption": "Tim sewing menyelesaikan order jersey klub profesional.",
+        "alt_text": "Tim sewing menyelesaikan order jersey klub profesional.",
+        "published_at": "2026-09-20T18:01:18.614Z"
+      },
+      {
+        "id": 3,
+        "type": "image",
+        "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/galeri/2026-09-10/16e668a5-0761-48a3-90d1-20ae120ac375-thumbnail.webp",
+        "media_url": "https://is3.cloudhost.id/indobraga/upload/prod/galeri/2026-09-10/16e668a5-0761-48a3-90d1-20ae120ac375-large.webp",
+        "caption": "Proses cutting & pattern in-house untuk presisi produksi.",
+        "alt_text": "Proses cutting & pattern in-house untuk presisi produksi.",
+        "published_at": "2026-09-10T02:02:24.709Z"
+      },
+      {
+        "id": 6,
+        "type": "image",
+        "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/galeri/2026-09-10/c1ec9315-d3db-48b7-ac5a-a6cb23a4dc55-thumbnail.webp",
+        "media_url": "https://is3.cloudhost.id/indobraga/upload/prod/galeri/2026-09-10/c1ec9315-d3db-48b7-ac5a-a6cb23a4dc55-large.webp",
+        "caption": "Cuplikan area press & DTF berkapasitas 7.000 m/hari.",
+        "alt_text": "Cuplikan area press & DTF berkapasitas 7.000 m/hari.",
+        "published_at": "2026-09-10T02:03:24.313Z"
+      }
+    ],
+    "next_cursor": null,
+    "has_more": false
+  },
+  "meta": {
+    "request_id": "req_c5a0c830-a5d4-4054-ac5e-af819a8faa06",
+    "timestamp": "2026-09-26T08:36:45.905Z"
+  }
+}

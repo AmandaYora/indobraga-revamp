@@ -1,0 +1,18 @@
+{
+  "_status": 400,
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Periksa kembali data yang diisi.",
+    "details": [
+      {
+        "field": "recipients",
+        "message": "property recipients should not exist"
+      }
+    ]
+  },
+  "meta": {
+    "request_id": "req_4d249f1b-784c-4b60-858b-79ddd8517604",
+    "timestamp": "2026-09-26T08:37:04.940Z"
+  }
+}

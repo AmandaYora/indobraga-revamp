@@ -1,0 +1,72 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "total_contacts": 12,
+    "eligible_recipients": 8,
+    "excluded_unsubscribed": 2,
+    "excluded_blocked": 2,
+    "sample_recipients": [
+      {
+        "id": 4,
+        "name": "Dewi Fiktif",
+        "email": "dewi.fiktif04@example.test",
+        "company": "PT Contoh Abadi",
+        "source": "manual",
+        "consent_status": "unknown",
+        "status": "active",
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z",
+        "message": "Pesan tidak tersedia."
+      },
+      {
+        "id": 7,
+        "name": "Galih Contoh",
+        "email": "galih.contoh@example.test",
+        "company": null,
+        "source": "manual",
+        "consent_status": "unknown",
+        "status": "active",
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z",
+        "message": "Pesan tidak tersedia."
+      },
+      {
+        "id": 3,
+        "name": "Andi Contoh",
+        "email": "andi.contoh03@example.test",
+        "company": null,
+        "source": "manual",
+        "consent_status": "unknown",
+        "status": "active",
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z",
+        "message": "Pesan tidak tersedia."
+      },
+      {
+        "id": 6,
+        "name": "Salsa Fiktif",
+        "email": "salsa.fiktif@example.test",
+        "company": null,
+        "source": "manual",
+        "consent_status": "unknown",
+        "status": "active",
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z",
+        "message": "Pesan tidak tersedia."
+      },
+      {
+        "id": 2,
+        "name": "Sinta Fiktif",
+        "email": "sinta.fiktif02@example.test",
+        "company": "CV Fiktif Jaya",
+        "source": "manual",
+        "consent_status": "unknown",
+        "status": "active",
+        "created_at": "2026-05-12T08:30:00.000Z",
+        "updated_at": "2026-05-12T08:30:00.000Z",
+        "message": "Pesan tidak tersedia."
+      }
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "status": "logged_out"
+  }
+}

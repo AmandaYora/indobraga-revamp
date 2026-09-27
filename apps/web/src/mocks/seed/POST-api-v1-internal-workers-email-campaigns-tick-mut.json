@@ -1,0 +1,12 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "claimed_campaign_id": 2,
+    "processed": 4,
+    "sent": 4,
+    "failed": 0,
+    "remaining": 0,
+    "status": "completed"
+  }
+}

@@ -1,0 +1,159 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "totals": {
+      "inquiries": 28,
+      "whatsapp_leads": 10,
+      "published_gallery": 16,
+      "published_news": 14,
+      "active_portfolios": 13,
+      "completed_media": 30,
+      "failed_media": 2,
+      "connected_email_accounts": 2,
+      "email_campaigns": 6,
+      "pending_email_campaigns": 2,
+      "pending_revalidation": 2
+    },
+    "latest_inquiries": [
+      {
+        "id": 28,
+        "name": "Spam Contoh Dua",
+        "email": "spam.dua@example.test",
+        "phone": "0812-0000-0092",
+        "company": null,
+        "status": "spam",
+        "created_at": "2026-01-15T10:27:00.000Z"
+      },
+      {
+        "id": 27,
+        "name": "Spam Contoh Satu",
+        "email": "spam.satu@example.test",
+        "phone": "0812-0000-0091",
+        "company": null,
+        "status": "spam",
+        "created_at": "2026-01-15T10:26:00.000Z"
+      },
+      {
+        "id": 26,
+        "name": "Putri Fiktif",
+        "email": "putri.fiktif26@example.test",
+        "phone": "0812-0000-0026",
+        "company": null,
+        "status": "closed",
+        "created_at": "2026-01-15T10:25:00.000Z"
+      },
+      {
+        "id": 25,
+        "name": "Fajar Contoh",
+        "email": "fajar.contoh25@example.test",
+        "phone": "0812-0000-0025",
+        "company": "CV Contoh Berkah",
+        "status": "closed",
+        "created_at": "2026-01-15T10:24:00.000Z"
+      },
+      {
+        "id": 24,
+        "name": "Intan Fiktif",
+        "email": "intan.fiktif24@example.test",
+        "phone": "0812-0000-0024",
+        "company": null,
+        "status": "closed",
+        "created_at": "2026-01-15T10:23:00.000Z"
+      }
+    ],
+    "latest_whatsapp_leads": [
+      {
+        "id": 10,
+        "name": "Spam WA Dua",
+        "phone": "0812-0000-0192",
+        "status": "spam",
+        "created_at": "2026-01-15T10:09:00.000Z"
+      },
+      {
+        "id": 9,
+        "name": "Spam WA Satu",
+        "phone": "0812-0000-0191",
+        "status": "spam",
+        "created_at": "2026-01-15T10:08:00.000Z"
+      },
+      {
+        "id": 8,
+        "name": "Tania Fiktif",
+        "phone": "0812-0000-0108",
+        "status": "closed",
+        "created_at": "2026-01-15T10:07:00.000Z"
+      },
+      {
+        "id": 7,
+        "name": "Rizky Contoh",
+        "phone": "0812-0000-0107",
+        "status": "closed",
+        "created_at": "2026-01-15T10:06:00.000Z"
+      },
+      {
+        "id": 6,
+        "name": "Nadia Fiktif",
+        "phone": "0812-0000-0106",
+        "status": "in_progress",
+        "created_at": "2026-01-15T10:05:00.000Z"
+      }
+    ],
+    "latest_email_campaigns": [
+      {
+        "id": 3,
+        "title": "Kampanye Berjalan Sintetis",
+        "subject": "Promo berjalan {{nama}}",
+        "status": "processing",
+        "total_recipients": 5,
+        "sent_count": 2,
+        "failed_count": 0,
+        "created_at": "2026-01-15T10:00:00.000Z"
+      },
+      {
+        "id": 2,
+        "title": "Kampanye Menunggu Sintetis",
+        "subject": "Promo menunggu {{nama}}",
+        "status": "pending",
+        "total_recipients": 4,
+        "sent_count": 0,
+        "failed_count": 0,
+        "created_at": "2026-01-15T10:00:00.000Z"
+      },
+      {
+        "id": 1,
+        "title": "Kampanye Draf Sintetis",
+        "subject": "Draf promo {{nama}}",
+        "status": "draft",
+        "total_recipients": 3,
+        "sent_count": 0,
+        "failed_count": 0,
+        "created_at": "2026-01-15T10:00:00.000Z"
+      },
+      {
+        "id": 4,
+        "title": "Kampanye Selesai Sintetis",
+        "subject": "Promo selesai {{nama}}",
+        "status": "completed",
+        "total_recipients": 5,
+        "sent_count": 4,
+        "failed_count": 1,
+        "created_at": "2026-01-14T09:00:00.000Z"
+      },
+      {
+        "id": 5,
+        "title": "Kampanye Gagal Sintetis",
+        "subject": "Promo gagal {{nama}}",
+        "status": "failed",
+        "total_recipients": 4,
+        "sent_count": 0,
+        "failed_count": 3,
+        "created_at": "2026-01-13T09:00:00.000Z"
+      }
+    ]
+  },
+  "meta": {
+    "request_id": "req_6166d474-5880-4187-a40b-13bfa9839d06",
+    "timestamp": "2026-09-26T08:36:59.115Z"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "items": [],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 0,
+      "total_pages": 1
+    }
+  },
+  "meta": {
+    "request_id": "req_c05b4ec0-793b-4879-af1d-da5331a1db2d",
+    "timestamp": "2026-09-26T08:36:59.686Z"
+  }
+}

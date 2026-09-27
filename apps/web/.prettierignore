@@ -1,0 +1,5 @@
+dist
+coverage
+src/mocks/seed
+src/mocks/fixtures
+*.log

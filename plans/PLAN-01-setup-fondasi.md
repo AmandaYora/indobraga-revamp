@@ -219,6 +219,12 @@ admin diambil dari legacy lokal yang diisi **dataset sintetis** — dataset yang
 menjadi fixture mock PLAN-02, sehingga screenshot admin lama vs baru membandingkan data yang
 identik dan tidak ada data pribadi yang disentuh.
 
+> AMANDEMEN OWNER (2026-09-26): item screenshot Playwright (publik 7 route × 4 viewport +
+> state, admin 18 halaman × 2 viewport) dan snapshot visual dibatalkan; tooling browser
+> dihapus dari repo. Baseline yang dipertahankan: dataset sintetis, fixture JSON publik +
+> admin, SEO head, inventaris URL, header respons, statistik DB, Lighthouse (bila tooling
+> tersedia) — paritas visual diganti UAT manual terhadap produksi.
+
 - [ ] **Dataset sintetis** `apps/web/e2e/datasets/synthetic/` (SQL untuk skema legacy + README):
       mencakup setiap resource admin dengan variasi status (draf, tayang, arsip, nonaktif), jumlah
       baris cukup untuk pagination (≥ 26 per list utama), 2 user (super admin & content editor),
@@ -268,8 +274,8 @@ identik dan tidak ada data pribadi yang disentuh.
 - [ ] Jalankan Final Checklist skill monorepo-standard satu per satu; semua "ya".
 - [ ] `analysis/README.md` ada; tidak ada folder `docs/` paralel.
 - [ ] `MODULE_MAP.md` punya kolom owned tables & external integrations.
-- [ ] `.env` tidak ter-commit; `.gitignore` mencakup `.env`, `tmp/`, `dist/`, `coverage/`,
-      `playwright-report/`, `test-results/`.
+- [ ] `.env` tidak ter-commit; `.gitignore` mencakup `.env`, `tmp/`, `dist/`, `coverage/`
+      (entri laporan Playwright dihapus menyusul amendemen: tooling browser dikeluarkan).
 
 ---
 

@@ -1,0 +1,180 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": [
+    {
+      "id": 14,
+      "title": "JUARAGA X Satria Muda Jacket Collection — Produced by Indobraga",
+      "slug": "juaraga-x-satria-muda-jacket-collection-produced-by-indobraga",
+      "category": "Jaket",
+      "category_slug": "jaket",
+      "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/4574d528-71d3-4b60-b17d-93e21eebcc59-thumbnail.webp",
+      "medium_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/4574d528-71d3-4b60-b17d-93e21eebcc59-medium.webp",
+      "alt_text": "JUARAGA X Satria Muda Jacket Collection — Produced by Indobraga",
+      "short_description": "OUR PRODUCT | Satria Muda Official Merchandise",
+      "images": [
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/4574d528-71d3-4b60-b17d-93e21eebcc59-large.webp",
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/54d66172-0402-43cb-94c5-256b52d02bc3-large.webp",
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/9738c4e7-49b1-4309-9dda-47227f4364d8-large.webp"
+      ],
+      "sort_order": 0,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-05-12T08:30:00.000Z",
+      "updated_at": "2026-05-12T08:30:00.000Z"
+    },
+    {
+      "id": 15,
+      "title": "JUARAGA X FIFA World Cup Indonesia 2023 Merchandise — Produced by Indobraga",
+      "slug": "juaraga-x-fifa-world-cup-indonesia-2023-merchandise-produced-by-indobraga",
+      "category": "Jersey",
+      "category_slug": "jersey",
+      "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/58dc8efc-86f7-4478-81d8-77c71008cac2-thumbnail.webp",
+      "medium_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/58dc8efc-86f7-4478-81d8-77c71008cac2-medium.webp",
+      "alt_text": "JUARAGA X FIFA World Cup Indonesia 2023 Merchandise — Produced by Indobraga",
+      "short_description": "OUR PRODUCT | Official World Cup Merchandise",
+      "images": [
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/58dc8efc-86f7-4478-81d8-77c71008cac2-large.webp",
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/21b0b6c6-fe49-4eb4-9c90-02f54ee3b28f-large.webp"
+      ],
+      "sort_order": 0,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-05-12T08:30:00.000Z",
+      "updated_at": "2026-05-12T08:30:00.000Z"
+    },
+    {
+      "id": 16,
+      "title": "CELEBRITY FITNESS Apparel Collection — Produced by Indobraga",
+      "slug": "celebrity-fitness-apparel-collection-produced-by-indobraga",
+      "category": "Apparel",
+      "category_slug": "apparel",
+      "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/e4fbdd6b-338b-4c79-8e9f-44203b3bd336-thumbnail.webp",
+      "medium_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/e4fbdd6b-338b-4c79-8e9f-44203b3bd336-medium.webp",
+      "alt_text": "CELEBRITY FITNESS Apparel Collection — Produced by Indobraga",
+      "short_description": "OUR PRODUCT | Celebrity Fitness Apparel",
+      "images": [
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/e4fbdd6b-338b-4c79-8e9f-44203b3bd336-large.webp",
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/dc821111-dae4-4b0c-bf82-65e37633eb6a-large.webp",
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/eaa9b350-7292-4eaa-b65a-3a770ef887bd-large.webp",
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/48db0360-2c31-46fd-bb90-fdef650e7911-large.webp"
+      ],
+      "sort_order": 0,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-05-12T08:30:00.000Z",
+      "updated_at": "2026-05-12T08:30:00.000Z"
+    },
+    {
+      "id": 17,
+      "title": "WILL FITNESS Apparel Collection — Produced by Indobraga",
+      "slug": "will-fitness-apparel-collection-produced-by-indobraga",
+      "category": "Apparel",
+      "category_slug": "apparel",
+      "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/311af7b7-6551-49b5-99de-95367b7716a2-thumbnail.webp",
+      "medium_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/311af7b7-6551-49b5-99de-95367b7716a2-medium.webp",
+      "alt_text": "WILL FITNESS Apparel Collection — Produced by Indobraga",
+      "short_description": "OUR PRODUCT | WILL FITNESS Apparel",
+      "images": [
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/311af7b7-6551-49b5-99de-95367b7716a2-large.webp",
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/496a698e-7065-42c3-9583-de975c4d427f-large.webp",
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/3bed6ad1-1ae4-4546-9f01-3cf1fdbb8ba3-large.webp"
+      ],
+      "sort_order": 0,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-05-12T08:30:00.000Z",
+      "updated_at": "2026-05-12T08:30:00.000Z"
+    },
+    {
+      "id": 18,
+      "title": "FTL Jacket Collection — Produced by Indobraga",
+      "slug": "ftl-jacket-collection-produced-by-indobraga",
+      "category": "Jaket",
+      "category_slug": "jaket",
+      "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/a1724505-7bd2-4722-8b9c-f48761e07170-thumbnail.webp",
+      "medium_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/a1724505-7bd2-4722-8b9c-f48761e07170-medium.webp",
+      "alt_text": "FTL Jacket Collection — Produced by Indobraga",
+      "short_description": "OUR PRODUCT | FTL Apparel",
+      "images": [
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/a1724505-7bd2-4722-8b9c-f48761e07170-large.webp",
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/66c15d92-fd1a-456c-9412-74a08c3e6419-large.webp"
+      ],
+      "sort_order": 0,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-05-12T08:30:00.000Z",
+      "updated_at": "2026-05-12T08:30:00.000Z"
+    },
+    {
+      "id": 19,
+      "title": "ARK Apparel Denim Jacket — Produced by Indobraga",
+      "slug": "ark-apparel-denim-jacket-produced-by-indobraga",
+      "category": "Jaket",
+      "category_slug": "jaket",
+      "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/b858dcd0-949b-4b5b-97a0-6dd2b3f5378b-thumbnail.webp",
+      "medium_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/b858dcd0-949b-4b5b-97a0-6dd2b3f5378b-medium.webp",
+      "alt_text": "ARK Apparel Denim Jacket — Produced by Indobraga",
+      "short_description": "OUR PRODUCT | ARK Apparel",
+      "images": [
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/b858dcd0-949b-4b5b-97a0-6dd2b3f5378b-large.webp"
+      ],
+      "sort_order": 0,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-05-12T08:30:00.000Z",
+      "updated_at": "2026-05-12T08:30:00.000Z"
+    },
+    {
+      "id": 20,
+      "title": "JUARAGA Rise Up T-Shirt — Produced by Indobraga",
+      "slug": "juaraga-rise-up-t-shirt-produced-by-indobraga",
+      "category": "Kaos",
+      "category_slug": "kaos",
+      "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/2ee4191e-c4a2-464c-be68-bbde4ab5bad9-thumbnail.webp",
+      "medium_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/2ee4191e-c4a2-464c-be68-bbde4ab5bad9-medium.webp",
+      "alt_text": "JUARAGA Rise Up T-Shirt — Produced by Indobraga",
+      "short_description": "OUR PRODUCT | JUARAGA Apparel",
+      "images": [
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/2ee4191e-c4a2-464c-be68-bbde4ab5bad9-large.webp"
+      ],
+      "sort_order": 0,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-05-12T08:30:00.000Z",
+      "updated_at": "2026-05-12T08:30:00.000Z"
+    },
+    {
+      "id": 21,
+      "title": "ASTRONKIDO Crewneck — Produced by Indobraga",
+      "slug": "astronkido-crewneck-produced-by-indobraga",
+      "category": "Crewneck",
+      "category_slug": "crewneck",
+      "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/045d1d98-0ada-4ea8-80c8-4a40477487a3-thumbnail.webp",
+      "medium_url": "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/045d1d98-0ada-4ea8-80c8-4a40477487a3-medium.webp",
+      "alt_text": "ASTRONKIDO Crewneck — Produced by Indobraga",
+      "short_description": "OUR PRODUCT | ASTRONKIDO Apparel",
+      "images": [
+        "https://is3.cloudhost.id/indobraga/upload/prod/portofolio/2026-09-20/045d1d98-0ada-4ea8-80c8-4a40477487a3-large.webp"
+      ],
+      "sort_order": 0,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-05-12T08:30:00.000Z",
+      "updated_at": "2026-05-12T08:30:00.000Z"
+    }
+  ],
+  "meta": {
+    "limit": 8,
+    "next_cursor": "eyJzb3J0X29yZGVyIjoxNjAsImlkIjoyMX0",
+    "has_more": true
+  }
+}

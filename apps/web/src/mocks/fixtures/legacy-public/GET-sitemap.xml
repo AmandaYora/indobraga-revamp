@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://indobraga.com/</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://indobraga.com/portfolio</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://indobraga.com/fasilitas</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://indobraga.com/galeri</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://indobraga.com/berita</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://indobraga.com/kontak</loc>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://indobraga.com/berita/kapasitas-produksi-90000-pcs</loc>
+    <lastmod>2026-09-20T18:00:13.796Z</lastmod>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://indobraga.com/berita/atexco-model-x-plus</loc>
+    <lastmod>2026-06-19T03:21:35.793Z</lastmod>
+    <priority>0.6</priority>
+  </url>
+</urlset>

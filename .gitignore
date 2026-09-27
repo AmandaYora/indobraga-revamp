@@ -14,12 +14,6 @@ coverage/
 apps/api/tmp/
 apps/api/storage/
 
-# Test & E2E
-playwright-report/
-test-results/
-blob-report/
-apps/web/e2e/.auth/
-
 # Dump database & data produksi TIDAK PERNAH masuk repo (PII).
 # Satu-satunya SQL data yang boleh di-commit: dataset sintetis.
 *.sql

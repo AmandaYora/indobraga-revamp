@@ -1,0 +1,21 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "id": 9,
+    "name": "Scratch Partner",
+    "segment": null,
+    "logo_media_id": null,
+    "logo_media": null,
+    "sort_order": 99,
+    "status": "inactive",
+    "previous_status": null,
+    "archived_at": null,
+    "created_at": "2026-09-26T08:37:00.937Z",
+    "updated_at": "2026-09-26T08:37:01.120Z"
+  },
+  "meta": {
+    "request_id": "req_8a360232-7559-450d-9b36-85786c1c9a7c",
+    "timestamp": "2026-09-26T08:37:01.140Z"
+  }
+}

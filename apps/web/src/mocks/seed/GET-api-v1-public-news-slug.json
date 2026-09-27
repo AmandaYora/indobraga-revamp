@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "id": 3,
+    "title": "Kapasitas Produksi Mencapai 90.000 Pcs per Bulan",
+    "slug": "kapasitas-produksi-90000-pcs",
+    "category": "Produksi",
+    "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/berita/2026-09-21/f61291a4-e15d-48ae-baf0-9c45ee714a2a-large.webp",
+    "excerpt": "Kapasitas produksi bulanan mencakup jackets, t-shirts, shirts, backpack, dan slingbag.",
+    "content": [
+      "Kapasitas produksi Indobraga mencapai total 90.000 pcs per bulan untuk beberapa kategori utama.,Angka ini menjadi fondasi layanan produksi bagi perusahaan, klub, institusi, dan brand apparel."
+    ],
+    "seo": {
+      "title": "Kapasitas Produksi Mencapai 90.000 Pcs per Bulan",
+      "description": "Kapasitas produksi bulanan mencakup jackets, t-shirts, shirts, backpack, dan slingbag.",
+      "canonical_url": "https://indobraga.com/berita/kapasitas-produksi-90000-pcs",
+      "og_image_url": "https://is3.cloudhost.id/indobraga/upload/prod/seo/2026-09-21/444046a6-b340-4520-a650-95c1fae9fb82-large.webp"
+    },
+    "published_at": "2026-09-20T18:00:13.791Z",
+    "sort_order": 0,
+    "status": "published",
+    "previous_status": null,
+    "archived_at": null,
+    "created_at": "2026-05-12T08:30:00.000Z",
+    "updated_at": "2026-05-12T08:30:00.000Z"
+  }
+}

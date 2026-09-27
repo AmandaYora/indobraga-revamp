@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "title": "Galeri - Indobraga",
+    "description": "Galeri produksi dan hasil pengerjaan Indobraga.",
+    "canonical_url": "https://indobraga.com/galeri",
+    "og_image_url": "https://is3.cloudhost.id/indobraga/upload/prod/hero/default/hero-garment-large.webp",
+    "noindex": false
+  }
+}

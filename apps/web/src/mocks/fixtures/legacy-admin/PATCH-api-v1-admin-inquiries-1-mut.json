@@ -1,0 +1,22 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "id": 1,
+    "name": "Budi Contoh",
+    "email": "budi.contoh01@example.test",
+    "phone": "0812-0000-0001",
+    "company": "PT Contoh Maju",
+    "message": "Halo, saya butuh penawaran kemasan box untuk produk contoh 01. Terima kasih.",
+    "status": "contacted",
+    "internal_note": "Baseline.",
+    "notification_status": "pending",
+    "source": "website",
+    "created_at": "2026-01-15T10:00:00.000Z",
+    "updated_at": "2026-09-26T08:37:03.811Z"
+  },
+  "meta": {
+    "request_id": "req_ddda2ab8-2f71-4140-83a9-b71f86ed1b28",
+    "timestamp": "2026-09-26T08:37:03.828Z"
+  }
+}

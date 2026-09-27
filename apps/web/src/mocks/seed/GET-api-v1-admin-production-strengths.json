@@ -1,0 +1,72 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": [
+    {
+      "id": 1,
+      "label": "Pesanan per Bulan",
+      "value": "1200",
+      "suffix": "paket",
+      "sort_order": 0,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "label": "Mesin Cetak",
+      "value": "8",
+      "suffix": "unit",
+      "sort_order": 1,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "label": "Kota Terjangkau",
+      "value": "25",
+      "suffix": "kota",
+      "sort_order": 2,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 4,
+      "label": "Tahun Berdiri",
+      "value": "12",
+      "suffix": "tahun",
+      "sort_order": 3,
+      "status": "published",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": 5,
+      "label": "Klien Aktif",
+      "value": "300",
+      "suffix": "klien",
+      "sort_order": 4,
+      "status": "draft",
+      "previous_status": null,
+      "archived_at": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 5,
+    "total_pages": 1
+  }
+}

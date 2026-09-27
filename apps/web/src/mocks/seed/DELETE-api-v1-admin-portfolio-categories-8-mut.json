@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "cleanup_failed_media_count": 0,
+    "id": 8,
+    "status": "permanently_deleted"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "total_inquiries": 26,
+    "eligible_recipients": 26,
+    "duplicate_emails": 0,
+    "invalid_emails": 0,
+    "recipient_limit": 1000,
+    "over_limit": false,
+    "sample_recipients": [
+      {
+        "id": 26,
+        "name": "Putri Fiktif",
+        "email": "putri.fiktif26@example.test",
+        "company": null,
+        "status": "closed",
+        "created_at": "2026-01-15T10:25:00.000Z"
+      },
+      {
+        "id": 25,
+        "name": "Fajar Contoh",
+        "email": "fajar.contoh25@example.test",
+        "company": "CV Contoh Berkah",
+        "status": "closed",
+        "created_at": "2026-01-15T10:24:00.000Z"
+      },
+      {
+        "id": 24,
+        "name": "Intan Fiktif",
+        "email": "intan.fiktif24@example.test",
+        "company": null,
+        "status": "closed",
+        "created_at": "2026-01-15T10:23:00.000Z"
+      },
+      {
+        "id": 23,
+        "name": "Slamet Contoh",
+        "email": "slamet.contoh23@example.test",
+        "company": "PT Contoh Abadi",
+        "status": "closed",
+        "created_at": "2026-01-15T10:22:00.000Z"
+      },
+      {
+        "id": 22,
+        "name": "Ratna Fiktif",
+        "email": "ratna.fiktif22@example.test",
+        "company": null,
+        "status": "closed",
+        "created_at": "2026-01-15T10:21:00.000Z"
+      }
+    ]
+  },
+  "meta": {
+    "request_id": "req_59613871-eca0-4d69-b97c-be1c86848cc6",
+    "timestamp": "2026-09-26T08:36:59.708Z"
+  }
+}

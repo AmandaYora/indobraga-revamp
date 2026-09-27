@@ -16,4 +16,9 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // Dipakai Go untuk `modulepreload` & preload font/chunk per route (PLAN-02 §2.1).
+    manifest: true,
+    sourcemap: "hidden",
+  },
 });

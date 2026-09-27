@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "processed": 1,
+    "sent": 0,
+    "failed": 0,
+    "retried": 1
+  }
+}

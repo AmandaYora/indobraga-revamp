@@ -1,0 +1,37 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "Admin Sintetis",
+      "email": "admin@example.test",
+      "role": "super_admin",
+      "permissions": [
+        "dashboard.read",
+        "users.manage",
+        "site_settings.manage",
+        "content.read",
+        "content.manage",
+        "media.manage",
+        "leads.read",
+        "leads.manage",
+        "audience.read",
+        "audience.export",
+        "notifications.read",
+        "email_accounts.read",
+        "email_accounts.manage",
+        "email_campaigns.read",
+        "email_campaigns.manage",
+        "email_campaigns.send",
+        "email_campaign_logs.read",
+        "seo.manage",
+        "activity.read"
+      ]
+    }
+  },
+  "meta": {
+    "request_id": "req_477f6537-3452-4e3f-9ff5-85968547f6d1",
+    "timestamp": "2026-09-26T08:36:59.041Z"
+  }
+}

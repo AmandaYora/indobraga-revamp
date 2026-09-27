@@ -1,0 +1,13 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "cleanup_failed_media_count": 0,
+    "id": 7,
+    "status": "permanently_deleted"
+  },
+  "meta": {
+    "request_id": "req_3caf8117-f6d9-4d8a-bf2b-5a9ba0089297",
+    "timestamp": "2026-09-26T08:37:02.509Z"
+  }
+}

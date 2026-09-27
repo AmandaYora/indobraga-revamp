@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?REDACTED",
+    "state_expires_at": "2026-09-26T08:47:04.851Z"
+  }
+}

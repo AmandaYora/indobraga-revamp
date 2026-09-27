@@ -1,0 +1,36 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 3,
+        "title": "Kapasitas Produksi Mencapai 90.000 Pcs per Bulan",
+        "slug": "kapasitas-produksi-90000-pcs",
+        "category": "Produksi",
+        "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/berita/2026-09-21/f61291a4-e15d-48ae-baf0-9c45ee714a2a-thumbnail.webp",
+        "excerpt": "Kapasitas produksi bulanan mencakup jackets, t-shirts, shirts, backpack, dan slingbag.",
+        "published_at": "2026-09-20T18:00:13.791Z"
+      },
+      {
+        "id": 1,
+        "title": "Indobraga Perkuat Produksi dengan Atexco Model X Plus",
+        "slug": "atexco-model-x-plus",
+        "category": "Fasilitas",
+        "thumbnail_url": "https://is3.cloudhost.id/indobraga/upload/prod/berita/2026-06-19/82ab18bf-0adf-4633-ab29-de845c3d7fca-thumbnail.webp",
+        "excerpt": "Mesin fabric sublimation berkapasitas besar mendukung output konsisten untuk kebutuhan apparel skala bisnis.",
+        "published_at": "2026-06-19T03:21:35.787Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 6,
+      "total": 2,
+      "total_pages": 1
+    }
+  },
+  "meta": {
+    "request_id": "req_2a9daee0-fdac-46ee-bce8-5588e6d7cdf0",
+    "timestamp": "2026-09-26T08:36:45.940Z"
+  }
+}

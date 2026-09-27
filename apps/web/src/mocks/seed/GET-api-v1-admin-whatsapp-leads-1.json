@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "id": 1,
+    "name": "Wahyu Contoh",
+    "phone": "0812-0000-0101",
+    "generated_message": "Halo, tanya harga kemasan box contoh.",
+    "whatsapp_url": "https://wa.me/6281200000001?text=Halo",
+    "status": "new",
+    "internal_note": null,
+    "source": "fab",
+    "created_at": "2026-01-15T10:00:00.000Z",
+    "updated_at": "2026-01-15T10:00:00.000Z"
+  }
+}

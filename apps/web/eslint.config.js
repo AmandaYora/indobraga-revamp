@@ -2,13 +2,18 @@ import js from "@eslint/js";
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "coverage", "playwright-report", "test-results"] },
+  { ignores: ["dist", "coverage", "src/mocks/seed"] },
   {
     files: ["**/*.{ts,tsx}"],
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    extends: [
+      js.configs.recommended,
+      ...tseslint.configs.recommended,
+      jsxA11y.flatConfigs.recommended,
+    ],
     languageOptions: {
       ecmaVersion: 2022,
       globals: globals.browser,
@@ -28,8 +33,19 @@ export default tseslint.config(
     rules: { "react-refresh/only-export-components": "off" },
   },
   {
-    // Skrip Node (config, Playwright, capture baseline).
-    files: ["*.config.{ts,js}", "e2e/**/*.{ts,mjs,js}"],
+    // Store, test, barrel, & pola shadcn (varian + komponen satu file).
+    files: [
+      "src/**/stores/*.ts",
+      "src/**/*.test.{ts,tsx}",
+      "src/test/**/*.{ts,tsx}",
+      "src/shared/components/ui/*.{ts,tsx}",
+      "src/**/index.ts",
+    ],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
+  {
+    // Skrip Node (config, converter fixture).
+    files: ["*.config.{ts,js}", "scripts/**/*.{ts,mjs,js}"],
     languageOptions: { globals: globals.node },
     rules: { "react-hooks/rules-of-hooks": "off" },
   },

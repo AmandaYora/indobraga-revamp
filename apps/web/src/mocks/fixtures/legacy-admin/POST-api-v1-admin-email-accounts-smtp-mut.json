@@ -1,0 +1,25 @@
+{
+  "_status": 201,
+  "success": true,
+  "data": {
+    "id": 4,
+    "provider": "smtp",
+    "auth_type": "smtp",
+    "email_address": "tes@baseline.test",
+    "display_name": "Tes",
+    "status": "connected",
+    "smtp_host": "mail.baseline.test",
+    "smtp_port": 465,
+    "smtp_security": "ssl_tls",
+    "smtp_username": "tes@baseline.test",
+    "last_validated_at": "2026-09-26T08:37:04.693Z",
+    "connected_at": "2026-09-26T08:37:04.693Z",
+    "last_error": null,
+    "created_at": "2026-09-26T08:37:04.702Z",
+    "updated_at": "2026-09-26T08:37:04.702Z"
+  },
+  "meta": {
+    "request_id": "req_e1c6c3c8-3ef6-4d17-91b6-34c1582042c7",
+    "timestamp": "2026-09-26T08:37:04.718Z"
+  }
+}

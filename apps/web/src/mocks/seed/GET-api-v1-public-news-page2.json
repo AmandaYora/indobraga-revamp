@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": [],
+  "meta": {
+    "page": 2,
+    "limit": 6,
+    "total": 2,
+    "total_pages": 1
+  }
+}

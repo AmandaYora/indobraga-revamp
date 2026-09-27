@@ -1,0 +1,37 @@
+{
+  "success": true,
+  "message": "Data berhasil diambil.",
+  "data": {
+    "id": 1,
+    "media_type": "image",
+    "caption": "Galeri produksi sintetis 01",
+    "media_file_id": 23,
+    "media_file": {
+      "id": 23,
+      "media_type": "image",
+      "mime_type": "image/jpeg",
+      "original_file_name": "galeri-produksi-01.jpg",
+      "compression_status": "completed",
+      "file_url": "https://media.example.test/upload/dev/baseline/galeri/2026-01-15/galeri-produksi-01-large.webp",
+      "thumbnail_url": "https://media.example.test/upload/dev/baseline/galeri/2026-01-15/galeri-produksi-01-thumbnail.webp",
+      "medium_url": "https://media.example.test/upload/dev/baseline/galeri/2026-01-15/galeri-produksi-01-medium.webp",
+      "large_url": "https://media.example.test/upload/dev/baseline/galeri/2026-01-15/galeri-produksi-01-large.webp",
+      "poster_url": null,
+      "video_url": null,
+      "width": 1200,
+      "height": 800,
+      "duration_seconds": null,
+      "created_at": "2026-01-15T10:00:00.000Z",
+      "updated_at": "2026-01-15T10:00:00.000Z"
+    },
+    "poster_media_id": null,
+    "poster_media": null,
+    "sort_order": 0,
+    "status": "published",
+    "previous_status": null,
+    "archived_at": null,
+    "published_at": "2026-01-05T09:00:00.000Z",
+    "created_at": "2026-01-15T10:00:00.000Z",
+    "updated_at": "2026-01-15T10:00:00.000Z"
+  }
+}

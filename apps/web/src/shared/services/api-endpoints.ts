@@ -1,3 +1,41 @@
+import { API_PREFIX } from "@/shared/services/http-client";
+
 export const API = {
-  base: "/api/v1",
+  base: API_PREFIX,
+  auth: {
+    login: `${API_PREFIX}/auth/login`,
+    logout: `${API_PREFIX}/auth/logout`,
+    me: `${API_PREFIX}/auth/me`,
+  },
+  public: {
+    siteSettings: `${API_PREFIX}/public/site-settings`,
+    home: `${API_PREFIX}/public/home`,
+    facilities: `${API_PREFIX}/public/facilities`,
+    portfolio: `${API_PREFIX}/public/portfolio`,
+    portfolioCategories: `${API_PREFIX}/public/portfolio-categories`,
+    gallery: `${API_PREFIX}/public/gallery`,
+    news: `${API_PREFIX}/public/news`,
+    newsDetail: (slug: string) => `${API_PREFIX}/public/news/${slug}`,
+    seo: `${API_PREFIX}/public/seo`,
+    seoByRoute: (route: string) => `${API_PREFIX}/public/seo/${route}`,
+    inquiries: `${API_PREFIX}/public/inquiries`,
+    whatsappLeads: `${API_PREFIX}/public/whatsapp-leads`,
+  },
+  admin: {
+    dashboard: `${API_PREFIX}/admin/dashboard`,
+    siteSettings: `${API_PREFIX}/admin/site-settings`,
+    content: (resource: string) => `${API_PREFIX}/admin/${resource}`,
+    contentItem: (resource: string, id: number | string) => `${API_PREFIX}/admin/${resource}/${id}`,
+    media: `${API_PREFIX}/admin/media`,
+    mediaItem: (id: number | string) => `${API_PREFIX}/admin/media/${id}`,
+    inquiries: `${API_PREFIX}/admin/inquiries`,
+    whatsappLeads: `${API_PREFIX}/admin/whatsapp-leads`,
+    notifications: `${API_PREFIX}/admin/notifications`,
+    notificationsStream: `${API_PREFIX}/admin/notifications/stream`,
+    emailAccounts: `${API_PREFIX}/admin/email-accounts`,
+    emailCampaigns: `${API_PREFIX}/admin/email-campaigns`,
+    emailTemplates: `${API_PREFIX}/admin/email-templates`,
+    users: `${API_PREFIX}/admin/users`,
+    health: `${API_PREFIX}/health`,
+  },
 } as const;

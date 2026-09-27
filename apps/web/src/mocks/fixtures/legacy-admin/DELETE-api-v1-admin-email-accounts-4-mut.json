@@ -1,0 +1,12 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "id": 4,
+    "status": "deleted"
+  },
+  "meta": {
+    "request_id": "req_b3510184-5da5-4d09-b1e3-22f6c9a85099",
+    "timestamp": "2026-09-26T08:37:04.827Z"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "_status": 201,
+  "success": true,
+  "data": {
+    "id": 7,
+    "name": "Scratch Mesin",
+    "slug": "scratch-mesin",
+    "metric": null,
+    "description": null,
+    "media_file_id": null,
+    "media_file": null,
+    "sort_order": 0,
+    "status": "draft",
+    "previous_status": null,
+    "archived_at": null,
+    "created_at": "2026-09-26T08:37:02.010Z",
+    "updated_at": "2026-09-26T08:37:02.010Z"
+  },
+  "meta": {
+    "request_id": "req_a1358843-23ad-4abd-949a-a74eb7f59663",
+    "timestamp": "2026-09-26T08:37:02.032Z"
+  }
+}

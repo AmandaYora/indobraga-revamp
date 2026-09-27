@@ -1,0 +1,15 @@
+{
+  "_status": 200,
+  "success": true,
+  "data": {
+    "title": "Portofolio - Indobraga",
+    "description": "Portofolio produksi garment dan cetak kain custom Indobraga.",
+    "canonical_url": "https://indobraga.com/portfolio",
+    "og_image_url": "https://is3.cloudhost.id/indobraga/upload/prod/hero/default/hero-garment-large.webp",
+    "noindex": false
+  },
+  "meta": {
+    "request_id": "req_381a510f-4049-45c9-b1f9-4f10b9d853c0",
+    "timestamp": "2026-09-26T08:36:46.322Z"
+  }
+}

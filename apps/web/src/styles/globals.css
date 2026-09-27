@@ -1,2 +1,170 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 @import "../theme/theme.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: "Inter", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  html,
+  body {
+    width: 100%;
+    min-width: 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+    letter-spacing: 0;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-hero {
+    background-image: var(--gradient-hero);
+  }
+  .bg-gradient-accent {
+    background-image: var(--gradient-accent);
+  }
+  .bg-gradient-soft {
+    background-image: var(--gradient-soft);
+  }
+  .shadow-elegant {
+    box-shadow: var(--shadow-elegant);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .animate-fade-up {
+    animation: fadeUp 0.7s cubic-bezier(0.4, 0, 0.2, 1) both;
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out both;
+  }
+  .animate-marquee {
+    animation: marquee 35s linear infinite;
+  }
+  .animate-hero-slide-one {
+    animation: heroSlideOne 9s ease-in-out infinite;
+  }
+  .animate-hero-slide-two {
+    animation: heroSlideTwo 9s ease-in-out infinite;
+  }
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .skeleton-shimmer::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+    transform: translateX(-100%);
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--color-background) 55%, transparent),
+      transparent
+    );
+    animation: skeletonShimmer 1.35s ease-in-out infinite;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@keyframes heroSlideOne {
+  0%,
+  43% {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+  50%,
+  93% {
+    opacity: 0;
+    transform: scale(1.04) translateX(-1.5rem);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+}
+@keyframes heroSlideTwo {
+  0%,
+  43% {
+    opacity: 0;
+    transform: scale(1.04) translateX(1.5rem);
+  }
+  50%,
+  93% {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04) translateX(1.5rem);
+  }
+}
+@keyframes skeletonShimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hero-slide-one,
+  .animate-hero-slide-two {
+    animation: none;
+  }
+
+  .animate-hero-slide-two {
+    opacity: 0;
+  }
+
+  .skeleton-shimmer::after {
+    display: none;
+  }
+}
