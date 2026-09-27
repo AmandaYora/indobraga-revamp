@@ -1,5 +1,4 @@
 import type { RouteObject } from "react-router-dom";
-import { AdminLayout } from "@/shared/layouts/AdminLayout";
 import { RouteError } from "@/shared/components/feedback/RouteError";
 import { requireAuth, redirectIfAuthenticated } from "@/app/routes/guards";
 
@@ -19,8 +18,12 @@ export const protectedRoutes: RouteObject[] = [
   {
     path: "admin",
     loader: requireAuth,
-    element: <AdminLayout />,
     errorElement: <RouteError />,
+    // AdminLayout (sidebar, notifikasi, Radix menu) di-lazy-load agar tidak masuk JS awal publik.
+    lazy: async () => {
+      const { AdminLayout } = await import("@/shared/layouts/AdminLayout");
+      return { Component: AdminLayout };
+    },
     children: [
       {
         index: true,

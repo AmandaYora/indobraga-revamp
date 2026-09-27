@@ -1,5 +1,7 @@
 import { redirect, type LoaderFunctionArgs } from "react-router-dom";
-import { useAuthStore } from "@/modules/auth";
+// Import langsung dari file store (bukan barrel `@/modules/auth` yang ikut membawa skema login &
+// zod penuh) karena guard ini dimuat di bundle awal lewat definisi route.
+import { useAuthStore } from "@/modules/auth/stores/auth.store";
 import { ROUTE_PATHS, loginPath } from "@/app/routes/route-paths";
 
 /** Guard admin: `authStore.ensure()` sekali, dedupe in-flight (BC-26). */
