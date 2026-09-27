@@ -9,6 +9,7 @@ import { PortfolioModal, ImageCountBadge } from "@/modules/portfolio/components/
 import { toModalItem, type PortfolioModalItem } from "@/modules/portfolio/lib/portfolio-modal";
 import { cn } from "@/shared/lib/cn";
 import type { ContractSchemas } from "@/shared/types/contract";
+import { PortfolioGridSkeleton } from "@/modules/portfolio/components/PortfolioSkeletons";
 
 const PORTFOLIO_BATCH_SIZE = 8;
 

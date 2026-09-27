@@ -8,6 +8,7 @@ import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { siteService, fallbackHome } from "@/modules/site";
 import { formatDateId } from "@/shared/lib/date";
 import type { ContractSchemas } from "@/shared/types/contract";
+import { HomePendingPage } from "@/modules/home/components/HomeSkeletons";
 
 function PartnerCarousel({ partners }: { partners: { id: number; name: string }[] }) {
   const ref = useRef<HTMLDivElement>(null);

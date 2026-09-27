@@ -1,7 +1,6 @@
 import { Link, useLoaderData, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { OptionalImage } from "@/shared/components/ui/media-placeholder";
-import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Seo } from "@/modules/site";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { siteService } from "@/modules/site";
@@ -11,20 +10,7 @@ import { formatDateId } from "@/shared/lib/date";
 import { newsListPath } from "@/app/routes/route-paths";
 import NotFoundPage from "@/modules/site/pages/NotFoundPage";
 import type { ContractSchemas } from "@/shared/types/contract";
-
-export function ArticleDetailSkeleton() {
-  return (
-    <div role="status" aria-live="polite" className="mx-auto max-w-3xl space-y-4 px-4 py-16">
-      <span className="sr-only">Memuat detail berita.</span>
-      <Skeleton className="h-6 w-32" />
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="aspect-[16/9] w-full" />
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-5/6" />
-      <Skeleton className="h-4 w-4/6" />
-    </div>
-  );
-}
+import { ArticleDetailSkeleton } from "@/modules/news/components/NewsSkeletons";
 
 export default function NewsDetailPage() {
   const { slug = "" } = useParams();

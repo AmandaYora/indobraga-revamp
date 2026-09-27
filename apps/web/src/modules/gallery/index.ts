@@ -1,1 +1,1 @@
-export { GalleryGridSkeleton } from "./pages/GalleryPage";
+export { GalleryGridSkeleton } from "./components/GallerySkeletons";

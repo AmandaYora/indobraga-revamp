@@ -1,1 +1,1 @@
-export { FacilitiesContentSkeleton } from "./pages/FacilitiesPage";
+export { FacilitiesContentSkeleton } from "./components/FacilitiesSkeletons";

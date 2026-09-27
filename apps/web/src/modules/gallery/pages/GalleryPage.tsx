@@ -3,7 +3,6 @@ import { useLoaderData } from "react-router-dom";
 import { Play, X } from "lucide-react";
 import { PageHero } from "@/shared/components/ui/page-hero";
 import { OptionalImage } from "@/shared/components/ui/media-placeholder";
-import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Seo } from "@/modules/site";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { siteService } from "@/modules/site";
@@ -11,6 +10,7 @@ import type { CursorMeta } from "@/shared/services/http-client";
 import { formatDateId } from "@/shared/lib/date";
 import { cn } from "@/shared/lib/cn";
 import type { ContractSchemas } from "@/shared/types/contract";
+import { GalleryGridSkeleton } from "@/modules/gallery/components/GallerySkeletons";
 
 type GalleryItem = ContractSchemas["PublicGalleryItem"];
 const GALLERY_BATCH_SIZE = 8;
@@ -19,20 +19,6 @@ const EMPTY_GALLERY_LIST: { items: GalleryItem[]; meta?: CursorMeta } = {
   items: [],
   meta: { limit: 8, next_cursor: null, has_more: false },
 };
-
-export function GalleryGridSkeleton({ count = 8 }: { count?: number }) {
-  return (
-    <div role="status" aria-live="polite" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <span className="sr-only">Memuat galeri.</span>
-      {Array.from({ length: count }, (_, index) => (
-        <Skeleton
-          key={index}
-          className={cn(index % 7 === 0 && "row-span-2 sm:col-span-2", "aspect-square")}
-        />
-      ))}
-    </div>
-  );
-}
 
 function GalleryLightbox({
   item,

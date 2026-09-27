@@ -2,7 +2,6 @@ import { Link, useLoaderData, useSearchParams } from "react-router-dom";
 import { useMemo } from "react";
 import { PageHero } from "@/shared/components/ui/page-hero";
 import { OptionalImage } from "@/shared/components/ui/media-placeholder";
-import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Seo } from "@/modules/site";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { siteService } from "@/modules/site";
@@ -12,22 +11,12 @@ import { newsListPath } from "@/app/routes/route-paths";
 import { cn } from "@/shared/lib/cn";
 import { newsSearchSchema } from "@/modules/news/schemas/news-search.schema";
 import type { ContractSchemas } from "@/shared/types/contract";
+import { NewsGridSkeleton } from "@/modules/news/components/NewsSkeletons";
 
 export const NEWS_PAGE_SIZE = 6;
 
 function parsePage(value: string | null): number {
   return newsSearchSchema.parse({ page: value }).page;
-}
-
-export function NewsGridSkeleton({ count = 6 }: { count?: number }) {
-  return (
-    <div role="status" aria-live="polite" className="grid gap-4 md:grid-cols-3">
-      <span className="sr-only">Memuat berita.</span>
-      {Array.from({ length: count }, (_, index) => (
-        <Skeleton key={index} className="aspect-[16/9]" />
-      ))}
-    </div>
-  );
 }
 
 export default function NewsListPage() {
