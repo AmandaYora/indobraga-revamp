@@ -1,255 +1,241 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
+import {
+  Mail,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Server,
+  ShieldCheck,
+  Trash2,
+  Unplug,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { emailAccountsService } from "@/modules/email/services/email.service";
 import { PageTitle } from "@/shared/components/ui/page-title";
 import { Card } from "@/shared/components/ui/card";
-import { Button } from "@/shared/components/ui/button";
+import { PrimaryButton } from "@/shared/components/ui/action-buttons";
+import { ActionButtonGroup, IconActionButton } from "@/shared/components/ui/icon-action-button";
 import { TablePagination } from "@/shared/components/ui/pagination";
 import {
-  CrudModal,
   ConfirmDialog,
+  CrudModal,
   Field,
-  TextInput,
   Select,
+  TextInput,
 } from "@/modules/content/components/CrudModal";
+import { StatusBadge } from "@/modules/content/components/StatusBadge";
+import { emailAccountStatus } from "@/modules/content/lib/status-map";
 import { EmptyState, ErrorState, LoadingState } from "@/shared/components/feedback/states";
 import { Seo } from "@/modules/site";
-import { ApiError, getUserFacingErrorMessage } from "@/shared/services/api-error";
-import { StatusBadge, emailAccountStatus } from "@/modules/content";
+import { getUserFacingErrorMessage } from "@/shared/services/api-error";
 import type { ContractSchemas } from "@/shared/types/contract";
 
 type EmailAccount = ContractSchemas["EmailAccount"];
-type SmtpSecurity = ContractSchemas["SmtpSecurity"];
+type SmtpAccountPayload = ContractSchemas["SmtpAccountInput"];
+type Provider = "google" | "smtp";
 
-const PROVIDER_LABEL: Record<string, string> = {
-  google: "Google",
-  smtp: "SMTP",
+/** Query yang ditambahkan callback OAuth Google saat kembali ke halaman ini. */
+const OAUTH_RETURN_PARAMS = ["connected", "status", "reason"] as const;
+
+const EMPTY_SMTP_FORM: SmtpAccountPayload = {
+  email_address: "",
+  display_name: "",
+  smtp_host: "smtp.hostinger.com",
+  smtp_port: 465,
+  smtp_security: "ssl_tls",
+  smtp_username: "",
+  smtp_password: "",
 };
 
-/**
- * FE-E01: search, filter provider, pagination; Google OAuth (tab baru +
- * query connected/status/reason); SMTP create/edit/reconnect/disable/hapus.
- */
+/** Port `routes/admin.email-accounts.tsx` legacy — markup, teks, toast, kelas 1:1. */
 export default function EmailAccountsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12);
+  const [pageSize, setPageSize] = useState(6);
   const [query, setQuery] = useState("");
-  const [provider, setProvider] = useState("all");
-  const [googleOpen, setGoogleOpen] = useState(false);
-  const [smtpOpen, setSmtpOpen] = useState(false);
-  const [editing, setEditing] = useState<EmailAccount | null>(null);
+  const [provider, setProvider] = useState<"all" | Provider>("all");
+  const [openChooser, setOpenChooser] = useState(false);
+  const [openForm, setOpenForm] = useState<Provider | null>(null);
+  const [target, setTarget] = useState<EmailAccount | null>(null);
+  const [googleForm, setGoogleForm] = useState({ email_hint: "", display_name: "" });
+  const [smtpForm, setSmtpForm] = useState<SmtpAccountPayload>(EMPTY_SMTP_FORM);
+  const [editTarget, setEditTarget] = useState<EmailAccount | null>(null);
+  const [editForm, setEditForm] = useState<SmtpAccountPayload>(EMPTY_SMTP_FORM);
+  const [deleteTarget, setDeleteTarget] = useState<EmailAccount | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [confirm, setConfirm] = useState<null | {
-    title: string;
-    description?: string;
-    action: () => Promise<void>;
-  }>(null);
 
-  const [emailHint, setEmailHint] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [smtp, setSmtp] = useState({
-    email_address: "",
-    display_name: "",
-    smtp_host: "smtp.hostinger.com",
-    smtp_port: "465",
-    smtp_username: "",
-    smtp_password: "",
-    smtp_security: "ssl_tls" as SmtpSecurity,
-  });
-
-  // Menangani query `connected/status/reason` saat kembali dari Google OAuth.
+  // Kembali dari OAuth Google: legacy tidak menampilkan toast; query callback cukup dibersihkan.
   useEffect(() => {
-    const connected = searchParams.get("connected");
-    if (connected === null) return;
-    const status = searchParams.get("status") ?? "";
-    const reason = searchParams.get("reason") ?? "";
-    if (connected === "true") {
-      toast.success("Akun Google terhubung");
-    } else {
-      toast.error("Akun Google gagal terhubung", {
-        description: reason || status || undefined,
-      });
-    }
-    searchParams.delete("connected");
-    searchParams.delete("status");
-    searchParams.delete("reason");
-    setSearchParams(searchParams, { replace: true });
+    if (!OAUTH_RETURN_PARAMS.some((key) => searchParams.has(key))) return;
+    const next = new URLSearchParams(searchParams);
+    OAUTH_RETURN_PARAMS.forEach((key) => next.delete(key));
+    setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  const { data, error, loading, reload } = useApiQuery(
-    ["admin", "email-accounts", page, pageSize, query, provider],
-    () =>
-      emailAccountsService.list({
-        page,
-        limit: pageSize,
-        ...(query.trim() ? { q: query.trim() } : {}),
-        ...(provider === "all" ? {} : { provider }),
-      }),
+  const accounts = useApiQuery(["admin", "email-accounts", page, pageSize, provider, query], () =>
+    emailAccountsService.list({
+      page,
+      limit: pageSize,
+      q: query || undefined,
+      provider: provider === "all" ? undefined : provider,
+    }),
   );
+  const list = accounts.data?.items ?? [];
+  const pagination = accounts.data?.pagination;
+  const start =
+    pagination && pagination.total > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
+  const end = pagination ? Math.min(pagination.page * pagination.limit, pagination.total) : 0;
 
-  const items = data?.items ?? [];
-  const pagination = data?.pagination ?? { page: 1, limit: pageSize, total: 0, total_pages: 1 };
+  // Legacy me-reset ke halaman 1 saat ukuran halaman / provider / pencarian berubah.
+  const changeQuery = (value: string) => {
+    setQuery(value);
+    setPage(1);
+  };
+  const changeProvider = (value: "all" | Provider) => {
+    setProvider(value);
+    setPage(1);
+  };
+  const changePageSize = (value: number) => {
+    setPageSize(value);
+    setPage(1);
+  };
 
-  async function runAction(action: () => Promise<void>, successMessage: string) {
-    try {
-      await action();
-      toast.success(successMessage);
-      reload();
-    } catch (actionError) {
-      toast.error("Aksi gagal", {
-        description: actionError instanceof ApiError ? actionError.message : undefined,
-      });
-    }
-  }
-
-  async function handleReconnect(item: EmailAccount) {
-    // Paritas legacy: Google → buka authorization_url tab baru; SMTP → re-validasi.
-    if (item.provider === "google") {
-      try {
-        const result = await emailAccountsService.googleOAuthUrl({
-          email_hint: item.email_address,
-          display_name: item.display_name ?? undefined,
-        });
-        window.open(result.authorization_url, "_blank", "noopener,noreferrer");
-      } catch (requestError) {
-        toast.error("Gagal membuat tautan OAuth", {
-          description:
-            requestError instanceof ApiError ? getUserFacingErrorMessage(requestError) : undefined,
-        });
-      }
-      return;
-    }
-    await runAction(
-      () => emailAccountsService.reconnect(item.id).then(() => undefined),
-      "Menghubungkan ulang...",
-    );
-  }
-
-  async function handleGoogleConnect() {
+  const openGoogleOAuth = async () => {
     setSaving(true);
     try {
-      const result = await emailAccountsService.googleOAuthUrl({
-        ...(emailHint.trim() ? { email_hint: emailHint.trim() } : {}),
-        ...(displayName.trim() ? { display_name: displayName.trim() } : {}),
-      });
+      const result = await emailAccountsService.googleOAuthUrl(googleForm);
       window.open(result.authorization_url, "_blank", "noopener,noreferrer");
-      setGoogleOpen(false);
-    } catch (requestError) {
-      toast.error("Gagal membuat tautan OAuth", {
-        description:
-          requestError instanceof ApiError ? getUserFacingErrorMessage(requestError) : undefined,
+      toast.success("Halaman izin Google dibuka");
+      setOpenForm(null);
+    } catch (error) {
+      toast.error("Hubungkan Google gagal dimulai", {
+        description: getUserFacingErrorMessage(error, { action: "save" }),
       });
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  function openSmtpCreate() {
-    setEditing(null);
-    setSmtp({
-      email_address: "",
-      display_name: "",
-      smtp_host: "smtp.hostinger.com",
-      smtp_port: "465",
-      smtp_username: "",
-      smtp_password: "",
-      smtp_security: "ssl_tls",
-    });
-    setSmtpOpen(true);
-  }
+  const saveSmtp = async () => {
+    setSaving(true);
+    try {
+      await emailAccountsService.createSmtp(smtpForm);
+      toast.success("Akun email hosting (SMTP) berhasil disimpan dan dicek");
+      setOpenForm(null);
+      accounts.reload();
+    } catch (error) {
+      toast.error("Akun email hosting (SMTP) gagal disimpan", {
+        description: getUserFacingErrorMessage(error, { action: "save" }),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  function openSmtpEdit(item: EmailAccount) {
-    setEditing(item);
-    setDisplayName(item.display_name ?? "");
-    if (item.provider !== "google") {
-      setSmtp({
-        email_address: item.email_address,
-        display_name: item.display_name ?? "",
-        smtp_host: item.smtp_host ?? "smtp.hostinger.com",
-        smtp_port: String(item.smtp_port ?? 465),
-        smtp_username: item.smtp_username ?? "",
-        smtp_password: "",
-        smtp_security: (item.smtp_security ?? "ssl_tls") as SmtpSecurity,
+  const reconnect = async (account: EmailAccount) => {
+    try {
+      const result = await emailAccountsService.reconnect(account.id);
+      if ("authorization_url" in result) {
+        window.open(result.authorization_url, "_blank", "noopener,noreferrer");
+        toast.success("Halaman izin ulang Google dibuka");
+      } else {
+        if (result.valid) {
+          toast.success(result.message);
+        } else {
+          toast.error(result.message);
+        }
+        accounts.reload();
+      }
+    } catch (error) {
+      toast.error("Hubungkan ulang gagal", {
+        description: getUserFacingErrorMessage(error, { action: "save" }),
       });
     }
-    setSmtpOpen(true);
-  }
+  };
 
-  async function handleSmtpSubmit() {
-    if (editing?.provider === "google") {
-      if (displayName.trim() === "") {
-        toast.error("Nama tampilan wajib diisi.");
-        return;
-      }
-      setSaving(true);
-      try {
-        await emailAccountsService.update(editing.id, { display_name: displayName.trim() });
-        toast.success("Akun diperbarui");
-        setSmtpOpen(false);
-        reload();
-      } catch (requestError) {
-        toast.error("Simpan gagal", {
-          description: requestError instanceof ApiError ? requestError.message : undefined,
-        });
-      } finally {
-        setSaving(false);
-      }
+  const disable = async () => {
+    if (!target) {
       return;
     }
-    if (smtp.email_address.trim() === "" || smtp.smtp_host.trim() === "") {
-      toast.error("Email dan host SMTP wajib diisi.");
+    try {
+      await emailAccountsService.disable(target.id);
+      toast.success("Akun email diputuskan");
+      setTarget(null);
+      accounts.reload();
+    } catch (error) {
+      toast.error("Akun gagal diputuskan", {
+        description: getUserFacingErrorMessage(error, { action: "delete" }),
+      });
+    }
+  };
+
+  const openEdit = (account: EmailAccount) => {
+    setEditTarget(account);
+    setEditForm({
+      email_address: account.email_address,
+      display_name: account.display_name ?? "",
+      smtp_host: account.smtp_host ?? "smtp.hostinger.com",
+      smtp_port: account.smtp_port ?? 465,
+      smtp_security: account.smtp_security ?? "ssl_tls",
+      smtp_username: account.smtp_username ?? account.email_address,
+      smtp_password: "",
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editTarget) {
       return;
     }
-    const port = Number(smtp.smtp_port);
-    if (!Number.isInteger(port) || port < 1 || port > 65535) {
-      toast.error("Port SMTP tidak valid.");
-      return;
+    const body: ContractSchemas["UpdateEmailAccountInput"] = {
+      display_name: editForm.display_name,
+    };
+    if (editTarget.provider === "smtp") {
+      body.smtp_host = editForm.smtp_host;
+      body.smtp_port = editForm.smtp_port;
+      body.smtp_security = editForm.smtp_security;
+      body.smtp_username = editForm.smtp_username;
+      if (editForm.smtp_password.trim()) {
+        body.smtp_password = editForm.smtp_password;
+      }
     }
     setSaving(true);
     try {
-      if (editing) {
-        await emailAccountsService.update(editing.id, {
-          display_name: smtp.display_name.trim() || smtp.email_address.trim(),
-          smtp_host: smtp.smtp_host.trim(),
-          smtp_port: port,
-          smtp_username: smtp.smtp_username.trim(),
-          ...(smtp.smtp_password !== "" ? { smtp_password: smtp.smtp_password } : {}),
-          smtp_security: smtp.smtp_security,
-        });
-        toast.success("Akun diperbarui");
-      } else {
-        if (smtp.smtp_password === "") {
-          toast.error("Kata sandi SMTP wajib diisi.");
-          setSaving(false);
-          return;
-        }
-        if (smtp.smtp_username.trim() === "") {
-          setSmtp((current) => ({ ...current, smtp_username: smtp.email_address.trim() }));
-        }
-        await emailAccountsService.createSmtp({
-          email_address: smtp.email_address.trim(),
-          display_name: smtp.display_name.trim() || smtp.email_address.trim(),
-          smtp_host: smtp.smtp_host.trim(),
-          smtp_port: port,
-          smtp_security: smtp.smtp_security,
-          smtp_username: smtp.smtp_username.trim() || smtp.email_address.trim(),
-          smtp_password: smtp.smtp_password,
-        });
-        toast.success("Akun SMTP ditambahkan");
-      }
-      setSmtpOpen(false);
-      reload();
-    } catch (requestError) {
-      toast.error("Simpan gagal", {
-        description: requestError instanceof ApiError ? requestError.message : undefined,
+      await emailAccountsService.update(editTarget.id, body);
+      toast.success("Akun email diperbarui");
+      setEditTarget(null);
+      accounts.reload();
+    } catch (error) {
+      toast.error("Akun gagal diperbarui", {
+        description: getUserFacingErrorMessage(error, { action: "save" }),
       });
     } finally {
       setSaving(false);
     }
-  }
+  };
+
+  const doDelete = async () => {
+    if (!deleteTarget) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await emailAccountsService.remove(deleteTarget.id);
+      toast.success("Akun email dihapus");
+      setDeleteTarget(null);
+      accounts.reload();
+    } catch (error) {
+      toast.error("Akun gagal dihapus", {
+        description: getUserFacingErrorMessage(error, { action: "delete" }),
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <>
@@ -261,269 +247,411 @@ export default function EmailAccountsPage() {
       />
       <PageTitle
         title="Akun Pengirim Email"
-        desc="Hubungkan Google atau tambahkan akun SMTP untuk mengirim email."
+        desc="Kelola akun yang dipakai untuk mengirim email massal dari dashboard."
         action={
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEmailHint("");
-                setDisplayName("");
-                setGoogleOpen(true);
-              }}
-            >
-              Hubungkan Google
-            </Button>
-            <Button onClick={openSmtpCreate}>Tambah SMTP</Button>
-          </div>
+          <PrimaryButton
+            onClick={() => {
+              setOpenChooser(true);
+              setGoogleForm({ email_hint: "", display_name: "" });
+            }}
+          >
+            <Plus className="h-4 w-4" /> Tambah Akun Pengirim
+          </PrimaryButton>
         }
       />
-      <div className="mb-4 flex flex-wrap gap-2">
-        <input
-          type="search"
-          aria-label="Cari akun email"
-          placeholder="Cari email atau nama..."
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setPage(1);
-          }}
-          className="w-full max-w-sm rounded-full border border-input bg-background px-4 py-2 text-sm"
-        />
-        <select
-          aria-label="Filter provider"
-          value={provider}
-          onChange={(event) => {
-            setProvider(event.target.value);
-            setPage(1);
-          }}
-          className="rounded-full border border-input bg-background px-4 py-2 text-sm"
-        >
-          <option value="all">Semua provider</option>
-          <option value="google">Google</option>
-          <option value="smtp">SMTP</option>
-        </select>
-      </div>
 
-      {loading && !data ? (
-        <LoadingState label="Memuat akun email..." />
-      ) : error && !data ? (
-        <ErrorState error={error} onRetry={reload} />
-      ) : items.length === 0 ? (
-        <Card>
-          <EmptyState
-            title="Belum ada akun email"
-            description="Hubungkan Google atau tambahkan akun SMTP."
+      <Card className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative min-w-0 flex-1 basis-full sm:basis-auto">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(event) => changeQuery(event.target.value)}
+            placeholder="Cari email, label, atau server..."
+            aria-label="Cari email, label, atau server"
+            className="w-full rounded-full border border-border bg-secondary py-2 pl-10 pr-4 text-sm outline-none focus:border-primary"
           />
-        </Card>
-      ) : (
-        <>
-          <div className="grid gap-3 md:grid-cols-2">
-            {items.map((item) => (
-              <Card key={item.id}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">
-                      {item.display_name ?? item.email_address}
-                    </p>
-                    <p className="truncate text-sm text-muted-foreground">{item.email_address}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {PROVIDER_LABEL[item.provider] ?? item.provider}
-                    </p>
-                  </div>
-                  <StatusBadge display={emailAccountStatus(item.status)} />
+        </div>
+        <div className="flex max-w-full overflow-x-auto rounded-full border border-border bg-secondary p-1 text-xs font-semibold [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {(
+            [
+              { value: "all", label: "Semua" },
+              { value: "google", label: "Google / Gmail" },
+              { value: "smtp", label: "Email Hosting (SMTP)" },
+            ] as const
+          ).map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => changeProvider(option.value)}
+              className={`shrink-0 rounded-full px-3 py-1.5 transition ${
+                provider === option.value
+                  ? "bg-primary text-primary-foreground shadow-card"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      {accounts.loading && !accounts.data && <LoadingState label="Memuat akun pengirim email..." />}
+      {accounts.error && <ErrorState error={accounts.error} onRetry={accounts.reload} />}
+
+      <div className="grid min-w-0 gap-4 md:grid-cols-2">
+        {list.length === 0 && !accounts.loading && (
+          <Card className="md:col-span-2">
+            <EmptyState title="Tidak ada akun" description="Coba kata kunci atau filter lain." />
+          </Card>
+        )}
+        {list.map((account) => (
+          <Card key={account.id}>
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-bold ${
+                    account.provider === "google"
+                      ? "bg-primary-soft text-primary"
+                      : "bg-accent/20 text-accent-foreground"
+                  }`}
+                >
+                  {account.provider === "google" ? (
+                    <Mail className="h-5 w-5" />
+                  ) : (
+                    <Server className="h-5 w-5" />
+                  )}
                 </div>
-                {item.last_error ? (
-                  <p className="mt-2 text-xs text-destructive">{item.last_error}</p>
-                ) : null}
-                <div className="mt-3 flex flex-wrap gap-1">
-                  <Button size="sm" variant="outline" onClick={() => openSmtpEdit(item)}>
-                    Ubah
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => void handleReconnect(item)}>
-                    Hubungkan ulang
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      void runAction(
-                        () => emailAccountsService.disable(item.id).then(() => undefined),
-                        "Akun dinonaktifkan",
-                      )
-                    }
-                  >
-                    Nonaktifkan
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-destructive"
-                    onClick={() =>
-                      setConfirm({
-                        title: "Hapus akun ini?",
-                        description: `${item.email_address} tidak bisa lagi dipakai mengirim email.`,
-                        action: () => emailAccountsService.remove(item.id),
-                      })
-                    }
-                  >
-                    Hapus
-                  </Button>
+                <div className="min-w-0">
+                  <p className="text-anywhere font-semibold">{account.email_address}</p>
+                  <p className="text-anywhere text-xs text-muted-foreground">
+                    {account.display_name} -{" "}
+                    {account.provider === "google"
+                      ? "Google / Gmail"
+                      : `Email Hosting (SMTP): ${account.smtp_host ?? ""}`}
+                  </p>
+                  {account.last_error && (
+                    <p className="text-anywhere mt-0.5 text-[11px] text-destructive">
+                      Perlu dicek ulang sebelum dipakai: {account.last_error}
+                    </p>
+                  )}
                 </div>
-              </Card>
-            ))}
-          </div>
+              </div>
+              <div className="shrink-0">
+                <StatusBadge display={emailAccountStatus(account.status)} />
+              </div>
+            </div>
+            <ActionButtonGroup className="mt-4 justify-start">
+              <IconActionButton
+                onClick={() => openEdit(account)}
+                label={`Ubah akun ${account.email_address}`}
+                tooltip="Ubah"
+                icon={<Pencil className="h-4 w-4" />}
+                tone="default"
+              />
+              <IconActionButton
+                onClick={() => void reconnect(account)}
+                label={
+                  account.provider === "google"
+                    ? `Hubungkan ulang ${account.email_address}`
+                    : `Perbarui koneksi email hosting (SMTP) ${account.email_address}`
+                }
+                tooltip={account.provider === "google" ? "Hubungkan ulang" : "Perbarui koneksi"}
+                icon={<RefreshCw className="h-4 w-4" />}
+                tone="primary"
+              />
+              <IconActionButton
+                onClick={() => setTarget(account)}
+                label={`Putuskan akun ${account.email_address}`}
+                tooltip="Putuskan (nonaktifkan)"
+                icon={<Unplug className="h-4 w-4" />}
+                tone="warning"
+              />
+              <IconActionButton
+                onClick={() => setDeleteTarget(account)}
+                label={`Hapus akun ${account.email_address}`}
+                tooltip="Hapus permanen"
+                icon={<Trash2 className="h-4 w-4" />}
+                tone="danger"
+              />
+            </ActionButtonGroup>
+          </Card>
+        ))}
+      </div>
+      {pagination && (
+        <div className="mt-3">
           <TablePagination
             page={pagination.page}
-            pageCount={Math.max(1, pagination.total_pages)}
+            pageCount={pagination.total_pages}
             pageSize={pagination.limit}
             total={pagination.total}
-            start={pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1}
-            end={Math.min(pagination.page * pagination.limit, pagination.total)}
+            start={start}
+            end={end}
             onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setPage(1);
-            }}
-            pageSizeOptions={[6, 12, 24]}
+            onPageSizeChange={changePageSize}
             itemLabel="akun"
+            pageSizeOptions={[6, 12, 24]}
+            className="rounded-xl border bg-card"
           />
-        </>
+        </div>
       )}
 
       <CrudModal
-        open={googleOpen}
-        onOpenChange={setGoogleOpen}
-        title="Hubungkan Google"
-        description="Tautan otorisasi dibuka di tab baru. Setelah selesai, kembali ke halaman ini."
-        submitLabel="Buka tautan Google"
-        submitting={saving}
-        onSubmit={() => void handleGoogleConnect()}
+        open={openChooser}
+        onOpenChange={setOpenChooser}
+        title="Pilih Jenis Akun Pengirim"
+        description="Pilih cara menghubungkan email yang akan dipakai untuk mengirim email massal."
+        submitLabel="Tutup"
+        onSubmit={() => setOpenChooser(false)}
       >
-        <Field label="Email Google" hint="Opsional — petunjuk akun yang akan dihubungkan.">
-          <TextInput
-            type="email"
-            value={emailHint}
-            onChange={(event) => setEmailHint(event.target.value)}
-            placeholder="nama@gmail.com"
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          <ProviderCard
+            title="Google / Gmail"
+            subtitle="Gmail / Google Workspace"
+            icon={<Mail className="h-5 w-5" />}
+            onClick={() => {
+              setOpenChooser(false);
+              setOpenForm("google");
+            }}
           />
-        </Field>
-        <Field label="Nama tampilan">
-          <TextInput
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-            placeholder="Indobraga"
+          <ProviderCard
+            title="Email Hosting (SMTP)"
+            subtitle="Hostinger / cPanel / SMTP"
+            icon={<Server className="h-5 w-5" />}
+            onClick={() => {
+              setOpenChooser(false);
+              setOpenForm("smtp");
+            }}
           />
-        </Field>
+        </div>
       </CrudModal>
 
       <CrudModal
-        open={smtpOpen}
-        onOpenChange={setSmtpOpen}
-        title={editing ? "Ubah akun email" : "Tambah akun SMTP"}
+        open={openForm === "google"}
+        onOpenChange={(open) => !open && setOpenForm(null)}
+        title="Hubungkan Akun Google"
+        description="Anda akan diarahkan ke Google untuk memberi izin pengiriman email."
         submitting={saving}
-        onSubmit={() => void handleSmtpSubmit()}
+        onSubmit={() => void openGoogleOAuth()}
+        submitLabel="Lanjutkan ke Google"
       >
-        {editing?.provider === "google" ? (
-          <Field label="Nama tampilan" required>
-            <TextInput
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-            />
-          </Field>
-        ) : (
-          <>
-            <Field label="Alamat email" required>
-              <TextInput
-                type="email"
-                value={smtp.email_address}
-                disabled={!!editing}
-                onChange={(event) =>
-                  setSmtp((current) => ({ ...current, email_address: event.target.value }))
-                }
-              />
-            </Field>
-            <Field label="Nama tampilan" required>
-              <TextInput
-                value={smtp.display_name}
-                onChange={(event) =>
-                  setSmtp((current) => ({ ...current, display_name: event.target.value }))
-                }
-              />
-            </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Host SMTP" required>
-                <TextInput
-                  value={smtp.smtp_host}
-                  onChange={(event) =>
-                    setSmtp((current) => ({ ...current, smtp_host: event.target.value }))
-                  }
-                />
-              </Field>
-              <Field label="Port" required>
-                <TextInput
-                  type="number"
-                  value={smtp.smtp_port}
-                  onChange={(event) =>
-                    setSmtp((current) => ({ ...current, smtp_port: event.target.value }))
-                  }
-                />
-              </Field>
-            </div>
-            <Field label="Username SMTP" required>
-              <TextInput
-                value={smtp.smtp_username}
-                placeholder="Otomatis memakai alamat email bila kosong."
-                onChange={(event) =>
-                  setSmtp((current) => ({ ...current, smtp_username: event.target.value }))
-                }
-              />
-            </Field>
-            <Field
-              label={editing ? "Kata sandi baru" : "Kata sandi SMTP"}
-              required={!editing}
-              hint={editing ? "Opsional — kosongkan bila tidak diubah." : undefined}
+        <Field label="Alamat Email">
+          <TextInput
+            type="email"
+            value={googleForm.email_hint}
+            onChange={(e) => setGoogleForm({ ...googleForm, email_hint: e.target.value })}
+            placeholder="nama@indobraga.com"
+          />
+        </Field>
+        <Field label="Label Tampilan">
+          <TextInput
+            value={googleForm.display_name}
+            onChange={(e) => setGoogleForm({ ...googleForm, display_name: e.target.value })}
+            placeholder="Marketing"
+          />
+        </Field>
+        <div className="flex items-start gap-2 rounded-xl bg-primary-soft/60 p-3 text-xs text-primary-deep">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+          <p className="text-anywhere">
+            Setelah izin diberikan, akun ini bisa dipilih saat mengirim email massal.
+          </p>
+        </div>
+      </CrudModal>
+
+      <CrudModal
+        open={openForm === "smtp"}
+        onOpenChange={(open) => !open && setOpenForm(null)}
+        title="Hubungkan Email Hosting (SMTP)"
+        description="Isi detail dari panel hosting email. Istilah dalam kurung mengikuti nama yang biasanya dipakai di dokumentasi penyedia hosting."
+        size="lg"
+        submitting={saving}
+        onSubmit={() => void saveSmtp()}
+        submitLabel="Simpan & Cek Koneksi"
+      >
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">
+          <SmtpInput
+            label="Alamat Email Pengirim"
+            value={smtpForm.email_address}
+            onChange={(value) =>
+              setSmtpForm({ ...smtpForm, email_address: value, smtp_username: value })
+            }
+            type="email"
+          />
+          <SmtpInput
+            label="Label Tampilan"
+            value={smtpForm.display_name}
+            onChange={(value) => setSmtpForm({ ...smtpForm, display_name: value })}
+          />
+          <SmtpInput
+            label="Server Email (SMTP Host)"
+            value={smtpForm.smtp_host}
+            onChange={(value) => setSmtpForm({ ...smtpForm, smtp_host: value })}
+          />
+          <SmtpInput
+            label="Port Email (SMTP Port)"
+            value={String(smtpForm.smtp_port)}
+            onChange={(value) => setSmtpForm({ ...smtpForm, smtp_port: Number(value) })}
+            type="number"
+          />
+          <SmtpInput
+            label="Username Email (SMTP Username)"
+            value={smtpForm.smtp_username}
+            onChange={(value) => setSmtpForm({ ...smtpForm, smtp_username: value })}
+          />
+          <SmtpInput
+            label="Kata Sandi Email (SMTP Password)"
+            value={smtpForm.smtp_password}
+            onChange={(value) => setSmtpForm({ ...smtpForm, smtp_password: value })}
+            type="password"
+          />
+          <Field label="Keamanan Koneksi (SMTP Security)">
+            <Select
+              value={smtpForm.smtp_security}
+              onChange={(e) =>
+                setSmtpForm({
+                  ...smtpForm,
+                  smtp_security: e.target.value as SmtpAccountPayload["smtp_security"],
+                })
+              }
             >
-              <TextInput
-                type="password"
-                value={smtp.smtp_password}
-                autoComplete="new-password"
-                onChange={(event) =>
-                  setSmtp((current) => ({ ...current, smtp_password: event.target.value }))
-                }
+              <option value="ssl_tls">SSL/TLS (465)</option>
+              <option value="starttls">STARTTLS (587)</option>
+              <option value="none">Tanpa enkripsi</option>
+            </Select>
+          </Field>
+        </div>
+      </CrudModal>
+
+      <CrudModal
+        open={Boolean(editTarget)}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+        title={editTarget ? `Ubah ${editTarget.email_address}` : "Ubah Akun"}
+        description={
+          editTarget?.provider === "google"
+            ? "Akun Google: hanya label tampilan yang bisa diubah dari sini."
+            : "Perbarui detail akun. Koneksi SMTP akan dites ulang otomatis saat disimpan."
+        }
+        size="lg"
+        submitting={saving}
+        onSubmit={() => void saveEdit()}
+        submitLabel="Simpan Perubahan"
+      >
+        <div className="grid min-w-0 gap-4 md:grid-cols-2">
+          <SmtpInput
+            label="Label Tampilan"
+            value={editForm.display_name}
+            onChange={(value) => setEditForm({ ...editForm, display_name: value })}
+          />
+          {editTarget?.provider === "smtp" && (
+            <>
+              <SmtpInput
+                label="Server Email (SMTP Host)"
+                value={editForm.smtp_host}
+                onChange={(value) => setEditForm({ ...editForm, smtp_host: value })}
               />
-            </Field>
-            <Field label="Keamanan" required>
-              <Select
-                value={smtp.smtp_security}
-                onChange={(event) =>
-                  setSmtp((current) => ({
-                    ...current,
-                    smtp_security: event.target.value as SmtpSecurity,
-                  }))
-                }
-              >
-                <option value="ssl_tls">SSL/TLS</option>
-                <option value="starttls">STARTTLS</option>
-                <option value="none">Tanpa enkripsi</option>
-              </Select>
-            </Field>
-          </>
-        )}
+              <SmtpInput
+                label="Port Email (SMTP Port)"
+                value={String(editForm.smtp_port)}
+                onChange={(value) => setEditForm({ ...editForm, smtp_port: Number(value) })}
+                type="number"
+              />
+              <SmtpInput
+                label="Username Email (SMTP Username)"
+                value={editForm.smtp_username}
+                onChange={(value) => setEditForm({ ...editForm, smtp_username: value })}
+              />
+              <Field label="Kata Sandi Email (SMTP Password)">
+                <TextInput
+                  type="password"
+                  value={editForm.smtp_password}
+                  onChange={(e) => setEditForm({ ...editForm, smtp_password: e.target.value })}
+                  placeholder="Biarkan kosong jika tidak diubah"
+                />
+              </Field>
+              <Field label="Keamanan Koneksi (SMTP Security)">
+                <Select
+                  value={editForm.smtp_security}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      smtp_security: e.target.value as SmtpAccountPayload["smtp_security"],
+                    })
+                  }
+                >
+                  <option value="ssl_tls">SSL/TLS (465)</option>
+                  <option value="starttls">STARTTLS (587)</option>
+                  <option value="none">Tanpa enkripsi</option>
+                </Select>
+              </Field>
+            </>
+          )}
+        </div>
       </CrudModal>
 
       <ConfirmDialog
-        open={confirm !== null}
-        onOpenChange={(open) => {
-          if (!open) setConfirm(null);
-        }}
-        title={confirm?.title ?? ""}
-        description={confirm?.description}
-        onConfirm={async () => {
-          if (confirm) await runAction(confirm.action, "Berhasil");
-          setConfirm(null);
-        }}
+        open={Boolean(target)}
+        onOpenChange={(open) => !open && setTarget(null)}
+        title={target ? `Putuskan ${target.email_address}?` : "Putuskan akun?"}
+        description="Akun ini tidak dapat digunakan untuk pengiriman sampai dihubungkan kembali."
+        confirmLabel="Putuskan"
+        onConfirm={disable}
+      />
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => !open && !deleting && setDeleteTarget(null)}
+        title={deleteTarget ? `Hapus permanen ${deleteTarget.email_address}?` : "Hapus akun?"}
+        description="Akun akan dihapus permanen. Jika sudah pernah dipakai untuk pengiriman email, penghapusan akan ditolak demi menjaga riwayat — gunakan Putuskan untuk menonaktifkannya."
+        confirmLabel={deleting ? "Menghapus..." : "Hapus"}
+        onConfirm={doDelete}
       />
     </>
+  );
+}
+
+function ProviderCard({
+  title,
+  subtitle,
+  icon,
+  onClick,
+}: {
+  title: string;
+  subtitle: string;
+  icon: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group min-w-0 rounded-xl border border-border p-4 text-left transition hover:border-primary hover:bg-primary-soft/40"
+    >
+      <div className="flex items-center gap-2">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-soft text-primary">
+          {icon}
+        </div>
+        <div>
+          <p className="font-semibold">{title}</p>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function SmtpInput({
+  label,
+  value,
+  onChange,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+}) {
+  return (
+    <Field label={label} required>
+      <TextInput type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+    </Field>
   );
 }

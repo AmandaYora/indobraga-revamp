@@ -1,98 +1,149 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Eye, RefreshCw, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { emailCampaignsService } from "@/modules/email/services/email.service";
 import { useAuthStore } from "@/modules/auth";
 import { PageTitle } from "@/shared/components/ui/page-title";
 import { Card } from "@/shared/components/ui/card";
-import { Button } from "@/shared/components/ui/button";
+import { PrimaryButton } from "@/shared/components/ui/action-buttons";
+import { ActionButtonGroup, IconActionButton } from "@/shared/components/ui/icon-action-button";
 import { TablePagination } from "@/shared/components/ui/pagination";
-import { CrudModal } from "@/modules/content/components/CrudModal";
+import { ConfirmDialog, CrudModal } from "@/modules/content/components/CrudModal";
+import { StatusBadge } from "@/modules/content/components/StatusBadge";
+import { campaignStatus, emailDeliveryStatus } from "@/modules/content/lib/status-map";
 import { EmptyState, ErrorState, LoadingState } from "@/shared/components/feedback/states";
 import { Seo } from "@/modules/site";
-import { ApiError, getUserFacingErrorMessage } from "@/shared/services/api-error";
-import { StatusBadge, campaignStatus, emailDeliveryStatus } from "@/modules/content";
+import { getUserFacingErrorMessage } from "@/shared/services/api-error";
 import { formatDateId } from "@/shared/lib/date";
 import type { ContractSchemas } from "@/shared/types/contract";
 
-type Campaign = ContractSchemas["Campaign"];
+type EmailCampaign = ContractSchemas["Campaign"];
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "Semua" },
-  { value: "draft", label: "Draf" },
-  { value: "pending", label: "Menunggu" },
-  { value: "processing", label: "Diproses" },
-  { value: "completed", label: "Selesai" },
-  { value: "failed", label: "Gagal" },
-];
-
-const POLL_INTERVAL_MS = 5000;
+const EMPTY_PAGE = { page: 1, limit: 10, total: 0, total_pages: 1 };
 
 /**
- * FE-E07: search, filter status, pagination, polling 5 dtk selama ada
- * kampanye pending/processing dan tab terlihat; detail penerima + log
- * (permission `email_campaign_logs.read`); resend failed (permission
- * `email_campaigns.send`).
+ * Port `routes/admin.email-history.tsx` legacy — markup, teks, toast, kelas 1:1. Izin dibaca dari
+ * store sesi (BC-26) alih-alih fetch `me` per halaman.
  */
 export default function EmailHistoryPage() {
-  const hasPermission = useAuthStore((state) => state.hasPermission);
-  const canSeeLogs = hasPermission("email_campaign_logs.read");
-  const canResend = hasPermission("email_campaigns.send");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [detail, setDetail] = useState<Campaign | null>(null);
-
-  const { data, error, loading, reload, setData } = useApiQuery(
-    ["admin", "email-campaigns", page, pageSize, query, statusFilter],
+  const [status, setStatus] = useState("all");
+  const [selected, setSelected] = useState<EmailCampaign | null>(null);
+  const [resendTarget, setResendTarget] = useState<EmailCampaign | null>(null);
+  const [resending, setResending] = useState(false);
+  const hasPermission = useAuthStore((state) => state.hasPermission);
+  const canViewLogs = hasPermission("email_campaign_logs.read");
+  const canSend = hasPermission("email_campaigns.send");
+  const loadCampaigns = useCallback(
     () =>
       emailCampaignsService.list({
         page,
         limit: pageSize,
-        ...(query.trim() ? { q: query.trim() } : {}),
-        ...(statusFilter === "all" ? {} : { status: statusFilter }),
+        q: query || undefined,
+        status: status === "all" ? undefined : status,
       }),
+    [page, pageSize, query, status],
+  );
+  const campaigns = useApiQuery(
+    ["admin", "email-campaigns", page, pageSize, query, status],
+    loadCampaigns,
+  );
+  const recipients = useApiQuery(
+    ["campaign-recipients", selected?.id],
+    () =>
+      selected
+        ? emailCampaignsService.recipients(selected.id, { limit: 10 })
+        : Promise.resolve({ items: [], pagination: EMPTY_PAGE }),
+    { enabled: Boolean(selected) },
+  );
+  const logs = useApiQuery(
+    ["campaign-logs", selected?.id],
+    () =>
+      selected && canViewLogs
+        ? emailCampaignsService.logs(selected.id, { limit: 10 })
+        : Promise.resolve({ items: [], pagination: EMPTY_PAGE }),
+    { enabled: Boolean(selected && canViewLogs) },
   );
 
-  const items = data?.items ?? [];
-
-  // Polling 5 dtk hanya selama ada kampanye pending/processing dan tab terlihat.
-  useEffect(() => {
-    const active = items.some((item) => item.status === "pending" || item.status === "processing");
-    if (!active) return;
-    const timer = window.setInterval(() => {
-      if (document.hidden) return;
-      void emailCampaignsService
-        .list({
-          page,
-          limit: pageSize,
-          ...(query.trim() ? { q: query.trim() } : {}),
-          ...(statusFilter === "all" ? {} : { status: statusFilter }),
-        })
-        .then((result) => {
-          setData({ items: result.items, pagination: result.pagination } as never);
-        })
-        .catch(() => undefined);
-    }, POLL_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, page, pageSize, query, statusFilter]);
-
-  const pagination = data?.pagination ?? { page: 1, limit: pageSize, total: 0, total_pages: 1 };
-
-  async function handleResend(item: Campaign) {
-    try {
-      await emailCampaignsService.resendFailed(item.id);
-      toast.success("Penerima gagal dijadwalkan ulang");
-      reload();
-    } catch (requestError) {
-      toast.error("Kirim ulang gagal", {
-        description:
-          requestError instanceof ApiError ? getUserFacingErrorMessage(requestError) : undefined,
-      });
+  const doResend = async () => {
+    if (!resendTarget) {
+      return;
     }
-  }
+    setResending(true);
+    try {
+      const updated = await emailCampaignsService.resendFailed(resendTarget.id);
+      toast.success(`Mengirim ulang ${resendTarget.failed_count} email yang gagal`);
+      setResendTarget(null);
+      setSelected(updated);
+      campaigns.reload();
+      recipients.reload();
+      if (canViewLogs) {
+        logs.reload();
+      }
+    } catch (error) {
+      toast.error("Gagal mengirim ulang email", {
+        description: getUserFacingErrorMessage(error, { action: "send" }),
+      });
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const list = campaigns.data?.items ?? [];
+  const pagination = campaigns.data?.pagination;
+  const start =
+    pagination && pagination.total > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
+  const end = pagination ? Math.min(pagination.page * pagination.limit, pagination.total) : 0;
+  // Hanya kampanye yang masih berjalan yang bisa berubah status, jadi polling hanya untuk itu.
+  const hasActiveCampaigns = list.some(
+    (campaign) => campaign.status === "pending" || campaign.status === "processing",
+  );
+  const setCampaignData = campaigns.setData;
+
+  // Legacy me-reset ke halaman 1 saat ukuran halaman / pencarian / status berubah.
+  const changeQuery = (value: string) => {
+    setQuery(value);
+    setPage(1);
+  };
+  const changeStatus = (value: string) => {
+    setStatus(value);
+    setPage(1);
+  };
+  const changePageSize = (value: number) => {
+    setPageSize(value);
+    setPage(1);
+  };
+
+  // Status langsung: selama ada kampanye pending/processing, segarkan daftar diam-diam (via
+  // setData, tanpa kedip loading) tiap 5 dtk; dijeda saat tab tersembunyi. Berhenti sendiri
+  // setelah semua mencapai status akhir. `cancelled` membuang respons basi (filter/halaman berganti).
+  useEffect(() => {
+    if (!hasActiveCampaigns) {
+      return;
+    }
+    let cancelled = false;
+    const poll = async () => {
+      if (document.hidden) {
+        return;
+      }
+      try {
+        const fresh = await loadCampaigns();
+        if (!cancelled) {
+          setCampaignData(fresh);
+        }
+      } catch {
+        // Abaikan kegagalan polling sesaat; tick berikutnya mencoba lagi.
+      }
+    };
+    const timer = setInterval(() => void poll(), 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [hasActiveCampaigns, loadCampaigns, setCampaignData]);
 
   return (
     <>
@@ -102,199 +153,230 @@ export default function EmailHistoryPage() {
         path="/admin/email-history"
         noindex
       />
-      <PageTitle title="Riwayat Email" desc="Pantau status pengiriman kampanye email." />
-      <div className="mb-4 flex flex-wrap gap-2">
-        <input
-          type="search"
-          aria-label="Cari kampanye"
-          placeholder="Cari kampanye..."
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setPage(1);
-          }}
-          className="w-full max-w-sm rounded-full border border-input bg-background px-4 py-2 text-sm"
-        />
+      <PageTitle
+        title="Riwayat Email"
+        desc="Pantau email yang sudah dibuat, penerima, dan hasil pengirimannya."
+      />
+      <Card className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative min-w-0 flex-1 basis-full sm:basis-auto">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(event) => changeQuery(event.target.value)}
+            placeholder="Cari nama pengiriman..."
+            aria-label="Cari nama pengiriman"
+            className="w-full rounded-full border border-border bg-secondary py-2 pl-10 pr-4 text-sm outline-none focus:border-primary"
+          />
+        </div>
         <select
+          value={status}
+          onChange={(event) => changeStatus(event.target.value)}
           aria-label="Filter status"
-          value={statusFilter}
-          onChange={(event) => {
-            setStatusFilter(event.target.value);
-            setPage(1);
-          }}
-          className="rounded-full border border-input bg-background px-4 py-2 text-sm"
+          className="max-w-full rounded-full border border-border bg-secondary px-4 py-2 text-sm"
         >
-          {STATUS_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
+          <option value="all">Semua Status</option>
+          <option value="draft">Draf</option>
+          <option value="pending">Menunggu</option>
+          <option value="processing">Mengirim</option>
+          <option value="completed">Selesai</option>
+          <option value="failed">Gagal</option>
         </select>
+      </Card>
+      {campaigns.loading && !campaigns.data && <LoadingState label="Memuat riwayat email..." />}
+      {campaigns.error && <ErrorState error={campaigns.error} onRetry={campaigns.reload} />}
+
+      <div className="grid gap-3 lg:hidden">
+        {list.length === 0 && !campaigns.loading && (
+          <Card>
+            <EmptyState title="Belum ada riwayat email" />
+          </Card>
+        )}
+        {list.map((campaign) => (
+          <Card key={campaign.id}>
+            <CampaignSummary campaign={campaign} onOpen={() => setSelected(campaign)} />
+          </Card>
+        ))}
       </div>
 
-      {loading && !data ? (
-        <LoadingState label="Memuat riwayat email..." />
-      ) : error && !data ? (
-        <ErrorState error={error} onRetry={reload} />
-      ) : items.length === 0 ? (
-        <Card>
-          <EmptyState
-            title="Belum ada kampanye"
-            description="Kirim email pertama dari halaman Kirim Email."
-          />
-        </Card>
-      ) : (
-        <>
-          <Card className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="px-4 py-2 font-medium">Nama</th>
-                  <th className="px-4 py-2 font-medium">Pengirim</th>
-                  <th className="px-4 py-2 font-medium">Penerima</th>
-                  <th className="px-4 py-2 font-medium">Terkirim</th>
-                  <th className="px-4 py-2 font-medium">Gagal</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium">Tanggal</th>
-                  <th className="px-4 py-2 text-right font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-b last:border-0">
-                    <td className="max-w-48 truncate px-4 py-2 font-medium">{item.title}</td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {item.sender_account?.email_address ?? "—"}
-                    </td>
-                    <td className="px-4 py-2">
-                      {(item.total_recipients ?? 0).toLocaleString("id-ID")}
-                    </td>
-                    <td className="px-4 py-2">{(item.sent_count ?? 0).toLocaleString("id-ID")}</td>
-                    <td className="px-4 py-2">
-                      {(item.failed_count ?? 0).toLocaleString("id-ID")}
-                    </td>
-                    <td className="px-4 py-2">
-                      <StatusBadge display={campaignStatus(item.status)} />
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-2 text-muted-foreground">
-                      {formatDateId(item.created_at, "short")}
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="outline" onClick={() => setDetail(item)}>
-                          Detail
-                        </Button>
-                        {canResend && (item.failed_count ?? 0) > 0 ? (
-                          <Button size="sm" variant="ghost" onClick={() => void handleResend(item)}>
-                            Kirim Ulang yang Gagal
-                          </Button>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+      <Card className="hidden overflow-hidden p-0 lg:block">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
+            <tr>
+              <th className="p-4 text-left">Nama Pengiriman</th>
+              <th className="p-4 text-left">Pengirim</th>
+              <th className="p-4 text-right">Penerima</th>
+              <th className="p-4 text-right">Terkirim</th>
+              <th className="p-4 text-right">Gagal</th>
+              <th className="p-4 text-left">Status</th>
+              <th className="p-4 text-left">Tanggal</th>
+              <th className="p-4 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {list.map((campaign) => (
+              <tr key={campaign.id}>
+                <td className="p-4 font-semibold">{campaign.title}</td>
+                <td className="p-4 text-muted-foreground">
+                  {campaign.sender_account.email_address}
+                </td>
+                <td className="p-4 text-right">{campaign.total_recipients}</td>
+                <td className="p-4 text-right text-success">{campaign.sent_count}</td>
+                <td className="p-4 text-right text-destructive">{campaign.failed_count}</td>
+                <td className="p-4">
+                  <StatusBadge display={campaignStatus(campaign.status)} />
+                </td>
+                <td className="p-4 text-muted-foreground">{formatDateId(campaign.created_at)}</td>
+                <td className="p-4 text-right">
+                  <ActionButtonGroup className="justify-end">
+                    <IconActionButton
+                      label={`Lihat detail email ${campaign.title}`}
+                      tooltip="Lihat detail"
+                      onClick={() => setSelected(campaign)}
+                      icon={<Eye className="h-4 w-4" />}
+                    />
+                  </ActionButtonGroup>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {list.length === 0 && !campaigns.loading && <EmptyState title="Belum ada riwayat email" />}
+      </Card>
+      {pagination && (
+        <div className="mt-3">
           <TablePagination
             page={pagination.page}
-            pageCount={Math.max(1, pagination.total_pages)}
+            pageCount={pagination.total_pages}
             pageSize={pagination.limit}
             total={pagination.total}
-            start={pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1}
-            end={Math.min(pagination.page * pagination.limit, pagination.total)}
+            start={start}
+            end={end}
             onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setPage(1);
-            }}
-            itemLabel="kampanye"
+            onPageSizeChange={changePageSize}
+            itemLabel="email"
           />
-        </>
+        </div>
       )}
 
-      {detail ? (
-        <CampaignDetailModal
-          item={detail}
-          canSeeLogs={canSeeLogs}
-          onClose={() => setDetail(null)}
-        />
-      ) : null}
+      <CrudModal
+        open={Boolean(selected)}
+        onOpenChange={(open) => !open && setSelected(null)}
+        title={selected ? selected.title : "Detail Email"}
+        submitLabel="Tutup"
+        onSubmit={() => setSelected(null)}
+        size="xl"
+      >
+        {selected && canSend && selected.failed_count > 0 && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/40 bg-warning/10 p-3">
+            <p className="text-sm">
+              <span className="font-semibold text-destructive">{selected.failed_count}</span> email
+              gagal terkirim. Kirim ulang hanya ke penerima yang gagal (yang sudah terkirim tidak
+              dikirim lagi).
+            </p>
+            {/* Seperti legacy: tombol tanpa `type` = submit form CrudModal → detail tertutup selama
+                konfirmasi, lalu dibuka lagi dengan data terbaru setelah kirim ulang berhasil. */}
+            <PrimaryButton onClick={() => setResendTarget(selected)}>
+              <RefreshCw className="h-4 w-4" /> Kirim Ulang yang Gagal
+            </PrimaryButton>
+          </div>
+        )}
+        {selected && (
+          <div className={`grid gap-4 ${canViewLogs ? "lg:grid-cols-2" : ""}`}>
+            <Card className="shadow-none">
+              <h3 className="mb-3 font-semibold">Penerima</h3>
+              {recipients.loading && (
+                <p className="text-sm text-muted-foreground">Memuat penerima...</p>
+              )}
+              {recipients.data?.items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex justify-between gap-3 border-b border-border py-2 text-sm last:border-0"
+                >
+                  <span className="text-anywhere">
+                    {item.name ? `${item.name} - ${item.email}` : item.email}
+                  </span>
+                  <StatusBadge display={emailDeliveryStatus(item.status)} />
+                </div>
+              ))}
+            </Card>
+            {canViewLogs && (
+              <Card className="shadow-none">
+                <h3 className="mb-3 font-semibold">Log Pengiriman</h3>
+                {logs.loading && <p className="text-sm text-muted-foreground">Memuat log...</p>}
+                {logs.data?.items.map((item) => (
+                  <div key={item.id} className="border-b border-border py-2 text-sm last:border-0">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-anywhere">{item.recipient_email ?? "-"}</span>
+                      <StatusBadge display={emailDeliveryStatus(item.status)} />
+                    </div>
+                    {(item.error_message || item.error_code) && (
+                      <p className="text-anywhere mt-1 text-xs text-destructive">
+                        {item.error_code ? `[${item.error_code}] ` : ""}
+                        {item.error_message ?? "Pengiriman gagal. Cek akun pengirim."}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </Card>
+            )}
+          </div>
+        )}
+      </CrudModal>
+
+      <ConfirmDialog
+        open={Boolean(resendTarget)}
+        onOpenChange={(open) => !open && !resending && setResendTarget(null)}
+        title="Kirim ulang email yang gagal?"
+        description={
+          resendTarget
+            ? `${resendTarget.failed_count} email yang gagal akan dikirim ulang ke penerimanya. Email yang sudah berhasil terkirim tidak akan dikirim lagi.`
+            : ""
+        }
+        confirmLabel={resending ? "Mengirim..." : "Kirim Ulang"}
+        destructive={false}
+        onConfirm={doResend}
+      />
     </>
   );
 }
 
-function CampaignDetailModal({
-  item,
-  canSeeLogs,
-  onClose,
-}: {
-  item: Campaign;
-  canSeeLogs: boolean;
-  onClose: () => void;
-}) {
-  const recipientsQuery = useApiQuery(["admin", "email-campaigns", item.id, "recipients"], () =>
-    emailCampaignsService.recipients(item.id, { limit: 10 }),
-  );
-  const logsQuery = useApiQuery(
-    ["admin", "email-campaigns", item.id, "logs"],
-    () => emailCampaignsService.logs(item.id, { limit: 10 }),
-    { enabled: canSeeLogs },
-  );
-
-  const recipients = recipientsQuery.data?.items ?? [];
-  const logs = logsQuery.data?.items ?? [];
-
+function CampaignSummary({ campaign, onOpen }: { campaign: EmailCampaign; onOpen: () => void }) {
   return (
-    <CrudModal
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-      title={item.title}
-      description={`${item.sent_count ?? 0}/${item.total_recipients ?? 0} terkirim · ${item.failed_count ?? 0} gagal`}
-      submitLabel="Tutup"
-      onSubmit={onClose}
-      size="lg"
-    >
-      <div>
-        <h3 className="font-medium">Penerima</h3>
-        {recipientsQuery.loading ? (
-          <p className="mt-1 text-sm text-muted-foreground">Memuat penerima...</p>
-        ) : recipients.length === 0 ? (
-          <p className="mt-1 text-sm text-muted-foreground">Belum ada data penerima.</p>
-        ) : (
-          <ul className="mt-2 space-y-1 text-sm">
-            {recipients.map((recipient) => (
-              <li key={recipient.id} className="flex items-center justify-between gap-2">
-                <span className="truncate">
-                  {recipient.name ? `${recipient.name} <${recipient.email}>` : recipient.email}
-                </span>
-                <StatusBadge display={emailDeliveryStatus(recipient.status)} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      {canSeeLogs ? (
-        <div>
-          <h3 className="font-medium">Log pengiriman</h3>
-          {logsQuery.loading ? (
-            <p className="mt-1 text-sm text-muted-foreground">Memuat log...</p>
-          ) : logs.length === 0 ? (
-            <p className="mt-1 text-sm text-muted-foreground">Belum ada log.</p>
-          ) : (
-            <ul className="mt-2 space-y-1 font-mono text-xs">
-              {logs.map((log) => (
-                <li key={log.id} className="rounded-lg bg-muted/40 px-2 py-1">
-                  {log.error_code ? `[${log.error_code}] ` : ""}
-                  {log.error_message ?? `${log.recipient_email} — ${log.status}`}
-                </li>
-              ))}
-            </ul>
-          )}
+    <>
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-anywhere font-semibold">{campaign.title}</p>
+          <p className="text-anywhere text-xs text-muted-foreground">
+            {campaign.sender_account.email_address}
+          </p>
+          <p className="text-xs text-muted-foreground">{formatDateId(campaign.created_at)}</p>
         </div>
-      ) : null}
-    </CrudModal>
+        <div className="shrink-0">
+          <StatusBadge display={campaignStatus(campaign.status)} />
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
+        <div className="rounded-lg bg-secondary p-2">
+          <p className="font-semibold text-foreground">{campaign.total_recipients}</p>
+          <p className="text-muted-foreground">Penerima</p>
+        </div>
+        <div className="rounded-lg bg-success/10 p-2">
+          <p className="font-semibold text-success">{campaign.sent_count}</p>
+          <p className="text-muted-foreground">Terkirim</p>
+        </div>
+        <div className="rounded-lg bg-destructive/10 p-2">
+          <p className="font-semibold text-destructive">{campaign.failed_count}</p>
+          <p className="text-muted-foreground">Gagal</p>
+        </div>
+      </div>
+      <ActionButtonGroup className="mt-3 justify-start">
+        <IconActionButton
+          label={`Lihat detail email ${campaign.title}`}
+          tooltip="Lihat detail"
+          onClick={onOpen}
+          icon={<Eye className="h-4 w-4" />}
+        />
+      </ActionButtonGroup>
+    </>
   );
 }

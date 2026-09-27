@@ -1,4 +1,5 @@
-export { EmailContentEditor } from "./components/EmailContentEditor";
+export { EmailContentEditor, VariableHints } from "./components/EmailContentEditor";
+export { buildPreviewSrcDoc } from "./lib/preview-document";
 export {
   emailAccountsService,
   emailTemplatesService,

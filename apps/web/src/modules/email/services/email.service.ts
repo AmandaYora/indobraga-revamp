@@ -20,11 +20,6 @@ export const emailAccountsService = {
   list(params?: { page?: number; limit?: number; q?: string; provider?: string; status?: string }) {
     return list<EmailAccount>(API.admin.emailAccounts, params);
   },
-  connectedAccounts(): Promise<EmailAccount[]> {
-    return list<EmailAccount>(API.admin.emailAccounts, { status: "connected", limit: 100 }).then(
-      (result) => result.items,
-    );
-  },
   async googleOAuthUrl(payload: {
     email_hint?: string;
     display_name?: string;
@@ -52,19 +47,20 @@ export const emailAccountsService = {
     );
     return (response.data as ApiData<EmailAccount>).data;
   },
-  async reconnect(id: number): Promise<unknown> {
-    const response = await httpClient.post<ApiData<unknown>>(
+  /** Google → `{authorization_url, state_expires_at}`; SMTP → `{provider:"smtp", valid, account, message}`. */
+  async reconnect(id: number): Promise<ContractSchemas["EmailAccountReconnectResult"]> {
+    const response = await httpClient.post<ApiData<ContractSchemas["EmailAccountReconnectResult"]>>(
       `${API.admin.emailAccounts}/${id}/reconnect`,
       {},
     );
-    return (response.data as ApiData<unknown>).data;
+    return (response.data as ApiData<ContractSchemas["EmailAccountReconnectResult"]>).data;
   },
-  async disable(id: number): Promise<unknown> {
-    const response = await httpClient.post<ApiData<unknown>>(
+  async disable(id: number): Promise<EmailAccount> {
+    const response = await httpClient.post<ApiData<EmailAccount>>(
       `${API.admin.emailAccounts}/${id}/disable`,
       {},
     );
-    return (response.data as ApiData<unknown>).data;
+    return (response.data as ApiData<EmailAccount>).data;
   },
   async remove(id: number): Promise<void> {
     await httpClient.delete(`${API.admin.emailAccounts}/${id}`);
@@ -129,19 +125,19 @@ export const emailCampaignsService = {
     );
     return (response.data as ApiData<Campaign>).data;
   },
-  async send(id: number): Promise<unknown> {
-    const response = await httpClient.post<ApiData<unknown>>(
+  async send(id: number): Promise<Campaign> {
+    const response = await httpClient.post<ApiData<Campaign>>(
       `${API.admin.emailCampaigns}/${id}/send`,
       {},
     );
-    return (response.data as ApiData<unknown>).data;
+    return (response.data as ApiData<Campaign>).data;
   },
-  async resendFailed(id: number): Promise<unknown> {
-    const response = await httpClient.post<ApiData<unknown>>(
+  async resendFailed(id: number): Promise<Campaign> {
+    const response = await httpClient.post<ApiData<Campaign>>(
       `${API.admin.emailCampaigns}/${id}/resend-failed`,
       {},
     );
-    return (response.data as ApiData<unknown>).data;
+    return (response.data as ApiData<Campaign>).data;
   },
   async recipients(
     id: number,
