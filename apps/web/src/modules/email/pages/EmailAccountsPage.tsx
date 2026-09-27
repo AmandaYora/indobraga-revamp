@@ -5,7 +5,6 @@ import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { emailAccountsService } from "@/modules/email/services/email.service";
 import { PageTitle } from "@/shared/components/ui/page-title";
 import { Card } from "@/shared/components/ui/card";
-import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TablePagination } from "@/shared/components/ui/pagination";
 import {
@@ -18,21 +17,11 @@ import {
 import { EmptyState, ErrorState, LoadingState } from "@/shared/components/feedback/states";
 import { Seo } from "@/modules/site";
 import { ApiError, getUserFacingErrorMessage } from "@/shared/services/api-error";
-import { accountStatusTone } from "@/modules/content";
+import { StatusBadge, emailAccountStatus } from "@/modules/content";
 import type { ContractSchemas } from "@/shared/types/contract";
 
 type EmailAccount = ContractSchemas["EmailAccount"];
 type SmtpSecurity = ContractSchemas["SmtpSecurity"];
-
-const STATUS_LABEL: Record<string, string> = {
-  connected: "Terhubung",
-  needs_reconnect: "Perlu Hubungkan Ulang",
-  expired: "Kedaluwarsa",
-  revoked: "Akses Dicabut",
-  disabled: "Nonaktif",
-  active: "Aktif",
-  invalid: "Tidak Valid",
-};
 
 const PROVIDER_LABEL: Record<string, string> = {
   google: "Google",
@@ -321,10 +310,12 @@ export default function EmailAccountsPage() {
       ) : error && !data ? (
         <ErrorState error={error} onRetry={reload} />
       ) : items.length === 0 ? (
-        <EmptyState
-          title="Belum ada akun email"
-          description="Hubungkan Google atau tambahkan akun SMTP."
-        />
+        <Card>
+          <EmptyState
+            title="Belum ada akun email"
+            description="Hubungkan Google atau tambahkan akun SMTP."
+          />
+        </Card>
       ) : (
         <>
           <div className="grid gap-3 md:grid-cols-2">
@@ -340,9 +331,7 @@ export default function EmailAccountsPage() {
                       {PROVIDER_LABEL[item.provider] ?? item.provider}
                     </p>
                   </div>
-                  <Badge tone={accountStatusTone(item.status)}>
-                    {STATUS_LABEL[item.status] ?? item.status}
-                  </Badge>
+                  <StatusBadge display={emailAccountStatus(item.status)} />
                 </div>
                 {item.last_error ? (
                   <p className="mt-2 text-xs text-destructive">{item.last_error}</p>

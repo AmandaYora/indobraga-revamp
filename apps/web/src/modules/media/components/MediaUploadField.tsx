@@ -1,13 +1,26 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { Loader2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
+import { Field } from "@/modules/content/components/CrudModal";
 import { prepareImageForUpload } from "@/shared/lib/image-compression";
-import { mediaService } from "@/modules/media";
-import { ApiError, getUserFacingErrorMessage } from "@/shared/services/api-error";
+import { getUserFacingErrorMessage } from "@/shared/services/api-error";
 import type { ContractSchemas } from "@/shared/types/contract";
+import { mediaService } from "../services/media.service";
 
 type MediaItem = ContractSchemas["MediaItem"];
 type MediaUsage = ContractSchemas["MediaUsage"];
 
+type MediaUploadFieldProps = {
+  label?: string;
+  hint?: string;
+  usage: MediaUsage;
+  value?: number | null;
+  previewUrl?: string | null;
+  accept?: string;
+  onUploaded: (media: MediaItem) => void;
+};
+
+/** Port 1:1 `components/admin/MediaUploadField.tsx` legacy (label & hint dirender lewat `Field`). */
 export function MediaUploadField({
   label = "Gambar",
   hint,
@@ -16,83 +29,68 @@ export function MediaUploadField({
   previewUrl,
   accept = "image/*",
   onUploaded,
-}: {
-  label?: string;
-  hint?: string;
-  usage: MediaUsage;
-  value?: number | null;
-  previewUrl?: string | null;
-  accept?: string;
-  onUploaded: (media: MediaItem) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
+}: MediaUploadFieldProps) {
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState<number | null>(null);
 
-  async function handleFile(file: File | undefined) {
-    if (!file || uploading) return;
+  const upload = async (file: File | undefined) => {
+    if (!file) {
+      return;
+    }
+
     setUploading(true);
-    setProgress(0);
     try {
       const prepared = await prepareImageForUpload(file);
-      const media = await mediaService.uploadWithProgress(
-        prepared.file,
-        { usage, alt_text: file.name },
-        (percent) => setProgress(percent),
-      );
+      const media = await mediaService.upload(prepared.file, {
+        usage,
+        alt_text: file.name,
+      });
       onUploaded(media);
       toast.success("Media berhasil diunggah");
     } catch (error) {
-      if (
-        error instanceof ApiError &&
-        (error.code === "PAYLOAD_TOO_LARGE" || error.code === "UNSUPPORTED_MEDIA_TYPE")
-      ) {
-        toast.error("Unggah gagal", { description: getUserFacingErrorMessage(error) });
-      } else {
-        toast.error("Unggah gagal", {
-          description: error instanceof ApiError ? getUserFacingErrorMessage(error) : undefined,
-        });
-      }
+      toast.error("Media gagal diunggah", {
+        description: getUserFacingErrorMessage(error, { action: "upload" }),
+      });
     } finally {
       setUploading(false);
-      setProgress(null);
-      if (inputRef.current) inputRef.current.value = "";
     }
-  }
+  };
 
   return (
-    <div>
-      <p className="mb-1 text-sm font-medium">{label}</p>
-      <button
-        type="button"
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading}
-        className="flex w-full items-center gap-4 rounded-xl border border-dashed border-input p-4 text-left hover:bg-muted/50 disabled:opacity-50"
-      >
-        {previewUrl ? (
-          <img src={previewUrl} alt="" className="h-14 w-20 rounded-lg object-cover" />
-        ) : (
-          <span className="flex h-14 w-20 items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
-            {value ? `#${value}` : "Belum ada"}
-          </span>
-        )}
-        <span className="text-sm text-muted-foreground">
-          {uploading
-            ? progress !== null
-              ? `Mengunggah... ${progress}%`
-              : "Mengunggah..."
-            : "Klik untuk memilih file"}
-        </span>
-      </button>
-      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        className="hidden"
-        aria-label={label}
-        onChange={(event) => void handleFile(event.target.files?.[0])}
-      />
-    </div>
+    <Field
+      label={label}
+      hint={
+        hint ??
+        (value
+          ? "Media sudah dipilih dan siap dipakai."
+          : "Unggah file agar konten bisa dipublikasikan.")
+      }
+    >
+      <label className="group flex cursor-pointer flex-col gap-3 rounded-xl border-2 border-dashed border-border bg-secondary p-3 transition hover:border-primary sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-background">
+          {uploading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          ) : previewUrl ? (
+            <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <UploadCloud className="h-6 w-6 text-muted-foreground" />
+          )}
+        </div>
+        <div className="min-w-0 text-center text-sm sm:text-left">
+          <p className="font-semibold text-foreground">
+            {uploading ? "Mengunggah..." : "Klik untuk unggah / ganti"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Gambar akan otomatis disiapkan dalam ukuran yang sesuai untuk website.
+          </p>
+        </div>
+        <input
+          type="file"
+          accept={accept}
+          className="hidden"
+          disabled={uploading}
+          onChange={(event) => upload(event.target.files?.[0])}
+        />
+      </label>
+    </Field>
   );
 }

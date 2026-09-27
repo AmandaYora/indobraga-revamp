@@ -1,65 +1,71 @@
 import { ResourceManager } from "@/modules/content/components/ResourceManager";
 import { formatDateId } from "@/shared/lib/date";
 
+/* Port `routes/admin.news.tsx` legacy — props, teks, dan markup kolom 1:1. */
+
 interface NewsArticle {
   id: number;
   status: string;
-  title?: string | null;
-  slug?: string | null;
-  category?: string | null;
-  excerpt?: string | null;
+  sort_order?: number;
+  title: string;
+  slug: string;
+  category: string;
+  excerpt: string;
+  content?: string[];
+  thumbnail_media_file_id?: number | null;
   published_at?: string | null;
 }
 
-/** FE-C15: field paragraf (split per baris), thumbnail & OG media, field SEO. */
 export default function NewsAdminPage() {
   return (
     <ResourceManager<NewsArticle>
       resource="news"
       title="Berita"
-      description="Kelola artikel yang tampil di halaman berita publik."
-      addLabel="Tambah berita"
+      description="Kelola artikel dan update perusahaan untuk website publik."
+      addLabel="Tambah Berita"
       itemLabel="berita"
       seoPath="/admin/news"
-      searchPlaceholder="Cari berita..."
       imageField="thumbnail_media_file_id"
+      searchPlaceholder="Cari judul, alamat halaman, atau ringkasan..."
+      primaryText={(item) => item.title}
+      secondaryText={(item) => item.excerpt}
+      columns={[
+        {
+          label: "Artikel",
+          value: (item) => (
+            <div>
+              <p className="font-semibold">{item.title}</p>
+              <p className="line-clamp-1 text-xs text-muted-foreground">{item.excerpt}</p>
+            </div>
+          ),
+        },
+        { label: "Kategori", value: (item) => item.category },
+        {
+          label: "Publikasi",
+          value: (item) => (item.published_at ? formatDateId(item.published_at, "short") : "-"),
+        },
+      ]}
       fields={[
-        { name: "title", label: "Judul", type: "text", required: true },
+        { name: "title", label: "Judul", required: true },
         {
           name: "slug",
-          label: "Slug",
-          type: "text",
-          hint: "Otomatis dari judul bila dikosongkan.",
+          label: "Alamat Halaman",
+          placeholder: "judul-berita",
+          hint: "Opsional. Sistem akan membuat alamat otomatis dari judul.",
         },
-        { name: "category", label: "Kategori", type: "text", required: true },
+        { name: "category", label: "Kategori", required: true },
         { name: "excerpt", label: "Ringkasan", type: "textarea", required: true },
-        {
-          name: "content",
-          label: "Isi artikel",
-          type: "paragraphs",
-          required: true,
-          hint: "Satu paragraf per baris — baris kosong menjadi pemisah paragraf.",
-        },
+        { name: "content", label: "Isi Berita", type: "paragraphs" },
         { name: "thumbnail_media_file_id", label: "Thumbnail", type: "media", usage: "news" },
         {
           name: "og_image_media_file_id",
           label: "Gambar Saat Dibagikan",
           type: "media",
           usage: "og",
-          hint: "Gambar pratinjau saat tautan dibagikan (Open Graph).",
         },
-        { name: "seo_title", label: "Judul SEO", type: "text" },
-        { name: "seo_description", label: "Deskripsi SEO", type: "textarea" },
+        { name: "seo_title", label: "Judul Google" },
+        { name: "seo_description", label: "Deskripsi Google", type: "textarea" },
       ]}
-      columns={[
-        { label: "Judul", value: (item) => item.title ?? "—" },
-        { label: "Kategori", value: (item) => item.category ?? "—" },
-        {
-          label: "Terbit",
-          value: (item) => (item.published_at ? formatDateId(item.published_at, "short") : "—"),
-        },
-      ]}
-      primaryText={(item) => item.title ?? `Berita #${item.id}`}
     />
   );
 }

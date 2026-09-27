@@ -3,26 +3,41 @@ import { MediaLibraryPanel } from "@/modules/media/components/MediaLibraryPanel"
 
 interface GalleryItem {
   id: number;
-  status: string;
-  media_type?: string | null;
-  caption?: string | null;
+  status?: string | null;
+  media_type: "image" | "video";
+  caption: string;
+  media_file_id?: number | null;
+  poster_media_id?: number | null;
+  sort_order?: number | null;
 }
 
-/** FE-C14: manager gambar/video + poster; Media Library. */
+/** Port 1:1 `routes/admin.gallery.tsx` legacy (FE-C14): manager galeri + Media Library. */
 export default function GalleryAdminPage() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-10">
       <ResourceManager<GalleryItem>
         resource="gallery-items"
         title="Galeri Perusahaan"
-        description="Dokumentasi visual yang tampil di halaman galeri publik."
-        addLabel="Tambah item galeri"
-        itemLabel="item galeri"
+        description="Kelola gambar dan video dokumentasi perusahaan."
+        addLabel="Tambah Galeri"
+        itemLabel="galeri"
         seoPath="/admin/gallery"
+        imageField="media_file_id"
+        searchPlaceholder="Cari keterangan galeri..."
+        primaryText={(item) => item.caption}
+        secondaryText={(item) => (item.media_type === "video" ? "Video" : "Gambar")}
+        columns={[
+          {
+            label: "Keterangan",
+            value: (item) => <p className="line-clamp-2 font-semibold">{item.caption}</p>,
+          },
+          { label: "Tipe", value: (item) => (item.media_type === "video" ? "Video" : "Gambar") },
+          { label: "Urutan", value: (item) => item.sort_order ?? 0 },
+        ]}
         fields={[
           {
             name: "media_type",
-            label: "Tipe media",
+            label: "Tipe Media",
             type: "select",
             required: true,
             options: [
@@ -33,19 +48,9 @@ export default function GalleryAdminPage() {
           { name: "sort_order", label: "Urutan", type: "number" },
           { name: "caption", label: "Keterangan", type: "textarea", required: true },
           { name: "media_file_id", label: "Media", type: "media", usage: "gallery" },
-          {
-            name: "poster_media_id",
-            label: "Poster video",
-            type: "media",
-            usage: "gallery",
-            hint: "Khusus video — gambar pratinjau sebelum diputar.",
-          },
+          { name: "poster_media_id", label: "Poster Video", type: "media", usage: "gallery" },
         ]}
-        columns={[
-          { label: "Tipe", value: (item) => (item.media_type === "video" ? "Video" : "Gambar") },
-          { label: "Keterangan", value: (item) => item.caption ?? "—" },
-        ]}
-        primaryText={(item) => item.caption ?? `Galeri #${item.id}`}
+        defaultValues={{ media_type: "image", sort_order: 0 }}
       />
       <MediaLibraryPanel />
     </div>

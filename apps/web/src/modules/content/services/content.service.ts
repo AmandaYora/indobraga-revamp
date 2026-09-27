@@ -69,7 +69,16 @@ export const contentService = {
     );
     return (response.data as ApiData<T>).data;
   },
-  async remove(resource: string, id: number | string): Promise<void> {
-    await httpClient.delete(API.admin.contentItem(resource, id));
+  /** Hapus permanen; `cleanup_failed_media_count` dipakai teks toast (paritas legacy). */
+  async remove(
+    resource: string,
+    id: number | string,
+  ): Promise<{ cleanup_failed_media_count?: number | null }> {
+    const response = await httpClient.delete<
+      ApiData<{ cleanup_failed_media_count?: number | null }>
+    >(API.admin.contentItem(resource, id));
+    return (
+      (response.data as ApiData<{ cleanup_failed_media_count?: number | null } | null>)?.data ?? {}
+    );
   },
 };

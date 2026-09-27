@@ -3,43 +3,55 @@ import { toast } from "sonner";
 import { LeadManager } from "@/modules/leads/components/LeadManager";
 import { leadsService } from "@/modules/leads/services/leads.service";
 import { openWhatsAppLead } from "@/modules/leads/lib/lead-contact";
+import { Seo } from "@/modules/site";
 import { ROUTE_PATHS } from "@/app/routes/route-paths";
 import type { ContractSchemas } from "@/shared/types/contract";
 
 type Inquiry = ContractSchemas["Inquiry"];
 
-/** FE-LD01/02: pesan kontak + aksi kirim email / WhatsApp. */
+/* Port 1:1 `routes/admin.inquiries.tsx` legacy. */
 export default function InquiriesAdminPage() {
   const navigate = useNavigate();
 
   return (
-    <LeadManager<Inquiry>
-      title="Pesan Kontak"
-      description="Pesan yang masuk melalui formulir kontak website."
-      itemLabel="pesan kontak"
-      seoPath="/admin/inquiries"
-      load={(params) => leadsService.inquiries(params)}
-      update={(id, payload) => leadsService.updateInquiry(id, payload)}
-      archive={(id) => leadsService.archiveInquiry(id)}
-      getContact={(item) => ({
-        name: item.name,
-        detail: [item.email, item.phone, item.company].filter(Boolean).join(" · "),
-      })}
-      getMessage={(item) => item.message}
-      emailAction={(item) =>
-        navigate({
-          pathname: ROUTE_PATHS.adminEmailBlast,
-          search: createSearchParams({
-            tab: "single",
-            email: item.email,
-            name: item.name,
-          }).toString(),
-        })
-      }
-      whatsappAction={(item) => {
-        const opened = openWhatsAppLead({ phone: item.phone, name: item.name });
-        if (!opened) toast.error("Nomor WhatsApp tidak valid");
-      }}
-    />
+    <>
+      <Seo
+        title="Pesan Kontak"
+        description="Kelola pesan dari form kontak publik."
+        path="/admin/inquiries"
+        noindex
+      />
+      <LeadManager<Inquiry>
+        title="Pesan Kontak"
+        description="Kelola pesan dari form kontak publik."
+        itemLabel="pesan kontak"
+        load={leadsService.inquiries}
+        update={leadsService.updateInquiry}
+        archive={leadsService.archiveInquiry}
+        getContact={(lead) => (
+          <>
+            {lead.email} - {lead.phone}
+            {lead.company ? ` - ${lead.company}` : ""}
+          </>
+        )}
+        getMessage={(lead) => lead.message}
+        sendActions={{
+          email: (lead) =>
+            void navigate({
+              pathname: ROUTE_PATHS.adminEmailBlast,
+              search: createSearchParams({
+                tab: "single",
+                email: lead.email,
+                name: lead.name,
+              }).toString(),
+            }),
+          whatsapp: (lead) => {
+            if (!openWhatsAppLead(lead)) {
+              toast.error("Nomor telepon tidak valid untuk WhatsApp.");
+            }
+          },
+        }}
+      />
+    </>
   );
 }

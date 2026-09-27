@@ -565,6 +565,7 @@ export default function EmailBlastPage() {
         title="Kirim email sekarang?"
         description={`Email akan dikirim ke ${recipients.length} penerima dan tidak bisa dibatalkan.`}
         confirmLabel="Ya, kirim"
+        destructive={false}
         confirming={sending}
         onConfirm={() => void handleSend()}
       />

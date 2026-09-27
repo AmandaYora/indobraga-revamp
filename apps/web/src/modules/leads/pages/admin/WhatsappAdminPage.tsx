@@ -2,27 +2,39 @@ import { toast } from "sonner";
 import { LeadManager } from "@/modules/leads/components/LeadManager";
 import { leadsService } from "@/modules/leads/services/leads.service";
 import { openWhatsAppLead } from "@/modules/leads/lib/lead-contact";
+import { Seo } from "@/modules/site";
 import type { ContractSchemas } from "@/shared/types/contract";
 
 type WhatsAppLead = ContractSchemas["WhatsAppLead"];
 
-/** FE-LD01/02: prospek WhatsApp + aksi kirim WhatsApp. */
+/* Port 1:1 `routes/admin.whatsapp.tsx` legacy. */
 export default function WhatsappAdminPage() {
   return (
-    <LeadManager<WhatsAppLead>
-      title="Prospek WhatsApp"
-      description="Prospek yang masuk melalui tombol WhatsApp website."
-      itemLabel="prospek WhatsApp"
-      seoPath="/admin/whatsapp"
-      load={(params) => leadsService.whatsappLeads(params)}
-      update={(id, payload) => leadsService.updateWhatsappLead(id, payload)}
-      archive={(id) => leadsService.archiveWhatsappLead(id)}
-      getContact={(item) => ({ name: item.name, detail: item.phone })}
-      getMessage={(item) => item.generated_message ?? item.message ?? "—"}
-      whatsappAction={(item) => {
-        const opened = openWhatsAppLead({ phone: item.phone, name: item.name });
-        if (!opened) toast.error("Nomor WhatsApp tidak valid");
-      }}
-    />
+    <>
+      <Seo
+        title="Prospek WhatsApp"
+        description="Kelola prospek dari tombol WhatsApp publik."
+        path="/admin/whatsapp"
+        noindex
+      />
+      <LeadManager<WhatsAppLead>
+        title="Prospek WhatsApp"
+        description="Kelola prospek dari tombol WhatsApp publik."
+        itemLabel="prospek WhatsApp"
+        load={leadsService.whatsappLeads}
+        update={leadsService.updateWhatsappLead}
+        archive={leadsService.archiveWhatsappLead}
+        getContact={(lead) => lead.phone}
+        // Kontrak API: `generated_message` opsional (legacy selalu terisi dari `message`).
+        getMessage={(lead) => lead.generated_message ?? lead.message ?? ""}
+        sendActions={{
+          whatsapp: (lead) => {
+            if (!openWhatsAppLead(lead)) {
+              toast.error("Nomor telepon tidak valid untuk WhatsApp.");
+            }
+          },
+        }}
+      />
+    </>
   );
 }

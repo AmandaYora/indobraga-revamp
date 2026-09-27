@@ -1,112 +1,91 @@
 import { useState } from "react";
+import { Image, Save, Type } from "lucide-react";
 import { toast } from "sonner";
+import { ErrorState, LoadingState } from "@/shared/components/feedback/states";
+import { Field, TextArea, TextInput } from "@/modules/content";
+import { MediaUploadField } from "@/modules/media";
+import { PageTitle } from "@/shared/components/ui/page-title";
+import { Card } from "@/shared/components/ui/card";
+import { PrimaryButton } from "@/shared/components/ui/action-buttons";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
-import { settingsService } from "@/modules/site";
+import { getUserFacingErrorMessage } from "@/shared/services/api-error";
+import { Seo, settingsService } from "@/modules/site";
 import {
   emptySettingsForm,
   settingsFromApi,
   toSettingsUpdatePayload,
   type SettingsForm,
 } from "@/modules/site/lib/settings-form";
-import { MediaUploadField } from "@/modules/media";
-import { mediaPreviewUrl } from "@/modules/media";
-import { PageTitle } from "@/shared/components/ui/page-title";
-import { Card } from "@/shared/components/ui/card";
-import { Button } from "@/shared/components/ui/button";
-import { Seo } from "@/modules/site";
-import { ApiError } from "@/shared/services/api-error";
-import { ErrorState, LoadingState } from "@/shared/components/feedback/states";
 import type { ContractSchemas } from "@/shared/types/contract";
 
-type MediaItem = ContractSchemas["MediaItem"];
+type SiteSettings = ContractSchemas["SiteSettings"];
 
-const TEXT_INPUTS: {
-  name: keyof SettingsForm;
-  label: string;
-  hint?: string;
-  textarea?: boolean;
-}[] = [
-  { name: "brand", label: "Nama brand" },
-  { name: "legal_name", label: "Nama legal" },
-  { name: "email", label: "Email" },
-  { name: "phone", label: "Telepon" },
-  { name: "whatsapp", label: "WhatsApp", hint: "Format internasional tanpa +, mis. 62851xxxxxxx." },
-  { name: "instagram", label: "Instagram", hint: "Username tanpa @." },
-  { name: "contact_person", label: "Narahubung" },
-  { name: "contact_role", label: "Peran narahubung" },
-  { name: "address", label: "Alamat", textarea: true },
-  {
-    name: "seo_title",
-    label: "Judul SEO situs",
-    hint: "Maks. 60 karakter — default judul seluruh situs (BC-21).",
-  },
-  {
-    name: "seo_description",
-    label: "Deskripsi SEO situs",
-    hint: "Maks. 160 karakter — default deskripsi seluruh situs (BC-21).",
-    textarea: true,
-  },
-];
+/** URL pratinjau media (bagian `SettingsForm` legacy yang tidak ikut dikirim ke API). */
+type MediaPreviewUrls = {
+  logo_url: string | null;
+  footer_logo_url: string | null;
+  og_image_url: string | null;
+  contact_hero_image_url: string | null;
+};
 
-const MEDIA_INPUTS: {
-  key:
-    | "logo_media_file_id"
-    | "footer_logo_media_file_id"
-    | "contact_hero_media_file_id"
-    | "og_media_file_id";
-  label: string;
-  usage: "other" | "hero" | "og";
-}[] = [
-  { key: "logo_media_file_id", label: "Logo navbar", usage: "other" },
-  { key: "footer_logo_media_file_id", label: "Logo footer", usage: "other" },
-  { key: "contact_hero_media_file_id", label: "Gambar hero kontak", usage: "hero" },
-  { key: "og_media_file_id", label: "Gambar OG default", usage: "og" },
-];
+const EMPTY_PREVIEW_URLS: MediaPreviewUrls = {
+  logo_url: null,
+  footer_logo_url: null,
+  og_image_url: null,
+  contact_hero_image_url: null,
+};
 
-/**
- * FE-ST01: identitas/kontak, radio tampilan logo, SEO title/description,
- * 4 upload media (logo navbar, logo footer, hero kontak, OG).
- */
+function previewUrlsFromApi(data: SiteSettings): MediaPreviewUrls {
+  return {
+    logo_url: typeof data.logo_url === "string" ? data.logo_url : null,
+    footer_logo_url: typeof data.footer_logo_url === "string" ? data.footer_logo_url : null,
+    og_image_url: typeof data.og_image_url === "string" ? data.og_image_url : null,
+    contact_hero_image_url:
+      typeof data.contact_hero_image_url === "string" ? data.contact_hero_image_url : null,
+  };
+}
+
+/** Port 1:1 `routes/admin.settings.tsx` legacy. */
 export default function SettingsPage() {
   const { data, error, loading, reload } = useApiQuery(["admin", "site-settings"], () =>
     settingsService.get(),
   );
-  const [form, setForm] = useState<SettingsForm | null>(null);
-  const [previews, setPreviews] = useState<Record<string, MediaItem | null>>({});
+  const [form, setForm] = useState<SettingsForm>(() => emptySettingsForm());
+  const [previewUrls, setPreviewUrls] = useState<MediaPreviewUrls>(EMPTY_PREVIEW_URLS);
+  const [syncedData, setSyncedData] = useState<SiteSettings | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const current: SettingsForm = form ?? (data ? settingsFromApi(data) : emptySettingsForm());
-  const textValue = (name: string): string => String(current[name] ?? "");
-
-  function setField(name: keyof SettingsForm, value: string | boolean | number) {
-    setForm((currentForm) => ({
-      ...(currentForm ?? (data ? settingsFromApi(data) : emptySettingsForm())),
-      [name]: value,
-    }));
+  // Legacy: form diisi ulang setiap kali data dari API berubah (termasuk setelah reload).
+  if (data && data !== syncedData) {
+    setSyncedData(data);
+    setForm(settingsFromApi(data));
+    setPreviewUrls(previewUrlsFromApi(data));
   }
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    if (textValue("brand").trim() === "") {
-      toast.error("Nama brand wajib diisi.");
-      return;
-    }
+  const text = (name: keyof SettingsForm) => String(form[name] ?? "");
+
+  const update = (name: keyof SettingsForm, value: string | number | boolean | undefined) => {
+    setForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const updatePreview = (name: keyof MediaPreviewUrls, value: string | null | undefined) => {
+    setPreviewUrls((current) => ({ ...current, [name]: value ?? null }));
+  };
+
+  const save = async () => {
     setSaving(true);
     try {
-      await settingsService.update(toSettingsUpdatePayload(current));
+      await settingsService.update(toSettingsUpdatePayload(form));
       toast.success("Pengaturan disimpan");
       reload();
-    } catch (saveError) {
-      toast.error("Simpan gagal", {
-        description: saveError instanceof ApiError ? saveError.message : undefined,
+    } catch (caught) {
+      toast.error("Pengaturan gagal disimpan", {
+        description: getUserFacingErrorMessage(caught, { action: "save" }),
       });
     } finally {
       setSaving(false);
     }
-  }
-
-  if (loading && !data) return <LoadingState label="Memuat pengaturan..." />;
-  if (error && !data) return <ErrorState error={error} onRetry={reload} />;
+  };
 
   return (
     <>
@@ -118,101 +97,191 @@ export default function SettingsPage() {
       />
       <PageTitle
         title="Pengaturan Website"
-        desc="Identitas, kontak, tampilan logo, SEO default, dan media situs."
+        desc="Atur identitas perusahaan, kontak, gambar halaman, dan tampilan saat dibagikan."
         action={
-          <Button type="submit" form="settings-form" disabled={saving}>
-            {saving ? "Menyimpan..." : "Simpan"}
-          </Button>
+          <PrimaryButton onClick={() => void save()} disabled={saving || loading}>
+            <Save className="h-4 w-4" /> {saving ? "Menyimpan..." : "Simpan"}
+          </PrimaryButton>
         }
       />
-      <form id="settings-form" onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
+      {loading && !data && <LoadingState label="Memuat pengaturan website..." />}
+      {error && <ErrorState error={error} onRetry={reload} />}
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <h2 className="font-semibold">Identitas &amp; Kontak</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {TEXT_INPUTS.map((input) => (
+          <h3 className="mb-4 font-display text-lg font-bold text-primary-deep">
+            Identitas Perusahaan
+          </h3>
+          <div className="space-y-4">
+            <Field label="Nama Merek" required>
+              <TextInput value={text("brand")} onChange={(e) => update("brand", e.target.value)} />
+            </Field>
+            <Field label="Nama Legal">
+              <TextInput
+                value={text("legal_name")}
+                onChange={(e) => update("legal_name", e.target.value)}
+              />
+            </Field>
+            <Field
+              label="Tampilan Logo"
+              hint="Pilih Logo Saja jika gambar logo sudah memuat nama merek."
+            >
               <div
-                key={String(input.name)}
-                className={input.textarea ? "sm:col-span-2" : undefined}
+                role="radiogroup"
+                aria-label="Tampilan logo"
+                className="inline-grid w-full max-w-md grid-cols-2 rounded-lg border border-input bg-background p-1"
               >
-                <label
-                  htmlFor={`settings-${String(input.name)}`}
-                  className="mb-1 block text-sm font-medium"
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={form.show_brand_text}
+                  onClick={() => update("show_brand_text", true)}
+                  className={`inline-flex min-w-0 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition ${
+                    form.show_brand_text
+                      ? "bg-primary text-primary-foreground shadow-card"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  }`}
                 >
-                  {input.label}
-                </label>
-                {input.textarea ? (
-                  <textarea
-                    id={`settings-${String(input.name)}`}
-                    rows={3}
-                    value={textValue(String(input.name))}
-                    onChange={(event) => setField(input.name, event.target.value)}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                  />
-                ) : (
-                  <input
-                    id={`settings-${String(input.name)}`}
-                    type="text"
-                    value={textValue(String(input.name))}
-                    onChange={(event) => setField(input.name, event.target.value)}
-                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                  />
-                )}
-                {input.hint ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{input.hint}</p>
-                ) : null}
+                  <Type className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Logo + Nama</span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={!form.show_brand_text}
+                  onClick={() => update("show_brand_text", false)}
+                  className={`inline-flex min-w-0 items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold transition ${
+                    !form.show_brand_text
+                      ? "bg-primary text-primary-foreground shadow-card"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  }`}
+                >
+                  <Image className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Logo Saja</span>
+                </button>
               </div>
-            ))}
+            </Field>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Email Resmi">
+                <TextInput
+                  type="email"
+                  value={text("email")}
+                  onChange={(e) => update("email", e.target.value)}
+                />
+              </Field>
+              <Field label="Telepon">
+                <TextInput
+                  value={text("phone")}
+                  onChange={(e) => update("phone", e.target.value)}
+                />
+              </Field>
+              <Field label="Nomor WhatsApp" hint="Format internasional tanpa +.">
+                <TextInput
+                  value={text("whatsapp")}
+                  onChange={(e) => update("whatsapp", e.target.value)}
+                />
+              </Field>
+              <Field label="Instagram">
+                <TextInput
+                  value={text("instagram")}
+                  onChange={(e) => update("instagram", e.target.value)}
+                />
+              </Field>
+              <Field label="Narahubung">
+                <TextInput
+                  value={text("contact_person")}
+                  onChange={(e) => update("contact_person", e.target.value)}
+                />
+              </Field>
+              <Field label="Jabatan">
+                <TextInput
+                  value={text("contact_role")}
+                  onChange={(e) => update("contact_role", e.target.value)}
+                />
+              </Field>
+            </div>
+            <Field label="Alamat">
+              <TextArea
+                rows={2}
+                value={text("address")}
+                onChange={(e) => update("address", e.target.value)}
+              />
+            </Field>
           </div>
         </Card>
         <Card>
-          <h2 className="font-semibold">Tampilan Logo</h2>
-          <div className="mt-3 space-y-2" role="radiogroup" aria-label="Tampilan logo">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="show_brand_text"
-                checked={current.show_brand_text === true}
-                onChange={() => setField("show_brand_text", true)}
+          <h3 className="mb-4 font-display text-lg font-bold text-primary-deep">
+            Tampilan di Google & Media Sosial
+          </h3>
+          <div className="space-y-4">
+            <Field label="Judul Google" hint="Disarankan maksimal 60 karakter.">
+              <TextInput
+                value={text("seo_title")}
+                onChange={(e) => update("seo_title", e.target.value)}
               />
-              Logo + Nama
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="show_brand_text"
-                checked={current.show_brand_text === false}
-                onChange={() => setField("show_brand_text", false)}
+            </Field>
+            <Field label="Deskripsi Google" hint="Disarankan maksimal 160 karakter.">
+              <TextArea
+                rows={3}
+                value={text("seo_description")}
+                onChange={(e) => update("seo_description", e.target.value)}
               />
-              Logo Saja
-            </label>
+            </Field>
           </div>
         </Card>
         <Card>
-          <h2 className="font-semibold">Media Situs</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {MEDIA_INPUTS.map((input) => (
-              <MediaUploadField
-                key={input.key}
-                label={input.label}
-                usage={input.usage}
-                value={
-                  typeof current[input.key] === "number" ? (current[input.key] as number) : null
-                }
-                previewUrl={previews[input.key] ? mediaPreviewUrl(previews[input.key]) : null}
-                onUploaded={(media) => {
-                  setPreviews((currentPreviews) => ({ ...currentPreviews, [input.key]: media }));
-                  setField(input.key, media.id);
-                }}
-              />
-            ))}
+          <h3 className="mb-4 font-display text-lg font-bold text-primary-deep">Media Halaman</h3>
+          <div className="space-y-4">
+            <MediaUploadField
+              label="Logo Navbar"
+              hint="Tampil di header/navigasi atas."
+              usage="other"
+              value={form.logo_media_file_id}
+              previewUrl={previewUrls.logo_url}
+              onUploaded={(media) => {
+                update("logo_media_file_id", media.id);
+                updatePreview("logo_url", media.large_url ?? media.medium_url ?? media.file_url);
+              }}
+            />
+            <MediaUploadField
+              label="Logo Footer"
+              hint="Khusus footer (latar gelap). Kosongkan untuk memakai Logo Navbar."
+              usage="other"
+              value={form.footer_logo_media_file_id}
+              previewUrl={previewUrls.footer_logo_url}
+              onUploaded={(media) => {
+                update("footer_logo_media_file_id", media.id);
+                updatePreview(
+                  "footer_logo_url",
+                  media.large_url ?? media.medium_url ?? media.file_url,
+                );
+              }}
+            />
+            <MediaUploadField
+              label="Gambar Utama Kontak"
+              usage="hero"
+              value={form.contact_hero_media_file_id}
+              previewUrl={previewUrls.contact_hero_image_url}
+              onUploaded={(media) => {
+                update("contact_hero_media_file_id", media.id);
+                updatePreview(
+                  "contact_hero_image_url",
+                  media.large_url ?? media.medium_url ?? media.file_url,
+                );
+              }}
+            />
+            <MediaUploadField
+              label="Gambar Saat Dibagikan"
+              usage="og"
+              value={form.og_media_file_id}
+              previewUrl={previewUrls.og_image_url}
+              onUploaded={(media) => {
+                update("og_media_file_id", media.id);
+                updatePreview("og_image_url", media.large_url ?? media.file_url);
+              }}
+            />
           </div>
         </Card>
-        <div>
-          <Button type="submit" disabled={saving}>
-            {saving ? "Menyimpan..." : "Simpan Pengaturan"}
-          </Button>
-        </div>
-      </form>
+      </div>
     </>
   );
 }

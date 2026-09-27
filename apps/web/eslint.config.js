@@ -6,7 +6,7 @@ import jsxA11y from "eslint-plugin-jsx-a11y";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "coverage", "src/mocks/seed"] },
+  { ignores: ["dist", "coverage", "src/mocks/seed", "public/mockServiceWorker.js"] },
   {
     files: ["**/*.{ts,tsx}"],
     extends: [

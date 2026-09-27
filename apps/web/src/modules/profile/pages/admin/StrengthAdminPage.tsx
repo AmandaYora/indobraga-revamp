@@ -1,37 +1,41 @@
 import { ResourceManager } from "@/modules/content/components/ResourceManager";
 
+/* Port `routes/admin.strength.tsx` legacy — props, teks, dan markup kolom 1:1. */
+
 interface Strength {
   id: number;
   status: string;
-  label?: string | null;
-  value?: string | null;
+  sort_order?: number;
+  label: string;
+  value: string;
   suffix?: string | null;
 }
 
-/** FE-C11: manager tunggal keunggulan produksi. */
 export default function StrengthAdminPage() {
   return (
     <ResourceManager<Strength>
       resource="production-strengths"
       title="Kekuatan Produksi"
-      description="Empat tile statistik pada beranda dan halaman fasilitas."
-      addLabel="Tambah keunggulan"
-      itemLabel="keunggulan"
+      description="Kelola angka utama seperti kapasitas produksi, pengalaman, dan kapasitas printing."
+      addLabel="Tambah Kekuatan"
+      itemLabel="kekuatan"
       seoPath="/admin/strength"
+      searchPlaceholder="Cari label kekuatan..."
+      primaryText={(item) => item.label}
+      secondaryText={(item) => `${item.value} ${item.suffix ?? ""}`}
+      columns={[
+        { label: "Label", value: (item) => <span className="font-semibold">{item.label}</span> },
+        { label: "Nilai", value: (item) => item.value },
+        { label: "Satuan", value: (item) => item.suffix ?? "-" },
+        { label: "Urutan", value: (item) => item.sort_order ?? 0 },
+      ]}
       fields={[
-        { name: "label", label: "Label", type: "text", required: true },
-        { name: "value", label: "Nilai", type: "text", required: true, placeholder: "90K" },
-        { name: "suffix", label: "Satuan", type: "text", placeholder: "pcs / bulan" },
+        { name: "label", label: "Label", required: true },
+        { name: "value", label: "Nilai", required: true },
+        { name: "suffix", label: "Satuan / Keterangan" },
         { name: "sort_order", label: "Urutan", type: "number" },
       ]}
-      columns={[
-        { label: "Label", value: (item) => item.label ?? "—" },
-        {
-          label: "Nilai",
-          value: (item) => `${item.value ?? "—"}${item.suffix ? ` ${item.suffix}` : ""}`,
-        },
-      ]}
-      primaryText={(item) => item.label ?? `Keunggulan #${item.id}`}
+      defaultValues={{ sort_order: 0, status: "published" }}
     />
   );
 }

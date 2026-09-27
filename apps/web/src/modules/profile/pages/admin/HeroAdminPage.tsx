@@ -1,9 +1,12 @@
 import { ResourceManager } from "@/modules/content/components/ResourceManager";
 
+/* Port `routes/admin.hero.tsx` legacy — props, teks, dan markup kolom 1:1. */
+
 interface HeroSection {
   id: number;
   status: string;
-  title?: string | null;
+  sort_order?: number;
+  title: string;
   subtitle?: string | null;
   cta_label?: string | null;
   cta_href?: string | null;
@@ -12,60 +15,80 @@ interface HeroSection {
 interface HeroSlide {
   id: number;
   status: string;
-  hero_section_id?: number | null;
+  sort_order?: number;
+  hero_section_id: number;
   label?: string | null;
-  title?: string | null;
+  title: string;
   metric?: string | null;
-  alt_text?: string | null;
-  sort_order?: number | null;
   media_file_id?: number | null;
 }
 
-/** FE-C10: 2 manager (`hero`, `hero-slides`), `hero_section_id` tersembunyi. */
 export default function HeroAdminPage() {
   return (
     <div className="space-y-10">
       <ResourceManager<HeroSection>
         resource="hero"
-        title="Konten Beranda"
-        description="Judul, subjudul, dan ajakan utama pada hero beranda."
-        addLabel="Tambah hero"
-        itemLabel="hero"
+        title="Konten Utama Beranda"
+        description="Kelola judul, deskripsi, dan tombol utama halaman beranda."
+        addLabel="Tambah Konten Utama"
+        itemLabel="konten utama"
         seoPath="/admin/hero"
-        fields={[
-          { name: "title", label: "Judul", type: "text", required: true },
-          { name: "subtitle", label: "Subjudul", type: "textarea" },
-          { name: "cta_label", label: "Label tombol", type: "text" },
-          { name: "cta_href", label: "Tautan tombol", type: "text", placeholder: "/kontak" },
-        ]}
+        primaryText={(item) => item.title}
+        secondaryText={(item) => item.subtitle}
         columns={[
-          { label: "Judul", value: (item) => item.title ?? "—" },
-          { label: "Subjudul", value: (item) => item.subtitle ?? "—" },
+          {
+            label: "Konten Utama",
+            value: (item) => (
+              <div>
+                <p className="font-semibold">{item.title}</p>
+                <p className="line-clamp-1 text-xs text-muted-foreground">{item.subtitle}</p>
+              </div>
+            ),
+          },
+          { label: "Tombol", value: (item) => item.cta_label ?? "-" },
         ]}
-        primaryText={(item) => item.title ?? `Hero #${item.id}`}
+        fields={[
+          { name: "title", label: "Judul", required: true },
+          { name: "subtitle", label: "Deskripsi Pendek", type: "textarea" },
+          { name: "cta_label", label: "Teks Tombol" },
+          { name: "cta_href", label: "Alamat Tujuan Tombol" },
+        ]}
+        defaultValues={{ status: "published" }}
       />
+
       <ResourceManager<HeroSlide>
         resource="hero-slides"
-        title="Slide Hero"
-        description="Dua gambar hero yang tampil bergantian di beranda."
-        addLabel="Tambah slide"
-        itemLabel="slide"
+        title="Gambar Utama Beranda"
+        description="Kelola gambar pendukung, label, dan angka utama pada area atas beranda."
+        addLabel="Tambah Gambar Utama"
+        itemLabel="gambar utama"
         seoPath="/admin/hero"
-        defaultValues={{ hero_section_id: 0 }}
+        imageField="media_file_id"
+        primaryText={(item) => item.title}
+        secondaryText={(item) => item.metric}
+        columns={[
+          {
+            label: "Gambar Utama",
+            value: (item) => (
+              <div>
+                <p className="font-semibold">{item.title}</p>
+                <p className="text-xs text-muted-foreground">{item.label}</p>
+              </div>
+            ),
+          },
+          { label: "Metrik", value: (item) => item.metric ?? "-" },
+          { label: "Urutan", value: (item) => item.sort_order ?? 0 },
+        ]}
         fields={[
-          { name: "hero_section_id", label: "ID seksi hero", type: "hidden" },
-          { name: "label", label: "Label", type: "text", placeholder: "Garment" },
-          { name: "title", label: "Judul", type: "text", required: true },
-          { name: "metric", label: "Metrik", type: "text", placeholder: "90K pcs/bulan" },
-          { name: "alt_text", label: "Teks alt", type: "text" },
+          { name: "hero_section_id", label: "Bagian Beranda", type: "hidden", required: true },
+          { name: "label", label: "Label" },
+          { name: "title", label: "Judul Gambar", required: true },
+          { name: "metric", label: "Angka Sorotan" },
+          { name: "alt_text", label: "Teks Gambar" },
           { name: "sort_order", label: "Urutan", type: "number" },
           { name: "media_file_id", label: "Gambar", type: "media", usage: "hero" },
         ]}
-        columns={[
-          { label: "Judul", value: (item) => item.title ?? "—" },
-          { label: "Metrik", value: (item) => item.metric ?? "—" },
-        ]}
-        primaryText={(item) => item.title ?? `Slide #${item.id}`}
+        defaultValues={{ hero_section_id: 0, sort_order: 0, status: "published" }}
       />
     </div>
   );

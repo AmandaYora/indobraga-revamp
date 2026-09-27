@@ -27,7 +27,9 @@
   h2,
   h3,
   h4 {
-    font-family: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", "Inter Variable", "Inter", system-ui, sans-serif;
+    font-family:
+      "Plus Jakarta Sans Variable", "Plus Jakarta Sans", "Inter Variable", "Inter", system-ui,
+      sans-serif;
     letter-spacing: 0;
   }
 }

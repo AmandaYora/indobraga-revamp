@@ -1,34 +1,34 @@
-import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/shared/lib/cn";
-
-const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none",
-  {
-    variants: {
-      tone: {
-        default: "border-transparent bg-primary text-primary-foreground",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
-        success: "border-transparent bg-success text-white",
-        warning: "border-transparent bg-warning text-white",
-        destructive: "border-transparent bg-destructive text-destructive-foreground",
-        outline: "text-foreground",
-        muted: "border-transparent bg-muted text-muted-foreground",
-      },
-    },
-    defaultVariants: { tone: "default" },
-  },
-);
-
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
+import type { HTMLAttributes } from "react";
 
 /**
- * Badge generik — domain-agnostic. Peta status domain didefinisikan per modul
- * (aturan standar: shared UI tidak mengenal status domain).
+ * Tone = pasangan warna soft-tint yang dipakai `StatusBadge` legacy (`components/admin/ui.tsx`).
+ * `warning` memakai token `warning-strong` (= `oklch(0.45 0.15 75)` yang di-hardcode legacy).
  */
-function Badge({ className, tone, ...props }: BadgeProps) {
-  return <span className={cn(badgeVariants({ tone }), className)} {...props} />;
+export type BadgeTone = "primary" | "accent" | "success" | "warning" | "destructive" | "muted";
+
+export const badgeToneClass: Record<BadgeTone, string> = {
+  primary: "bg-primary/10 text-primary",
+  accent: "bg-accent/20 text-accent-foreground",
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/15 text-warning-strong",
+  destructive: "bg-destructive/10 text-destructive",
+  muted: "bg-muted text-muted-foreground",
+};
+
+export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+  tone?: BadgeTone;
 }
 
-export { Badge, badgeVariants };
+/**
+ * Badge generik — domain-agnostic (aturan standar: shared UI tidak mengenal status domain).
+ * Markup & kelas = span `StatusBadge` legacy; label + tone per status didefinisikan di peta status
+ * tiap modul. Default tone `muted` = fallback legacy untuk status yang tidak dikenal.
+ */
+export function Badge({ className = "", tone = "muted", ...props }: BadgeProps) {
+  return (
+    <span
+      {...props}
+      className={`inline-flex max-w-full min-w-0 items-center justify-center rounded-full px-2.5 py-0.5 text-center text-xs font-semibold leading-tight whitespace-normal break-words ${badgeToneClass[tone]} ${className}`}
+    />
+  );
+}

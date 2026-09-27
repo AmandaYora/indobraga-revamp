@@ -1,52 +1,61 @@
-import type { ComponentType } from "react";
-import { cn } from "@/shared/lib/cn";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-type Tone = "default" | "primary" | "success" | "warning" | "danger" | "muted";
+/* Port 1:1 `IconActionButton` + tooltip & `ActionButtonGroup` di `components/admin/ui.tsx` legacy. */
 
-const toneClasses: Record<Tone, string> = {
-  default: "border-input hover:bg-muted",
-  primary: "border-primary/30 text-primary hover:bg-primary-soft",
-  success: "border-success/30 text-success-strong hover:bg-success/10",
-  warning: "border-warning/40 text-warning-strong hover:bg-warning/10",
-  danger: "border-destructive/30 text-destructive hover:bg-destructive/10",
-  muted: "border-transparent text-muted-foreground hover:bg-muted",
+export type IconActionTone = "default" | "primary" | "success" | "warning" | "danger" | "muted";
+
+const iconActionToneClass: Record<IconActionTone, string> = {
+  default: "text-foreground hover:bg-secondary",
+  primary: "text-primary hover:bg-primary-soft",
+  success: "text-success hover:bg-success/10",
+  warning: "text-warning-strong hover:bg-warning/15",
+  danger: "text-destructive hover:bg-destructive/10",
+  muted: "text-muted-foreground hover:bg-secondary hover:text-foreground",
 };
+
+export function ActionButtonGroup({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>{children}</div>;
+}
 
 export function IconActionButton({
   label,
   tooltip,
-  icon: Icon,
+  icon,
   tone = "default",
-  className,
+  className = "",
+  type = "button",
   ...props
-}: {
+}: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "aria-label"> & {
   label: string;
   tooltip?: string;
-  icon: ComponentType<{ className?: string }>;
-  tone?: Tone;
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  icon: ReactNode;
+  tone?: IconActionTone;
+}) {
+  const tooltipText = tooltip ?? label;
+
   return (
-    <span className="group relative inline-flex" title={tooltip ?? label}>
+    <span className="group relative inline-flex">
       <button
-        type="button"
-        aria-label={label}
-        className={cn(
-          "inline-flex h-8 w-8 items-center justify-center rounded-full border bg-background transition-colors disabled:opacity-50",
-          toneClasses[tone],
-          className,
-        )}
         {...props}
+        type={type}
+        aria-label={label}
+        title={tooltipText}
+        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50 ${iconActionToneClass[tone]} ${className}`}
       >
-        <Icon className="h-4 w-4" />
+        {icon}
       </button>
-      {tooltip ? (
-        <span
-          role="tooltip"
-          className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-primary-deep px-2 py-1 text-xs text-white group-hover:block"
-        >
-          {tooltip}
-        </span>
-      ) : null}
+      <span
+        role="tooltip"
+        className="pointer-events-none invisible absolute bottom-full right-0 z-30 mb-2 whitespace-nowrap rounded-md bg-primary-deep px-2 py-1 text-xs font-semibold leading-tight text-primary-foreground opacity-0 shadow-card transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+      >
+        {tooltipText}
+      </span>
     </span>
   );
 }

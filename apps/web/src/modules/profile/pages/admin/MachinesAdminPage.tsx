@@ -1,112 +1,129 @@
 import { ResourceManager } from "@/modules/content/components/ResourceManager";
 
+/* Port `routes/admin.machines.tsx` legacy — 3 manager, props, teks, dan markup kolom 1:1. */
+
 interface Machine {
   id: number;
   status: string;
-  name?: string | null;
-  slug?: string | null;
+  sort_order?: number;
+  name: string;
+  slug: string;
   metric?: string | null;
   description?: string | null;
+  media_file_id?: number | null;
 }
 
 interface PrintingCapacity {
   id: number;
   status: string;
-  label?: string | null;
-  value?: string | null;
-  unit?: string | null;
+  sort_order?: number;
+  label: string;
+  value: string;
+  unit: string;
   description?: string | null;
+  media_file_id?: number | null;
 }
 
 interface ProductionCapacity {
   id: number;
   status: string;
-  product?: string | null;
-  value?: string | null;
-  unit?: string | null;
+  sort_order?: number;
+  product: string;
+  value: string;
+  unit: string;
 }
 
-/** FE-C13: 3 manager (mesin, kapasitas cetak, kapasitas produksi). */
 export default function MachinesAdminPage() {
   return (
     <div className="space-y-10">
       <ResourceManager<Machine>
         resource="machines"
-        title="Mesin & Area Produksi"
-        description="Mesin dan area produksi pada halaman fasilitas."
-        addLabel="Tambah mesin"
+        title="Mesin & Fasilitas"
+        description="Kelola fasilitas produksi utama yang tampil di website publik."
+        addLabel="Tambah Mesin"
         itemLabel="mesin"
         seoPath="/admin/machines"
+        imageField="media_file_id"
+        primaryText={(item) => item.name}
+        secondaryText={(item) => item.description}
+        columns={[
+          {
+            label: "Mesin",
+            value: (item) => (
+              <div>
+                <p className="font-semibold">{item.name}</p>
+                <p className="line-clamp-1 text-xs text-muted-foreground">{item.description}</p>
+              </div>
+            ),
+          },
+          { label: "Metrik", value: (item) => item.metric ?? "-" },
+          { label: "Urutan", value: (item) => item.sort_order ?? 0 },
+        ]}
         fields={[
-          { name: "name", label: "Nama", type: "text", required: true },
+          { name: "name", label: "Nama Mesin", required: true },
           {
             name: "slug",
-            label: "Slug",
-            type: "text",
-            hint: "Otomatis dari nama bila dikosongkan.",
+            label: "Alamat Halaman",
+            hint: "Opsional. Sistem akan membuat alamat otomatis dari nama mesin.",
           },
-          { name: "metric", label: "Metrik", type: "text", placeholder: "5.000 m/hari" },
+          { name: "metric", label: "Metrik" },
           { name: "sort_order", label: "Urutan", type: "number" },
           { name: "description", label: "Deskripsi", type: "textarea" },
           { name: "media_file_id", label: "Gambar", type: "media", usage: "machine" },
         ]}
-        columns={[
-          { label: "Nama", value: (item) => item.name ?? "—" },
-          { label: "Metrik", value: (item) => item.metric ?? "—" },
-        ]}
-        primaryText={(item) => item.name ?? `Mesin #${item.id}`}
+        defaultValues={{ sort_order: 0, status: "published" }}
       />
+
       <ResourceManager<PrintingCapacity>
         resource="printing-capacities"
-        title="Kapasitas Cetak"
-        description="Kapasitas sublim, press, dan DTF per hari."
-        addLabel="Tambah kapasitas cetak"
-        itemLabel="kapasitas cetak"
+        title="Kapasitas Printing"
+        description="Kelola data sublim, press, DTF, dan kapasitas cetak lain."
+        addLabel="Tambah Kapasitas Printing"
+        itemLabel="kapasitas printing"
         seoPath="/admin/machines"
+        imageField="media_file_id"
+        primaryText={(item) => item.label}
+        secondaryText={(item) => item.description}
+        columns={[
+          { label: "Label", value: (item) => <span className="font-semibold">{item.label}</span> },
+          { label: "Nilai", value: (item) => item.value },
+          { label: "Unit", value: (item) => item.unit },
+        ]}
         fields={[
-          { name: "label", label: "Label", type: "text", required: true },
-          { name: "value", label: "Nilai", type: "text", required: true },
-          {
-            name: "unit",
-            label: "Satuan",
-            type: "text",
-            required: true,
-            placeholder: "meter / hari",
-          },
+          { name: "label", label: "Label", required: true },
+          { name: "value", label: "Nilai", required: true },
+          { name: "unit", label: "Unit", required: true },
           { name: "sort_order", label: "Urutan", type: "number" },
           { name: "description", label: "Deskripsi", type: "textarea" },
           { name: "media_file_id", label: "Gambar", type: "media", usage: "machine" },
         ]}
-        columns={[
-          { label: "Label", value: (item) => item.label ?? "—" },
-          { label: "Nilai", value: (item) => `${item.value ?? "—"} ${item.unit ?? ""}` },
-        ]}
-        primaryText={(item) => item.label ?? `Kapasitas #${item.id}`}
+        defaultValues={{ sort_order: 0, status: "published" }}
       />
+
       <ResourceManager<ProductionCapacity>
         resource="production-capacities"
         title="Kapasitas Produksi"
-        description="Kapasitas produksi bulanan per kategori produk."
-        addLabel="Tambah kapasitas produksi"
+        description="Kelola angka kapasitas produksi bulanan per kategori produk."
+        addLabel="Tambah Kapasitas Produksi"
         itemLabel="kapasitas produksi"
         seoPath="/admin/machines"
-        fields={[
-          { name: "product", label: "Produk", type: "text", required: true },
-          { name: "value", label: "Nilai", type: "text", required: true },
+        primaryText={(item) => item.product}
+        secondaryText={(item) => `${item.value} ${item.unit}`}
+        columns={[
           {
-            name: "unit",
-            label: "Satuan",
-            type: "text",
-            required: true,
-            placeholder: "pcs / bulan",
+            label: "Produk",
+            value: (item) => <span className="font-semibold">{item.product}</span>,
           },
+          { label: "Nilai", value: (item) => item.value },
+          { label: "Unit", value: (item) => item.unit },
+        ]}
+        fields={[
+          { name: "product", label: "Produk", required: true },
+          { name: "value", label: "Nilai", required: true },
+          { name: "unit", label: "Unit", required: true },
           { name: "sort_order", label: "Urutan", type: "number" },
         ]}
-        columns={[
-          { label: "Produk", value: (item) => item.product ?? "—" },
-          { label: "Nilai", value: (item) => `${item.value ?? "—"} ${item.unit ?? ""}` },
-        ]}
-        primaryText={(item) => item.product ?? `Kapasitas #${item.id}`}
+        defaultValues={{ sort_order: 0, status: "published" }}
       />
     </div>
   );

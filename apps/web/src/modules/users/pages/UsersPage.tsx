@@ -1,154 +1,181 @@
 import { useState } from "react";
+import { Ban, Edit2, Plus, Search, UserCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { usersService } from "@/modules/users/services/users.service";
 import { useAuthStore } from "@/modules/auth";
 import { PageTitle } from "@/shared/components/ui/page-title";
 import { Card } from "@/shared/components/ui/card";
-import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
+import { PrimaryButton } from "@/shared/components/ui/action-buttons";
+import { ActionButtonGroup, IconActionButton } from "@/shared/components/ui/icon-action-button";
 import { TablePagination } from "@/shared/components/ui/pagination";
-import {
-  CrudModal,
-  ConfirmDialog,
-  Field,
-  TextInput,
-  Select,
-} from "@/modules/content/components/CrudModal";
 import { EmptyState, ErrorState, LoadingState } from "@/shared/components/feedback/states";
+import {
+  ConfirmDialog,
+  CrudModal,
+  Field,
+  Select,
+  StatusBadge,
+  TextInput,
+  userStatus,
+} from "@/modules/content";
 import { Seo } from "@/modules/site";
-import { ApiError, getUserFacingErrorMessage } from "@/shared/services/api-error";
+import { getUserFacingErrorMessage } from "@/shared/services/api-error";
 import { formatDateId } from "@/shared/lib/date";
 import type { ContractSchemas } from "@/shared/types/contract";
 
 type SafeUser = ContractSchemas["SafeUser"];
 type AdminRole = ContractSchemas["AdminRole"];
 
-const ROLE_LABEL: Record<string, string> = {
-  super_admin: "Admin Utama",
-  content_editor: "Editor Konten",
-};
-
-/**
- * FE-U01: search, filter role, pagination, create (password sementara),
- * edit (password baru opsional), aktif/nonaktif, hapus; aturan content_editor.
- */
+/** Port `routes/admin.users.tsx` legacy — markup, teks, dan kelas 1:1. */
 export default function UsersPage() {
-  const currentUser = useAuthStore((state) => state.user);
-  const isSuperAdmin = currentUser?.role === "super_admin";
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState(isSuperAdmin ? "all" : "content_editor");
-  const [formOpen, setFormOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [role, setRole] = useState("all");
+  const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState<SafeUser | null>(null);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<AdminRole>("content_editor");
-  const [password, setPassword] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [confirm, setConfirm] = useState<null | {
-    title: string;
-    description?: string;
-    action: () => Promise<void>;
-  }>(null);
-
-  // content_editor tidak melihat & tidak bisa memberi `super_admin`.
-  const availableRoles: AdminRole[] = isSuperAdmin
-    ? ["super_admin", "content_editor"]
-    : ["content_editor"];
-
-  const { data, error, loading, reload } = useApiQuery(
-    ["admin", "users", page, pageSize, search, roleFilter],
-    () =>
-      usersService.list({
-        page,
-        limit: pageSize,
-        ...(search.trim() ? { search: search.trim() } : {}),
-        ...(roleFilter === "all" ? {} : { role: roleFilter }),
-      }),
+  const [target, setTarget] = useState<SafeUser | null>(null);
+  const [form, setForm] = useState<{
+    name: string;
+    email: string;
+    role: AdminRole;
+    temporary_password: string;
+    new_password: string;
+  }>({
+    name: "",
+    email: "",
+    role: "content_editor",
+    temporary_password: "",
+    new_password: "",
+  });
+  // BC-26: data `me` dari store sesi (legacy memanggil `authApi.me()` lagi di halaman ini).
+  const currentRole = useAuthStore((state) => state.user?.role);
+  const canManageSuperAdmin = currentRole === "super_admin";
+  // Legacy: content_editor tidak boleh memfilter `super_admin` (effect reset ke "all").
+  const roleFilter = currentRole === "content_editor" && role === "super_admin" ? "all" : role;
+  const users = useApiQuery(["admin", "users", page, pageSize, query, roleFilter], () =>
+    usersService.list({
+      page,
+      limit: pageSize,
+      search: query || undefined,
+      role: roleFilter === "all" ? undefined : roleFilter,
+    }),
   );
+  const list = users.data?.items ?? [];
+  const pagination = users.data?.pagination;
+  const start =
+    pagination && pagination.total > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
+  const end = pagination ? Math.min(pagination.page * pagination.limit, pagination.total) : 0;
 
-  const items = data?.items ?? [];
-  const pagination = data?.pagination ?? { page: 1, limit: pageSize, total: 0, total_pages: 1 };
+  // Legacy mereset halaman ke 1 saat pageSize/query/role berubah (via effect).
+  const changeQuery = (value: string) => {
+    setQuery(value);
+    setPage(1);
+  };
+  const changeRole = (value: string) => {
+    setRole(value);
+    setPage(1);
+  };
+  const changePageSize = (value: number) => {
+    setPageSize(value);
+    setPage(1);
+  };
 
-  function openCreate() {
+  const openCreate = () => {
     setEditing(null);
-    setName("");
-    setEmail("");
-    setRole("content_editor");
-    setPassword("");
-    setFormOpen(true);
-  }
+    setForm({
+      name: "",
+      email: "",
+      role: "content_editor",
+      temporary_password: "",
+      new_password: "",
+    });
+    setOpenForm(true);
+  };
 
-  function openEdit(item: SafeUser) {
-    setEditing(item);
-    setName(item.name);
-    setEmail(item.email);
-    setRole(isSuperAdmin ? item.role : "content_editor");
-    setPassword("");
-    setFormOpen(true);
-  }
+  const openEdit = (user: SafeUser) => {
+    setEditing(user);
+    setForm({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      temporary_password: "",
+      new_password: "",
+    });
+    setOpenForm(true);
+  };
 
-  async function handleSubmit() {
-    if (
-      name.trim() === "" ||
-      (!editing && email.trim() === "") ||
-      (!editing && password.length < 8)
-    ) {
-      toast.error("Periksa isian", {
-        description: editing
-          ? "Nama wajib diisi."
-          : "Nama, email, dan kata sandi sementara (min. 8 karakter) wajib diisi.",
-      });
-      return;
-    }
-    if (editing && password !== "" && password.length < 8) {
-      toast.error("Periksa isian", { description: "Kata sandi baru minimal 8 karakter." });
-      return;
-    }
-    setSaving(true);
+  const submit = async () => {
     try {
-      const safeRole: AdminRole = isSuperAdmin ? role : "content_editor";
+      const submittedRole: AdminRole = canManageSuperAdmin ? form.role : "content_editor";
       if (editing) {
-        await usersService.update(editing.id, {
-          name: name.trim(),
-          role: safeRole,
-          ...(password !== "" ? { new_password: password } : {}),
-        });
-        toast.success("Pengguna diperbarui");
-      } else {
-        await usersService.create({
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          role: safeRole,
-          temporary_password: password,
-        });
-        toast.success("Pengguna ditambahkan");
-      }
-      setFormOpen(false);
-      reload();
-    } catch (saveError) {
-      toast.error("Simpan gagal", {
-        description: saveError instanceof ApiError ? saveError.message : undefined,
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
+        const newPassword = form.new_password.trim();
+        if (newPassword && newPassword.length < 8) {
+          toast.error("Kata sandi baru minimal 8 karakter.");
+          return;
+        }
 
-  async function runAction(action: () => Promise<void>, successMessage: string) {
-    try {
-      await action();
-      toast.success(successMessage);
-      reload();
-    } catch (actionError) {
-      toast.error("Aksi gagal", {
-        description:
-          actionError instanceof ApiError ? getUserFacingErrorMessage(actionError) : undefined,
+        const payload: ContractSchemas["UpdateUserInput"] = {
+          name: form.name,
+          role: submittedRole,
+        };
+        if (newPassword) {
+          payload.new_password = newPassword;
+        }
+
+        await usersService.update(editing.id, payload);
+      } else {
+        const temporaryPassword = form.temporary_password.trim();
+        if (temporaryPassword.length < 8) {
+          toast.error("Kata sandi sementara minimal 8 karakter.");
+          return;
+        }
+
+        await usersService.create({
+          name: form.name,
+          email: form.email,
+          role: submittedRole,
+          temporary_password: temporaryPassword,
+        });
+      }
+      toast.success(editing ? "Pengguna diperbarui" : "Pengguna ditambahkan");
+      setOpenForm(false);
+      users.reload();
+    } catch (error) {
+      toast.error("Pengguna gagal disimpan", {
+        description: getUserFacingErrorMessage(error, { action: "save" }),
       });
     }
-  }
+  };
+
+  const toggleStatus = async (user: SafeUser) => {
+    try {
+      await usersService.updateStatus(user.id, user.status === "active" ? "inactive" : "active");
+      toast.success("Akses pengguna diperbarui");
+      users.reload();
+    } catch (error) {
+      toast.error("Akses pengguna gagal diperbarui", {
+        description: getUserFacingErrorMessage(error, { action: "save" }),
+      });
+    }
+  };
+
+  const remove = async () => {
+    if (!target) {
+      return;
+    }
+    try {
+      await usersService.remove(target.id);
+      toast.success("Pengguna dinonaktifkan");
+      setTarget(null);
+      users.reload();
+    } catch (error) {
+      toast.error("Pengguna gagal dinonaktifkan", {
+        description: getUserFacingErrorMessage(error, { action: "delete" }),
+      });
+    }
+  };
 
   return (
     <>
@@ -159,287 +186,250 @@ export default function UsersPage() {
         noindex
       />
       <PageTitle
-        title="Pengguna Admin"
-        desc="Kelola akun yang bisa masuk ke panel admin."
-        action={<Button onClick={openCreate}>Tambah pengguna</Button>}
+        title="Pengguna"
+        desc="Kelola akun dan hak akses untuk dashboard admin."
+        action={
+          <PrimaryButton onClick={openCreate}>
+            <Plus className="h-4 w-4" /> Tambah Pengguna
+          </PrimaryButton>
+        }
       />
-      <div className="mb-4 flex flex-wrap gap-2">
-        <input
-          type="search"
-          aria-label="Cari pengguna"
-          placeholder="Cari nama atau email..."
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setPage(1);
-          }}
-          className="w-full max-w-sm rounded-full border border-input bg-background px-4 py-2 text-sm"
-        />
-        <select
-          aria-label="Filter peran"
+      <Card className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative min-w-0 flex-1 basis-full sm:basis-auto">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(event) => changeQuery(event.target.value)}
+            placeholder="Cari nama atau email..."
+            className="w-full rounded-full border border-border bg-secondary py-2 pl-10 pr-4 text-sm outline-none focus:border-primary"
+          />
+        </div>
+        <Select
           value={roleFilter}
-          onChange={(event) => {
-            setRoleFilter(event.target.value);
-            setPage(1);
-          }}
-          className="rounded-full border border-input bg-background px-4 py-2 text-sm"
-          disabled={!isSuperAdmin}
+          onChange={(event) => changeRole(event.target.value)}
+          className="w-full sm:w-56"
         >
-          {isSuperAdmin ? <option value="all">Semua peran</option> : null}
-          <option value="super_admin" hidden={!isSuperAdmin}>
-            Admin Utama
-          </option>
+          <option value="all">{canManageSuperAdmin ? "Semua akses" : "Semua editor"}</option>
+          {canManageSuperAdmin && <option value="super_admin">Admin Utama</option>}
           <option value="content_editor">Editor Konten</option>
-        </select>
+        </Select>
+      </Card>
+
+      {users.loading && !users.data && <LoadingState label="Memuat pengguna..." />}
+      {users.error && <ErrorState error={users.error} onRetry={users.reload} />}
+
+      <div className="grid gap-4 lg:hidden">
+        {list.length === 0 && !users.loading && (
+          <Card>
+            <EmptyState
+              title="Tidak ada pengguna"
+              description="Coba filter atau kata kunci lain."
+            />
+          </Card>
+        )}
+        {list.map((user) => (
+          <Card key={user.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-anywhere font-semibold">{user.name}</p>
+                <p className="text-anywhere text-xs text-muted-foreground">{user.email}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {user.role === "super_admin" ? "Admin Utama" : "Editor Konten"}
+                </p>
+              </div>
+              <StatusBadge display={userStatus(user.status)} />
+            </div>
+            <UserActions
+              user={user}
+              onEdit={() => openEdit(user)}
+              onToggle={() => void toggleStatus(user)}
+              onDelete={() => setTarget(user)}
+            />
+          </Card>
+        ))}
       </div>
 
-      {loading && !data ? (
-        <LoadingState label="Memuat pengguna..." />
-      ) : error && !data ? (
-        <ErrorState error={error} onRetry={reload} />
-      ) : items.length === 0 ? (
-        <EmptyState title="Tidak ada pengguna" description="Coba filter atau kata kunci lain." />
-      ) : (
-        <>
-          <div className="grid gap-3 lg:hidden">
-            {items.map((item) => (
-              <UserCard
-                key={item.id}
-                item={item}
-                isSelf={item.id === currentUser?.id}
-                onEdit={() => openEdit(item)}
-                onToggle={() =>
-                  runAction(
-                    () =>
-                      usersService
-                        .updateStatus(item.id, item.status === "active" ? "inactive" : "active")
-                        .then(() => undefined),
-                    item.status === "active" ? "Pengguna dinonaktifkan" : "Pengguna diaktifkan",
-                  )
-                }
-                onRemove={() =>
-                  setConfirm({
-                    title: "Hapus pengguna ini?",
-                    description: `${item.name} tidak bisa lagi masuk ke panel admin.`,
-                    action: () => usersService.remove(item.id),
-                  })
-                }
-              />
+      <Card className="hidden overflow-hidden p-0 lg:block">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
+            <tr>
+              <th className="p-4 text-left">Pengguna</th>
+              <th className="p-4 text-left">Akses</th>
+              <th className="p-4 text-left">Login Terakhir</th>
+              <th className="p-4 text-left">Status Akses</th>
+              <th className="p-4 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {list.map((user) => (
+              <tr key={user.id} className="hover:bg-secondary/40">
+                <td className="p-4">
+                  <p className="font-semibold">{user.name}</p>
+                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                </td>
+                <td className="p-4">
+                  {user.role === "super_admin" ? "Admin Utama" : "Editor Konten"}
+                </td>
+                <td className="p-4 text-muted-foreground">
+                  {user.last_login_at ? formatDateId(user.last_login_at, "short") : "-"}
+                </td>
+                <td className="p-4">
+                  <StatusBadge display={userStatus(user.status)} />
+                </td>
+                <td className="p-4 text-right">
+                  <UserActions
+                    user={user}
+                    onEdit={() => openEdit(user)}
+                    onToggle={() => void toggleStatus(user)}
+                    onDelete={() => setTarget(user)}
+                  />
+                </td>
+              </tr>
             ))}
-          </div>
-          <Card className="hidden lg:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="px-4 py-2 font-medium">Nama</th>
-                  <th className="px-4 py-2 font-medium">Akses</th>
-                  <th className="px-4 py-2 font-medium">Login Terakhir</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 text-right font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-b last:border-0">
-                    <td className="px-4 py-2">
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">{item.email}</p>
-                    </td>
-                    <td className="px-4 py-2">{ROLE_LABEL[item.role] ?? item.role}</td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {item.last_login_at ? formatDateId(item.last_login_at, "short") : "—"}
-                    </td>
-                    <td className="px-4 py-2">
-                      <Badge tone={item.status === "active" ? "success" : "muted"}>
-                        {item.status === "active" ? "Aktif" : "Nonaktif"}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="outline" onClick={() => openEdit(item)}>
-                          Ubah
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={item.id === currentUser?.id}
-                          title={
-                            item.id === currentUser?.id
-                              ? "Tidak bisa menonaktifkan akun sendiri"
-                              : undefined
-                          }
-                          onClick={() =>
-                            runAction(
-                              () =>
-                                usersService
-                                  .updateStatus(
-                                    item.id,
-                                    item.status === "active" ? "inactive" : "active",
-                                  )
-                                  .then(() => undefined),
-                              item.status === "active"
-                                ? "Pengguna dinonaktifkan"
-                                : "Pengguna diaktifkan",
-                            )
-                          }
-                        >
-                          {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive"
-                          disabled={item.id === currentUser?.id}
-                          title={
-                            item.id === currentUser?.id
-                              ? "Tidak bisa menghapus akun sendiri"
-                              : undefined
-                          }
-                          onClick={() =>
-                            setConfirm({
-                              title: "Hapus pengguna ini?",
-                              description: `${item.name} tidak bisa lagi masuk ke panel admin.`,
-                              action: () => usersService.remove(item.id),
-                            })
-                          }
-                        >
-                          Hapus
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+          </tbody>
+        </table>
+        {list.length === 0 && !users.loading && (
+          <EmptyState title="Tidak ada pengguna" description="Coba filter atau kata kunci lain." />
+        )}
+      </Card>
+
+      {pagination && (
+        <div className="mt-3">
           <TablePagination
             page={pagination.page}
-            pageCount={Math.max(1, pagination.total_pages)}
+            pageCount={pagination.total_pages}
             pageSize={pagination.limit}
             total={pagination.total}
-            start={pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1}
-            end={Math.min(pagination.page * pagination.limit, pagination.total)}
+            start={start}
+            end={end}
             onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setPage(1);
-            }}
+            onPageSizeChange={changePageSize}
             itemLabel="pengguna"
+            className="rounded-xl border bg-card"
           />
-        </>
+        </div>
       )}
 
       <CrudModal
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        title={editing ? "Ubah pengguna" : "Tambah pengguna"}
-        onSubmit={() => void handleSubmit()}
-        submitting={saving}
+        open={openForm}
+        onOpenChange={setOpenForm}
+        title={editing ? "Ubah Pengguna" : "Tambah Pengguna"}
+        description={
+          editing
+            ? "Atur nama, hak akses, dan kata sandi pengguna dashboard."
+            : "Atur nama, email, hak akses, dan kata sandi sementara."
+        }
+        onSubmit={() => void submit()}
+        size="md"
       >
         <Field label="Nama" required>
           <TextInput
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Nama lengkap"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
         </Field>
-        {!editing ? (
-          <Field label="Email" required hint="Email tidak bisa diubah setelah akun dibuat.">
+        {!editing && (
+          <Field label="Email" required>
             <TextInput
               type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="nama@indobraga.com"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
           </Field>
-        ) : null}
-        <Field label="Peran" required>
-          <Select
-            value={role}
-            onChange={(event) => setRole(event.target.value as AdminRole)}
-            disabled={!isSuperAdmin}
+        )}
+        <Field label="Hak Akses">
+          {canManageSuperAdmin ? (
+            <Select
+              value={form.role}
+              onChange={(e) => setForm({ ...form, role: e.target.value as AdminRole })}
+            >
+              <option value="super_admin">Admin Utama</option>
+              <option value="content_editor">Editor Konten</option>
+            </Select>
+          ) : (
+            <div className="rounded-xl border border-border bg-secondary px-3 py-2 text-sm font-semibold text-muted-foreground">
+              Editor Konten
+            </div>
+          )}
+        </Field>
+        {!editing && (
+          <Field label="Kata Sandi Sementara" required>
+            <TextInput
+              type="password"
+              value={form.temporary_password}
+              onChange={(e) => setForm({ ...form, temporary_password: e.target.value })}
+              autoComplete="new-password"
+            />
+          </Field>
+        )}
+        {editing && (
+          <Field
+            label="Kata Sandi Baru"
+            hint="Kosongkan jika kata sandi tidak diganti. Jika diisi, minimal 8 karakter."
           >
-            {availableRoles.map((available) => (
-              <option key={available} value={available}>
-                {ROLE_LABEL[available]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field
-          label={editing ? "Kata sandi baru" : "Kata sandi sementara"}
-          required={!editing}
-          hint={
-            editing
-              ? "Opsional — kosongkan bila tidak diubah (min. 8 karakter)."
-              : "Min. 8 karakter — sampaikan ke pengguna."
-          }
-        >
-          <TextInput
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="new-password"
-          />
-        </Field>
+            <TextInput
+              type="password"
+              value={form.new_password}
+              onChange={(e) => setForm({ ...form, new_password: e.target.value })}
+              autoComplete="new-password"
+            />
+          </Field>
+        )}
       </CrudModal>
 
       <ConfirmDialog
-        open={confirm !== null}
-        onOpenChange={(open) => {
-          if (!open) setConfirm(null);
-        }}
-        title={confirm?.title ?? ""}
-        description={confirm?.description}
-        onConfirm={async () => {
-          if (confirm) await runAction(confirm.action, "Berhasil");
-          setConfirm(null);
-        }}
+        open={Boolean(target)}
+        onOpenChange={(open) => !open && setTarget(null)}
+        title={target ? `Nonaktifkan ${target.name}?` : "Nonaktifkan pengguna?"}
+        description="Pengguna ini tidak dapat masuk lagi sampai diaktifkan kembali."
+        confirmLabel="Nonaktifkan"
+        onConfirm={remove}
       />
     </>
   );
 }
 
-function UserCard({
-  item,
-  isSelf,
+function UserActions({
+  user,
   onEdit,
   onToggle,
-  onRemove,
+  onDelete,
 }: {
-  item: SafeUser;
-  isSelf: boolean;
+  user: SafeUser;
   onEdit: () => void;
   onToggle: () => void;
-  onRemove: () => void;
+  onDelete: () => void;
 }) {
+  const accessAction = user.status === "active" ? "Nonaktifkan Akses" : "Aktifkan Akses";
+
   return (
-    <Card>
-      <p className="font-medium">{item.name}</p>
-      <p className="text-xs text-muted-foreground">{item.email}</p>
-      <div className="mt-2 flex items-center gap-2">
-        <Badge tone="secondary">{ROLE_LABEL[item.role] ?? item.role}</Badge>
-        <Badge tone={item.status === "active" ? "success" : "muted"}>
-          {item.status === "active" ? "Aktif" : "Nonaktif"}
-        </Badge>
-      </div>
-      <div className="mt-3 flex gap-1">
-        <Button size="sm" variant="outline" onClick={onEdit}>
-          Ubah
-        </Button>
-        <Button size="sm" variant="ghost" disabled={isSelf} onClick={onToggle}>
-          {item.status === "active" ? "Nonaktifkan" : "Aktifkan"}
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="text-destructive"
-          disabled={isSelf}
-          onClick={onRemove}
-        >
-          Hapus
-        </Button>
-      </div>
-    </Card>
+    <ActionButtonGroup className="mt-3 justify-start lg:mt-0 lg:justify-end">
+      <IconActionButton
+        label={`Ubah pengguna ${user.name}`}
+        tooltip="Ubah"
+        onClick={onEdit}
+        icon={<Edit2 className="h-4 w-4" />}
+      />
+      <IconActionButton
+        label={`${accessAction} ${user.name}`}
+        tooltip={accessAction}
+        onClick={onToggle}
+        icon={
+          user.status === "active" ? (
+            <UserX className="h-4 w-4" />
+          ) : (
+            <UserCheck className="h-4 w-4" />
+          )
+        }
+        tone={user.status === "active" ? "warning" : "success"}
+      />
+      <IconActionButton
+        label={`Nonaktifkan pengguna ${user.name}`}
+        tooltip="Nonaktifkan"
+        onClick={onDelete}
+        icon={<Ban className="h-4 w-4" />}
+        tone="danger"
+      />
+    </ActionButtonGroup>
   );
 }

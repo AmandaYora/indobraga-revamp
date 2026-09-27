@@ -1,230 +1,259 @@
-import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LogOut, Menu, Search, X } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Image as ImageIcon,
+  Images,
+  Users,
+  Package,
+  Wrench,
+  Newspaper,
+  Briefcase,
+  Inbox,
+  MessageCircle,
+  Mail,
+  Send,
+  FileText,
+  History,
+  Settings,
+  UserCog,
+  LogOut,
+  Menu,
+  X,
+  Search,
+  Tags,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { ADMIN_MENU } from "@/app/routes/admin-menu";
-import { useAuthStore } from "@/modules/auth";
-import { useUiStore } from "@/shared/stores/ui.store";
-import { NotificationBell } from "@/modules/notifications";
-import { BrandLogo } from "@/modules/site";
-import { Seo } from "@/modules/site";
-import { cn } from "@/shared/lib/cn";
 import { ROUTE_PATHS } from "@/app/routes/route-paths";
+import { useAuthStore } from "@/modules/auth";
+import { NotificationBell } from "@/modules/notifications";
+import { Seo } from "@/modules/site";
+import { LoadingState } from "@/shared/components/feedback/states";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { useUiStore } from "@/shared/stores/ui.store";
 
-function SidebarContent({ onNavigate }: { onNavigate: () => void }) {
-  const location = useLocation();
-  const menuQuery = useUiStore((state) => state.menuQuery);
-  const query = menuQuery.trim().toLowerCase();
+/*
+ * Port `components/admin/AdminLayout.tsx` legacy — markup & kelas 1:1.
+ * Satu-satunya perubahan: input pencarian top bar memfilter link sidebar (BC-27).
+ */
 
+/** Ikon per link sidebar (sama dengan `groups` legacy). */
+const MENU_ICONS: Record<string, LucideIcon> = {
+  [ROUTE_PATHS.admin]: LayoutDashboard,
+  [ROUTE_PATHS.adminHero]: ImageIcon,
+  [ROUTE_PATHS.adminPartners]: Users,
+  [ROUTE_PATHS.adminStrength]: Wrench,
+  [ROUTE_PATHS.adminPortfolio]: Package,
+  [ROUTE_PATHS.adminPortfolioCategories]: Tags,
+  [ROUTE_PATHS.adminMachines]: Wrench,
+  [ROUTE_PATHS.adminServices]: Briefcase,
+  [ROUTE_PATHS.adminGallery]: Images,
+  [ROUTE_PATHS.adminNews]: Newspaper,
+  [ROUTE_PATHS.adminInquiries]: Inbox,
+  [ROUTE_PATHS.adminWhatsapp]: MessageCircle,
+  [ROUTE_PATHS.adminEmailAccounts]: Mail,
+  [ROUTE_PATHS.adminEmailBlast]: Send,
+  [ROUTE_PATHS.adminEmailTemplates]: FileText,
+  [ROUTE_PATHS.adminEmailHistory]: History,
+  [ROUTE_PATHS.adminSettings]: Settings,
+  [ROUTE_PATHS.adminUsers]: UserCog,
+};
+
+function isActiveRoute(pathname: string, target: string, exact?: boolean): boolean {
+  if (exact) {
+    return pathname === target;
+  }
+
+  return pathname === target || pathname.startsWith(`${target}/`);
+}
+
+/** Markup `BrandLogo` legacy dengan props yang dipakai sidebar admin legacy (tanpa `logoUrl`). */
+function AdminBrand() {
   return (
-    <div className="flex h-full flex-col gap-6 overflow-y-auto p-4">
-      {ADMIN_MENU.map((group) => {
-        const links = group.links.filter(
-          (link) => query === "" || link.label.toLowerCase().includes(query),
-        );
-        if (links.length === 0) return null;
-        return (
-          <nav key={group.label} aria-label={group.label}>
-            <p className="px-3 text-[11px] font-semibold uppercase tracking-widest text-white/50">
-              {group.label}
-            </p>
-            <ul className="mt-2 space-y-1">
-              {links.map((link) => {
-                const active = link.exact
-                  ? location.pathname === link.to
-                  : location.pathname === link.to || location.pathname.startsWith(`${link.to}/`);
-                return (
-                  <li key={link.to}>
-                    <NavLink
-                      to={link.to}
-                      end={link.exact}
-                      onClick={onNavigate}
-                      className={cn(
-                        "block rounded-lg px-3 py-2 text-sm transition",
-                        active
-                          ? "bg-sidebar-primary font-semibold text-sidebar-primary-foreground"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent",
-                      )}
-                    >
-                      {link.label}
-                    </NavLink>
-                  </li>
-                );
-              })}
-            </ul>
-          </nav>
-        );
-      })}
-      {query !== "" &&
-      ADMIN_MENU.every((group) =>
-        group.links.every((link) => !link.label.toLowerCase().includes(query)),
-      ) ? (
-        <p className="px-3 text-sm text-white/60">Tidak ada menu yang cocok.</p>
-      ) : null}
-    </div>
+    <span className="flex min-w-0 items-center gap-2 ">
+      <span
+        className="flex shrink-0 items-center justify-center rounded-lg bg-primary text-xs font-extrabold text-primary-foreground ring-1 ring-primary/20 h-8 w-8 bg-white text-primary-deep"
+        aria-hidden="true"
+      >
+        AI
+      </span>
+      <span className="truncate font-display text-base font-bold">Admin Indobraga</span>
+    </span>
   );
 }
 
 export function AdminLayout() {
-  const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
-  const status = useAuthStore((state) => state.status);
-  const logout = useAuthStore((state) => state.logout);
-  const sidebarOpen = useUiStore((state) => state.sidebarOpen);
-  const setSidebarOpen = useUiStore((state) => state.setSidebarOpen);
+  const open = useUiStore((state) => state.sidebarOpen);
+  const setOpen = useUiStore((state) => state.setSidebarOpen);
   const menuQuery = useUiStore((state) => state.menuQuery);
   const setMenuQuery = useUiStore((state) => state.setMenuQuery);
-  const [loggingOut, setLoggingOut] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const status = useAuthStore((state) => state.status);
+  const logoutSession = useAuthStore((state) => state.logout);
+  const loggingOut = useRef(false);
+  const loc = useLocation();
+  const nav = useNavigate();
 
   useEffect(() => {
     // Guard ganda di sisi client (loader `requireAuth` sudah memastikan sesi).
     if (status === "anonymous") {
-      navigate(ROUTE_PATHS.login, { replace: true });
+      nav(ROUTE_PATHS.login, { replace: true });
     }
-  }, [status, navigate]);
+  }, [status, nav]);
 
-  async function handleLogout() {
-    if (loggingOut) return;
-    setLoggingOut(true);
+  const logout = async () => {
+    if (loggingOut.current) return;
+    loggingOut.current = true;
     try {
-      await logout();
+      await logoutSession();
       toast.success("Anda sudah keluar");
     } catch {
       toast.error("Keluar dari dashboard gagal, Anda akan diarahkan ke halaman masuk.");
     } finally {
-      navigate(ROUTE_PATHS.login, { replace: true });
-      setLoggingOut(false);
+      loggingOut.current = false;
+      nav(ROUTE_PATHS.login, { replace: true });
     }
-  }
+  };
 
-  if (status !== "authenticated" || !user) {
+  if (status === "unknown") {
     return (
-      <div className="flex min-h-screen items-center justify-center text-muted-foreground">
-        Memeriksa akses dashboard...
+      <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
+        <div className="w-full max-w-md">
+          <LoadingState label="Memeriksa akses dashboard..." />
+        </div>
       </div>
     );
   }
 
-  const initials = user.name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word[0] ?? "")
-    .join("")
-    .toUpperCase();
+  if (!user) {
+    return null;
+  }
+
+  // BC-27: pencarian top bar memfilter link sidebar.
+  const query = menuQuery.trim().toLowerCase();
+  const groups = ADMIN_MENU.map((group) => ({
+    ...group,
+    links: group.links.filter((link) => query === "" || link.label.toLowerCase().includes(query)),
+  })).filter((group) => group.links.length > 0);
 
   return (
     <>
       <Seo title="Admin" description="Panel pengelolaan website Indobraga." path="/admin" noindex />
-      <div className="flex min-h-screen bg-muted/40">
-        {/* Sidebar desktop */}
-        <aside className="hidden w-72 shrink-0 bg-sidebar lg:block" aria-label="Menu admin">
-          <div className="sticky top-0 flex h-screen flex-col">
-            <div className="p-4">
-              <BrandLogo brand="Indobraga" textClassName="text-white" />
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <SidebarContent onNavigate={() => undefined} />
-            </div>
-            <div className="border-t border-sidebar-border p-4">
-              <button
-                type="button"
-                onClick={() => void handleLogout()}
-                disabled={loggingOut}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent disabled:opacity-50"
-              >
-                <LogOut className="h-4 w-4" /> {loggingOut ? "Keluar..." : "Keluar"}
-              </button>
-            </div>
+      <div className="flex min-h-screen bg-secondary">
+        {/* Mobile overlay */}
+        {open && (
+          <div
+            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+        {/* Sidebar */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col transform bg-sidebar text-sidebar-foreground transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        >
+          <div className="flex h-16 shrink-0 items-center justify-between border-b border-sidebar-border px-5">
+            <Link to={ROUTE_PATHS.admin} className="flex items-center gap-2">
+              <AdminBrand />
+            </Link>
+            <button
+              type="button"
+              className="lg:hidden"
+              onClick={() => setOpen(false)}
+              aria-label="Tutup menu navigasi"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <ScrollArea className="flex-1">
+            <nav className="px-3 py-5">
+              {groups.map((g) => (
+                <div key={g.label} className="mb-5">
+                  <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/50">
+                    {g.label}
+                  </p>
+                  <ul className="space-y-0.5">
+                    {g.links.map((it) => {
+                      const Icon = MENU_ICONS[it.to] ?? LayoutDashboard;
+                      const active = isActiveRoute(loc.pathname, it.to, it.exact);
+                      return (
+                        <li key={it.to}>
+                          <Link
+                            to={it.to}
+                            onClick={() => setOpen(false)}
+                            aria-current={active ? "page" : undefined}
+                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${active ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-card" : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"}`}
+                          >
+                            <Icon className="h-4 w-4" />
+                            {it.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+              {/* BC-27: state baru saat pencarian menu tidak menemukan link. */}
+              {groups.length === 0 && (
+                <p className="px-3 text-sm text-sidebar-foreground/50">
+                  Tidak ada menu yang cocok.
+                </p>
+              )}
+            </nav>
+          </ScrollArea>
+          <div className="mt-auto shrink-0 border-t border-sidebar-border p-4">
+            <button
+              type="button"
+              onClick={() => void logout()}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent"
+            >
+              <LogOut className="h-4 w-4" /> Keluar
+            </button>
           </div>
         </aside>
 
-        {/* Drawer mobile */}
-        {sidebarOpen ? (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <div
-              className="absolute inset-0 bg-black/50"
-              onClick={() => setSidebarOpen(false)}
-              aria-hidden="true"
-            />
-            <aside
-              className="absolute left-0 top-0 h-full w-72 bg-sidebar"
-              aria-label="Menu admin seluler"
-            >
-              <div className="flex h-full flex-col">
-                <div className="flex items-center justify-between p-4">
-                  <BrandLogo brand="Indobraga" textClassName="text-white" />
-                  <button
-                    type="button"
-                    aria-label="Tutup menu"
-                    onClick={() => setSidebarOpen(false)}
-                    className="rounded-full p-2 text-white hover:bg-sidebar-accent"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <SidebarContent onNavigate={() => setSidebarOpen(false)} />
-                </div>
-                <div className="border-t border-sidebar-border p-4">
-                  <button
-                    type="button"
-                    onClick={() => void handleLogout()}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent"
-                  >
-                    <LogOut className="h-4 w-4" /> Keluar
-                  </button>
-                </div>
-              </div>
-            </aside>
-          </div>
-        ) : null}
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          {/* Top bar */}
-          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background px-4">
+        <div className="min-w-0 flex-1 lg:ml-0">
+          {/* Topbar */}
+          <header className="sticky top-0 z-30 flex h-16 min-w-0 items-center justify-between gap-4 border-b border-border bg-background px-4 sm:px-6">
             <button
               type="button"
-              aria-label="Buka menu"
-              onClick={() => setSidebarOpen(true)}
-              className="rounded-full p-2 hover:bg-muted lg:hidden"
+              className="lg:hidden"
+              onClick={() => setOpen(true)}
+              aria-label="Buka menu navigasi"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="relative hidden flex-1 sm:block">
-              <Search
-                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <input
-                type="search"
-                role="searchbox"
-                aria-label="Cari menu admin"
-                placeholder="Cari menu..."
-                value={menuQuery}
-                onChange={(event) => setMenuQuery(event.target.value)}
-                className="w-full max-w-md rounded-full border border-input bg-background py-2 pl-10 pr-4 text-sm"
-              />
+            <div className="hidden flex-1 max-w-md md:block">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  role="searchbox"
+                  aria-label="Cari menu admin"
+                  placeholder="Cari menu..."
+                  value={menuQuery}
+                  onChange={(event) => setMenuQuery(event.target.value)}
+                  className="w-full rounded-full border border-border bg-secondary py-2 pl-10 pr-4 text-sm outline-none focus:border-primary"
+                />
+              </div>
             </div>
-            <div className="ml-auto flex items-center gap-1">
+            <div className="flex min-w-0 items-center gap-3">
               <NotificationBell />
-              <Link
-                to={ROUTE_PATHS.adminUsers}
-                className="flex items-center gap-2 rounded-full px-2 py-1 hover:bg-muted"
-                aria-label={`Profil ${user.name}`}
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                  {initials}
-                </span>
-                <span className="hidden text-left md:block">
-                  <span className="block max-w-32 truncate text-sm font-medium">{user.name}</span>
-                  <span className="block text-xs text-muted-foreground">
+              <div className="flex min-w-0 items-center gap-2 rounded-full bg-secondary px-3 py-1.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                  AD
+                </div>
+                <div className="hidden text-xs sm:block">
+                  <p className="font-semibold leading-tight">{user.name}</p>
+                  <p className="text-muted-foreground">
                     {user.role === "super_admin" ? "Admin Utama" : "Editor Konten"}
-                  </span>
-                </span>
-              </Link>
+                  </p>
+                </div>
+              </div>
             </div>
           </header>
-          <main className="flex-1 p-4 sm:p-6">
+          <main className="mx-auto w-full min-w-0 max-w-7xl p-4 sm:p-6 lg:p-8">
             <Outlet />
           </main>
         </div>

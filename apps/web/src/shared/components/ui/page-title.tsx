@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { cn } from "@/shared/lib/cn";
 
+/** Judul halaman admin — port 1:1 `PageTitle` di `components/admin/ui.tsx` legacy. */
 export function PageTitle({
   title,
   desc,
@@ -11,18 +11,19 @@ export function PageTitle({
   action?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 className="text-2xl font-bold">{title}</h1>
-        {desc ? <p className="mt-1 text-sm text-muted-foreground">{desc}</p> : null}
+    <div className="mb-6 flex min-w-0 flex-wrap items-start justify-between gap-3 sm:items-end">
+      <div className="min-w-0 flex-1">
+        <h1 className="text-anywhere font-display text-2xl font-bold text-primary-deep sm:text-3xl">
+          {title}
+        </h1>
+        {desc && (
+          <p className="text-anywhere mt-1 max-w-3xl text-sm text-muted-foreground">{desc}</p>
+        )}
       </div>
-      {action ? <div className="flex items-center gap-2">{action}</div> : null}
+      {action && <div className="flex w-full min-w-0 sm:w-auto sm:justify-end">{action}</div>}
     </div>
   );
 }
 
-export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <div className={cn("rounded-2xl border bg-card p-6 shadow-card", className)}>{children}</div>
-  );
-}
+/** Satu-satunya kartu admin ada di `./card`; di-re-export agar import lama tetap valid. */
+export { Card } from "./card";

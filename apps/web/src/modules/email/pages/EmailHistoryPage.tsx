@@ -5,14 +5,13 @@ import { emailCampaignsService } from "@/modules/email/services/email.service";
 import { useAuthStore } from "@/modules/auth";
 import { PageTitle } from "@/shared/components/ui/page-title";
 import { Card } from "@/shared/components/ui/card";
-import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TablePagination } from "@/shared/components/ui/pagination";
 import { CrudModal } from "@/modules/content/components/CrudModal";
 import { EmptyState, ErrorState, LoadingState } from "@/shared/components/feedback/states";
 import { Seo } from "@/modules/site";
 import { ApiError, getUserFacingErrorMessage } from "@/shared/services/api-error";
-import { campaignStatusTone } from "@/modules/content";
+import { StatusBadge, campaignStatus, emailDeliveryStatus } from "@/modules/content";
 import { formatDateId } from "@/shared/lib/date";
 import type { ContractSchemas } from "@/shared/types/contract";
 
@@ -26,15 +25,6 @@ const STATUS_OPTIONS = [
   { value: "completed", label: "Selesai" },
   { value: "failed", label: "Gagal" },
 ];
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Draf",
-  pending: "Menunggu",
-  processing: "Diproses",
-  completed: "Selesai",
-  failed: "Gagal",
-  cancelled: "Dibatalkan",
-};
 
 const POLL_INTERVAL_MS = 5000;
 
@@ -147,10 +137,12 @@ export default function EmailHistoryPage() {
       ) : error && !data ? (
         <ErrorState error={error} onRetry={reload} />
       ) : items.length === 0 ? (
-        <EmptyState
-          title="Belum ada kampanye"
-          description="Kirim email pertama dari halaman Kirim Email."
-        />
+        <Card>
+          <EmptyState
+            title="Belum ada kampanye"
+            description="Kirim email pertama dari halaman Kirim Email."
+          />
+        </Card>
       ) : (
         <>
           <Card className="overflow-x-auto">
@@ -182,9 +174,7 @@ export default function EmailHistoryPage() {
                       {(item.failed_count ?? 0).toLocaleString("id-ID")}
                     </td>
                     <td className="px-4 py-2">
-                      <Badge tone={campaignStatusTone(item.status)}>
-                        {STATUS_LABEL[item.status] ?? item.status}
-                      </Badge>
+                      <StatusBadge display={campaignStatus(item.status)} />
                     </td>
                     <td className="whitespace-nowrap px-4 py-2 text-muted-foreground">
                       {formatDateId(item.created_at, "short")}
@@ -280,7 +270,7 @@ function CampaignDetailModal({
                 <span className="truncate">
                   {recipient.name ? `${recipient.name} <${recipient.email}>` : recipient.email}
                 </span>
-                <Badge tone={campaignStatusTone(recipient.status)}>{recipient.status}</Badge>
+                <StatusBadge display={emailDeliveryStatus(recipient.status)} />
               </li>
             ))}
           </ul>

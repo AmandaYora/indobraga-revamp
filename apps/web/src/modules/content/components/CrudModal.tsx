@@ -5,6 +5,7 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from "react";
+import { X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,12 +24,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/components/ui/dialog";
-import { Button } from "@/shared/components/ui/button";
-import { cn } from "@/shared/lib/cn";
+import { GhostButton, PrimaryButton } from "@/shared/components/ui/action-buttons";
 
-const inputCls =
-  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+/* Port `components/admin/CrudModal.tsx` legacy — markup, teks, dan kelas 1:1. */
 
+/* ---------------- Form Modal ---------------- */
 export function CrudModal({
   open,
   onOpenChange,
@@ -47,34 +47,45 @@ export function CrudModal({
   children: ReactNode;
   onSubmit?: () => void;
   submitLabel?: string;
+  /** Mencegah submit ganda; tampilan tombol tetap seperti legacy. */
   submitting?: boolean;
   size?: "sm" | "md" | "lg" | "xl";
 }) {
-  const sizeCls = { sm: "sm:max-w-md", md: "sm:max-w-lg", lg: "sm:max-w-2xl", xl: "sm:max-w-4xl" }[
-    size
-  ];
+  const sizeMap = {
+    sm: "sm:max-w-md",
+    md: "sm:max-w-xl",
+    lg: "sm:max-w-3xl",
+    xl: "sm:max-w-5xl",
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("max-h-[92vh] overflow-y-auto", sizeCls)}>
+      <DialogContent
+        className={`max-w-[calc(100vw-2rem)] ${sizeMap[size]} max-h-[92vh] overflow-y-auto`}
+      >
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description ? <DialogDescription>{description}</DialogDescription> : null}
+          <DialogTitle className="text-anywhere pr-8 font-display text-xl text-primary-deep">
+            {title}
+          </DialogTitle>
+          {description && (
+            <DialogDescription className="text-anywhere">{description}</DialogDescription>
+          )}
         </DialogHeader>
         <form
-          onSubmit={(event) => {
-            event.preventDefault();
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (submitting) return;
             onSubmit?.();
           }}
           className="space-y-4"
         >
-          {children}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Batal
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Menyimpan..." : submitLabel}
-            </Button>
+          <div className="space-y-4 py-2">{children}</div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <GhostButton type="button" onClick={() => onOpenChange(false)}>
+              <X className="h-4 w-4" /> Batal
+            </GhostButton>
+            <PrimaryButton type="submit" disabled={submitting}>
+              {submitLabel}
+            </PrimaryButton>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -82,11 +93,12 @@ export function CrudModal({
   );
 }
 
+/* ---------------- Confirm (alert) ---------------- */
 export function ConfirmDialog({
   open,
   onOpenChange,
   title = "Hapus item ini?",
-  description,
+  description = "Tindakan ini tidak dapat dibatalkan.",
   confirmLabel = "Hapus",
   destructive = true,
   confirming = false,
@@ -97,7 +109,9 @@ export function ConfirmDialog({
   title?: string;
   description?: string;
   confirmLabel?: string;
+  /** Default `true` seperti legacy; kirim `false` untuk konfirmasi non-destruktif (tombol primary). */
   destructive?: boolean;
+  /** Mencegah klik ganda; tampilan tombol tetap seperti legacy. */
   confirming?: boolean;
   onConfirm: () => void | Promise<void>;
 }) {
@@ -106,23 +120,20 @@ export function ConfirmDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
+          <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Batal</AlertDialogCancel>
           <AlertDialogAction
             disabled={confirming}
-            onClick={(event) => {
-              event.preventDefault();
-              void onConfirm();
-            }}
+            onClick={() => void onConfirm()}
             className={
               destructive
                 ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                : undefined
+                : ""
             }
           >
-            {confirming ? "Memproses..." : confirmLabel}
+            {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -130,60 +141,54 @@ export function ConfirmDialog({
   );
 }
 
+/* ---------------- Form Field ---------------- */
 export function Field({
   label,
   hint,
   required,
-  error,
   children,
+  className = "",
 }: {
   label: string;
   hint?: string;
   required?: boolean;
-  error?: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div>
-      <label className="mb-1 block text-sm font-medium">
-        {label}{" "}
-        {required ? (
-          <span className="text-destructive" aria-hidden="true">
-            *
-          </span>
-        ) : null}
+    <div className={className}>
+      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+        {required && <span className="ml-1 text-destructive">*</span>}
       </label>
-      {children}
-      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
-      {error ? (
-        <p role="alert" className="mt-1 text-xs text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <div className="mt-1.5">{children}</div>
+      {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }
 
+const inputCls =
+  "w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
+
 export const TextInput = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
-  ({ className, ...props }, ref) => (
-    <input ref={ref} className={cn(inputCls, className)} {...props} />
-  ),
+  function TextInput({ className, ...props }, ref) {
+    return <input ref={ref} {...props} className={`${inputCls} ${className ?? ""}`} />;
+  },
 );
-TextInput.displayName = "TextInput";
 
 export const TextArea = forwardRef<
   HTMLTextAreaElement,
   TextareaHTMLAttributes<HTMLTextAreaElement>
->(({ className, rows = 4, ...props }, ref) => (
-  <textarea ref={ref} rows={rows} className={cn(inputCls, className)} {...props} />
-));
-TextArea.displayName = "TextArea";
+>(function TextArea({ className, ...props }, ref) {
+  return <textarea ref={ref} {...props} className={`${inputCls} ${className ?? ""}`} />;
+});
 
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
-  ({ className, children, ...props }, ref) => (
-    <select ref={ref} className={cn(inputCls, className)} {...props}>
-      {children}
-    </select>
-  ),
+  function Select({ className, children, ...props }, ref) {
+    return (
+      <select ref={ref} {...props} className={`${inputCls} ${className ?? ""}`}>
+        {children}
+      </select>
+    );
+  },
 );
-Select.displayName = "Select";

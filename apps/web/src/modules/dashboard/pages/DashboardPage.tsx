@@ -1,56 +1,64 @@
 import { Link } from "react-router-dom";
+import { Factory, Inbox, MessageCircle, Newspaper, Package, Printer } from "lucide-react";
+import { ErrorState, LoadingState } from "@/shared/components/feedback/states";
 import { PageTitle } from "@/shared/components/ui/page-title";
 import { Card } from "@/shared/components/ui/card";
 import { Seo } from "@/modules/site";
+import { StatusBadge, leadStatus } from "@/modules/content";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
 import { dashboardService } from "@/modules/dashboard/services/dashboard.service";
-import { inquiryStatusTone, campaignStatusTone } from "@/modules/content/lib/status-map";
-import { Badge } from "@/shared/components/ui/badge";
 import { formatDateId } from "@/shared/lib/date";
 import { ROUTE_PATHS } from "@/app/routes/route-paths";
-import { ErrorState, LoadingState } from "@/shared/components/feedback/states";
 
-const INQUIRY_STATUS_LABEL: Record<string, string> = {
-  new: "Baru",
-  contacted: "Sudah Dihubungi",
-  in_progress: "Dalam Proses",
-  closed: "Selesai",
-  spam: "Spam",
-};
-
-const CAMPAIGN_STATUS_LABEL: Record<string, string> = {
-  draft: "Draf",
-  pending: "Menunggu",
-  processing: "Diproses",
-  completed: "Selesai",
-  failed: "Gagal",
-};
-
+/** Port 1:1 `routes/admin.index.tsx` legacy. */
 export default function DashboardPage() {
   const { data, error, loading, reload } = useApiQuery(["admin", "dashboard"], () =>
     dashboardService.summary(),
   );
-
-  if (loading && !data) return <LoadingState label="Memuat ringkasan..." />;
-  if (error && !data) return <ErrorState error={error} onRetry={reload} />;
-  if (!data) return null;
-
-  const totals = data.totals;
+  const totals = data?.totals;
   // BC-12: `pending_revalidation` tidak tampil di UI.
-  const cards = [
-    { label: "Total Pesan Kontak", value: totals.inquiries, hint: "Tersimpan" },
-    { label: "Prospek WhatsApp", value: totals.whatsapp_leads, hint: "Tersimpan" },
-    { label: "Berita Tayang", value: totals.published_news, hint: "Sudah tayang" },
-    { label: "Portofolio Aktif", value: totals.active_portfolios, hint: "Sudah tayang" },
+  const stats = [
+    {
+      label: "Total Pesan Kontak",
+      value: String(totals?.inquiries ?? 0),
+      change: "Tersimpan",
+      icon: Inbox,
+      color: "bg-primary/10 text-primary",
+    },
+    {
+      label: "Prospek WhatsApp",
+      value: String(totals?.whatsapp_leads ?? 0),
+      change: "Tersimpan",
+      icon: MessageCircle,
+      color: "bg-success/15 text-success",
+    },
+    {
+      label: "Berita Tayang",
+      value: String(totals?.published_news ?? 0),
+      change: "Sudah tayang",
+      icon: Newspaper,
+      color: "bg-accent/20 text-accent-foreground",
+    },
+    {
+      label: "Portofolio Aktif",
+      value: String(totals?.active_portfolios ?? 0),
+      change: "Sudah tayang",
+      icon: Package,
+      color: "bg-warning/20 text-warning-strong",
+    },
     {
       label: "Media Siap Pakai",
-      value: totals.completed_media,
-      hint: totals.failed_media > 0 ? `${totals.failed_media} perlu dicek` : "Semua baik",
+      value: String(totals?.completed_media ?? 0),
+      change: `${totals?.failed_media ?? 0} perlu dicek`,
+      icon: Factory,
+      color: "bg-primary-soft text-primary",
     },
     {
       label: "Email Massal Menunggu",
-      value: totals.pending_email_campaigns,
-      hint: `${totals.email_campaigns} pengiriman`,
+      value: String(totals?.pending_email_campaigns ?? 0),
+      change: `${totals?.email_campaigns ?? 0} pengiriman`,
+      icon: Printer,
+      color: "bg-success/15 text-success",
     },
   ];
 
@@ -66,86 +74,78 @@ export default function DashboardPage() {
         title="Selamat datang kembali"
         desc="Ringkasan aktivitas website Indobraga hari ini."
       />
+      {loading && !data && <LoadingState label="Memuat ringkasan..." />}
+      {error && <ErrorState error={error} onRetry={reload} />}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map((card) => (
-          <Card key={card.label}>
-            <p className="text-sm text-muted-foreground">{card.label}</p>
-            <p className="mt-1 text-3xl font-bold">{card.value.toLocaleString("id-ID")}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{card.hint}</p>
-          </Card>
-        ))}
-      </div>
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold">Pesan Kontak Terbaru</h2>
-            <Link
-              to={ROUTE_PATHS.adminInquiries}
-              className="text-sm font-medium text-primary hover:underline"
-            >
-              Lihat semua
-            </Link>
-          </div>
-          {data.latest_inquiries.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              Belum ada pesan kontak.
-            </p>
-          ) : (
-            <ul className="space-y-3">
-              {data.latest_inquiries.slice(0, 5).map((inquiry) => (
-                <li key={inquiry.id} className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary">
-                    {(inquiry.name[0] ?? "?").toUpperCase()}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{inquiry.name}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {inquiry.company ?? inquiry.email}
-                    </span>
-                  </span>
-                  <Badge tone={inquiryStatusTone(inquiry.status)}>
-                    {INQUIRY_STATUS_LABEL[inquiry.status] ?? inquiry.status}
-                  </Badge>
-                  {inquiry.created_at ? (
-                    <span className="hidden text-xs text-muted-foreground sm:block">
-                      {formatDateId(inquiry.created_at, "short")}
-                    </span>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-        <Card>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold">Email Massal Terbaru</h2>
-            <Link
-              to={ROUTE_PATHS.adminEmailHistory}
-              className="text-sm font-medium text-primary hover:underline"
-            >
-              Lihat semua
-            </Link>
-          </div>
-          {data.latest_email_campaigns.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              Belum ada kampanye email.
-            </p>
-          ) : (
-            <ul className="grid gap-3 sm:grid-cols-2">
-              {data.latest_email_campaigns.slice(0, 8).map((campaign) => (
-                <li key={campaign.id} className="rounded-xl border p-3">
-                  <p className="truncate text-sm font-medium">{campaign.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {(campaign.sent_count ?? 0).toLocaleString("id-ID")}/
-                    {(campaign.total_recipients ?? 0).toLocaleString("id-ID")} terkirim
+        {stats.map((s) => {
+          const Icon = s.icon;
+          return (
+            <Card key={s.label}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">{s.label}</p>
+                  <p className="mt-2 font-display text-3xl font-extrabold text-primary-deep">
+                    {s.value}
                   </p>
-                  <Badge tone={campaignStatusTone(campaign.status)} className="mt-2">
-                    {CAMPAIGN_STATUS_LABEL[campaign.status] ?? campaign.status}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          )}
+                  <p className="mt-1 text-xs font-semibold text-success">{s.change}</p>
+                </div>
+                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${s.color}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-display text-lg font-bold">Pesan Kontak Terbaru</h3>
+            <Link className="text-xs font-semibold text-primary" to={ROUTE_PATHS.adminInquiries}>
+              Lihat semua
+            </Link>
+          </div>
+          <ul className="divide-y divide-border">
+            {(data?.latest_inquiries ?? []).map((i) => (
+              <li key={i.id} className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary">
+                    {i.name
+                      .split(" ")
+                      .filter(Boolean)
+                      .slice(0, 2)
+                      .map((s) => s[0])
+                      .join("")}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{i.name}</p>
+                    <p className="text-xs text-muted-foreground">{i.company ?? i.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <StatusBadge display={leadStatus(i.status)} />
+                  <span className="hidden text-xs text-muted-foreground sm:block">
+                    {formatDateId(i.created_at, "short")}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        <Card>
+          <h3 className="mb-4 font-display text-lg font-bold">Email Massal Terbaru</h3>
+          <div className="grid grid-cols-2 gap-2">
+            {(data?.latest_email_campaigns ?? []).slice(0, 8).map((campaign) => (
+              <div key={campaign.id} className="rounded-xl bg-secondary px-3 py-2 text-center">
+                <p className="truncate text-xs font-bold text-primary-deep">{campaign.title}</p>
+                <p className="truncate text-[10px] text-muted-foreground">
+                  {campaign.sent_count}/{campaign.total_recipients} terkirim
+                </p>
+              </div>
+            ))}
+          </div>
         </Card>
       </div>
     </>

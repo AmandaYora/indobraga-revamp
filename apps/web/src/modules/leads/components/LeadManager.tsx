@@ -1,407 +1,384 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { Archive, Edit2, Mail, MessageCircle, Search, Send } from "lucide-react";
 import { toast } from "sonner";
-import { useApiQuery } from "@/shared/hooks/useApiQuery";
-import { PageTitle } from "@/shared/components/ui/page-title";
-import { Card } from "@/shared/components/ui/card";
-import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
+import { ErrorState, LoadingState, EmptyState } from "@/shared/components/feedback/states";
+import {
+  ConfirmDialog,
+  CrudModal,
+  Field,
+  Select,
+  TextArea,
+  StatusBadge,
+  leadStatus,
+} from "@/modules/content";
 import { TablePagination } from "@/shared/components/ui/pagination";
 import {
-  CrudModal,
-  ConfirmDialog,
-  Field,
-  TextArea,
-  Select,
-} from "@/modules/content/components/CrudModal";
-import { EmptyState, ErrorState, LoadingState } from "@/shared/components/feedback/states";
-import { Seo } from "@/modules/site";
-import { ApiError, getUserFacingErrorMessage } from "@/shared/services/api-error";
-import { inquiryStatusTone } from "@/modules/content";
-import { formatDateId } from "@/shared/lib/date";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+import { Card } from "@/shared/components/ui/card";
+import { PageTitle } from "@/shared/components/ui/page-title";
+import { ActionButtonGroup, IconActionButton } from "@/shared/components/ui/icon-action-button";
+import { useApiQuery } from "@/shared/hooks/useApiQuery";
+import { getUserFacingErrorMessage } from "@/shared/services/api-error";
 import type { PageMeta } from "@/shared/services/http-client";
 import type { ContractSchemas } from "@/shared/types/contract";
+import { formatDateId } from "@/shared/lib/date";
+
+/* Port 1:1 `components/admin/LeadManager.tsx` legacy — markup, teks, dan kelas identik. */
 
 type LeadStatus = ContractSchemas["LeadStatus"];
 
-const STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
-  { value: "new", label: "Baru" },
-  { value: "contacted", label: "Sudah Dihubungi" },
-  { value: "in_progress", label: "Dalam Proses" },
-  { value: "closed", label: "Selesai" },
-  { value: "spam", label: "Spam" },
-];
+type Lead = ContractSchemas["Inquiry"] | ContractSchemas["WhatsAppLead"];
 
-const STATUS_LABEL: Record<string, string> = Object.fromEntries(
-  STATUS_OPTIONS.map((option) => [option.value, option.label]),
-);
+type LeadSendActions<TLead extends Lead> = {
+  email?: (lead: TLead) => void;
+  whatsapp?: (lead: TLead) => void;
+};
 
-const FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: "all", label: "Semua" },
-  ...STATUS_OPTIONS,
-];
-
-export interface LeadItem {
-  id: number;
-  status: string;
-  internal_note?: string | null;
-  created_at?: string | null;
-}
-
-export interface LeadManagerProps<T extends LeadItem> {
+type LeadManagerProps<TLead extends Lead> = {
   title: string;
   description: string;
   itemLabel: string;
-  seoPath: string;
-  searchPlaceholder?: string;
   load: (params: {
     page: number;
     limit: number;
     q?: string;
     status?: LeadStatus;
-  }) => Promise<{ items: T[]; pagination: PageMeta }>;
-  update: (
-    id: number,
-    payload: { status?: LeadStatus; internal_note?: string },
-  ) => Promise<unknown>;
+  }) => Promise<{ items: TLead[]; pagination: PageMeta }>;
+  update: (id: number, body: { status?: LeadStatus; internal_note?: string }) => Promise<unknown>;
   archive: (id: number) => Promise<unknown>;
-  getContact: (item: T) => { name: string; detail: string };
-  getMessage: (item: T) => string;
-  emailAction?: (item: T) => void;
-  whatsappAction?: (item: T) => void;
-}
+  getContact: (lead: TLead) => ReactNode;
+  getMessage: (lead: TLead) => string;
+  sendActions?: LeadSendActions<TLead>;
+};
 
-/**
- * Manager prospek generik: search, filter status, pagination server,
- * edit status + catatan internal, arsip, aksi kirim email/WhatsApp.
- */
-export function LeadManager<T extends LeadItem>(props: LeadManagerProps<T>) {
-  const {
-    title,
-    description,
-    itemLabel,
-    seoPath,
-    searchPlaceholder = "Cari nama, kontak, atau pesan...",
-  } = props;
+export function LeadManager<TLead extends Lead>({
+  title,
+  description,
+  itemLabel,
+  load,
+  update,
+  archive,
+  getContact,
+  getMessage,
+  sendActions,
+}: LeadManagerProps<TLead>) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [managing, setManaging] = useState<T | null>(null);
-  const [manageStatus, setManageStatus] = useState<LeadStatus>("new");
-  const [manageNote, setManageNote] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [archiving, setArchiving] = useState<T | null>(null);
-
-  const status = statusFilter === "all" ? undefined : (statusFilter as LeadStatus);
-  const { data, error, loading, reload } = useApiQuery(
-    ["admin-leads", itemLabel, page, pageSize, query, statusFilter],
-    () =>
-      props.load({
-        page,
-        limit: pageSize,
-        ...(query.trim() ? { q: query.trim() } : {}),
-        ...(status ? { status } : {}),
-      }),
+  const [status, setStatus] = useState("all");
+  const [editing, setEditing] = useState<TLead | null>(null);
+  const [target, setTarget] = useState<TLead | null>(null);
+  const [form, setForm] = useState<{ status: LeadStatus; internal_note: string }>({
+    status: "new",
+    internal_note: "",
+  });
+  const leads = useApiQuery([title, page, pageSize, query, status], () =>
+    load({
+      page,
+      limit: pageSize,
+      ...(query ? { q: query } : {}),
+      ...(status === "all" ? {} : { status: status as LeadStatus }),
+    }),
   );
+  const list = leads.data?.items ?? [];
+  const pagination = leads.data?.pagination;
+  const start =
+    pagination && pagination.total > 0 ? (pagination.page - 1) * pagination.limit + 1 : 0;
+  const end = pagination ? Math.min(pagination.page * pagination.limit, pagination.total) : 0;
 
-  const items = data?.items ?? [];
-  const pagination = data?.pagination ?? { page: 1, limit: pageSize, total: 0, total_pages: 1 };
-  const start = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
-  const end = Math.min(pagination.page * pagination.limit, pagination.total);
+  // Legacy: `useEffect(() => setPage(1), [pageSize, query, status])` — di sini direset di handler.
+  const changeQuery = (value: string) => {
+    setQuery(value);
+    setPage(1);
+  };
+  const changeStatus = (value: string) => {
+    setStatus(value);
+    setPage(1);
+  };
+  const changePageSize = (value: number) => {
+    setPageSize(value);
+    setPage(1);
+  };
 
-  function openManage(item: T) {
-    setManaging(item);
-    setManageStatus(
-      (STATUS_OPTIONS.some((option) => option.value === item.status)
-        ? item.status
-        : "new") as LeadStatus,
-    );
-    setManageNote(item.internal_note ?? "");
-  }
+  const openEdit = (lead: TLead) => {
+    setEditing(lead);
+    setForm({ status: lead.status, internal_note: lead.internal_note ?? "" });
+  };
 
-  async function saveManage() {
-    if (!managing) return;
-    setSaving(true);
+  const submit = async () => {
+    if (!editing) {
+      return;
+    }
+
     try {
-      await props.update(managing.id, { status: manageStatus, internal_note: manageNote });
+      await update(editing.id, form);
       toast.success(`${itemLabel} diperbarui`);
-      setManaging(null);
-      reload();
-    } catch (saveError) {
-      toast.error("Simpan gagal", {
-        description:
-          saveError instanceof ApiError ? getUserFacingErrorMessage(saveError) : undefined,
+      setEditing(null);
+      leads.reload();
+    } catch (error) {
+      toast.error(`${itemLabel} gagal diperbarui`, {
+        description: getUserFacingErrorMessage(error, { action: "save" }),
       });
-    } finally {
-      setSaving(false);
     }
-  }
+  };
 
-  async function confirmArchive() {
-    if (!archiving) return;
+  const confirmArchive = async () => {
+    if (!target) {
+      return;
+    }
+
     try {
-      await props.archive(archiving.id);
+      await archive(target.id);
       toast.success(`${itemLabel} diarsipkan`);
-      setArchiving(null);
-      reload();
-    } catch (archiveError) {
-      toast.error("Arsip gagal", {
-        description:
-          archiveError instanceof ApiError ? getUserFacingErrorMessage(archiveError) : undefined,
+      setTarget(null);
+      leads.reload();
+    } catch (error) {
+      toast.error(`${itemLabel} gagal diarsipkan`, {
+        description: getUserFacingErrorMessage(error, { action: "delete" }),
       });
     }
-  }
+  };
 
   return (
     <>
-      <Seo title={title} description={description} path={seoPath} noindex />
       <PageTitle title={title} desc={description} />
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <input
-          type="search"
-          aria-label={`Cari ${itemLabel}`}
-          placeholder={searchPlaceholder}
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setPage(1);
-          }}
-          className="w-full max-w-sm rounded-full border border-input bg-background px-4 py-2 text-sm"
-        />
-        <select
-          aria-label="Filter status"
-          value={statusFilter}
-          onChange={(event) => {
-            setStatusFilter(event.target.value);
-            setPage(1);
-          }}
-          className="rounded-full border border-input bg-background px-4 py-2 text-sm"
+      <Card className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="relative min-w-0 flex-1 basis-full sm:basis-auto">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={query}
+            onChange={(event) => changeQuery(event.target.value)}
+            placeholder="Cari nama, kontak, atau pesan..."
+            className="w-full rounded-full border border-border bg-secondary py-2 pl-10 pr-4 text-sm outline-none focus:border-primary"
+          />
+        </div>
+        <Select
+          value={status}
+          onChange={(event) => changeStatus(event.target.value)}
+          className="w-full sm:w-56"
         >
-          {FILTER_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+          <option value="all">Semua status</option>
+          <option value="new">Baru</option>
+          <option value="contacted">Sudah Dihubungi</option>
+          <option value="in_progress">Dalam Proses</option>
+          <option value="closed">Selesai</option>
+          <option value="spam">Spam</option>
+        </Select>
+      </Card>
+
+      {leads.loading && !leads.data && <LoadingState label={`Memuat ${itemLabel}...`} />}
+      {leads.error && <ErrorState error={leads.error} onRetry={leads.reload} />}
+
+      <div className="grid gap-4 lg:hidden">
+        {list.length === 0 && !leads.loading && (
+          <Card>
+            <EmptyState title={`Tidak ada ${itemLabel}`} description="Coba filter lain." />
+          </Card>
+        )}
+        {list.map((lead) => (
+          <Card key={lead.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-anywhere font-semibold">{lead.name}</p>
+                <div className="text-anywhere text-xs text-muted-foreground">
+                  {getContact(lead)}
+                </div>
+              </div>
+              <StatusBadge display={leadStatus(lead.status)} />
+            </div>
+            <p className="text-anywhere mt-3 line-clamp-3 text-sm text-muted-foreground">
+              {getMessage(lead)}
+            </p>
+            <LeadActions
+              lead={lead}
+              itemLabel={itemLabel}
+              onEdit={() => openEdit(lead)}
+              onArchive={() => setTarget(lead)}
+              sendActions={sendActions}
+            />
+          </Card>
+        ))}
       </div>
 
-      {loading && !data ? (
-        <LoadingState label={`Memuat ${itemLabel}...`} />
-      ) : error && !data ? (
-        <ErrorState error={error} onRetry={reload} />
-      ) : items.length === 0 ? (
-        <EmptyState
-          title={`Tidak ada ${itemLabel}`}
-          description="Coba filter atau kata kunci lain."
-        />
-      ) : (
-        <>
-          <div className="grid gap-3 lg:hidden">
-            {items.map((item) => (
-              <LeadCard
-                key={item.id}
-                item={item}
-                getContact={props.getContact}
-                getMessage={props.getMessage}
-                emailAction={props.emailAction}
-                whatsappAction={props.whatsappAction}
-                onManage={() => openManage(item)}
-                onArchive={() => setArchiving(item)}
-              />
+      <Card className="hidden overflow-hidden p-0 lg:block">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary text-xs uppercase tracking-wider text-muted-foreground">
+            <tr>
+              <th className="p-4 text-left">Kontak</th>
+              <th className="p-4 text-left">Pesan</th>
+              <th className="p-4 text-left">Tanggal</th>
+              <th className="p-4 text-left">Status</th>
+              <th className="p-4 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {list.map((lead) => (
+              <tr key={lead.id} className="hover:bg-secondary/40">
+                <td className="p-4">
+                  <p className="font-semibold">{lead.name}</p>
+                  <div className="text-xs text-muted-foreground">{getContact(lead)}</div>
+                </td>
+                <td className="max-w-md p-4">
+                  <p className="line-clamp-2 text-muted-foreground">{getMessage(lead)}</p>
+                </td>
+                <td className="p-4 text-muted-foreground">
+                  {formatDateId(lead.created_at, "short")}
+                </td>
+                <td className="p-4">
+                  <StatusBadge display={leadStatus(lead.status)} />
+                </td>
+                <td className="p-4 text-right">
+                  <LeadActions
+                    lead={lead}
+                    itemLabel={itemLabel}
+                    onEdit={() => openEdit(lead)}
+                    onArchive={() => setTarget(lead)}
+                    sendActions={sendActions}
+                  />
+                </td>
+              </tr>
             ))}
-          </div>
-          <Card className="hidden lg:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="px-4 py-2 font-medium">Kontak</th>
-                  <th className="px-4 py-2 font-medium">Pesan</th>
-                  <th className="px-4 py-2 font-medium">Tanggal</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 text-right font-medium">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => {
-                  const contact = props.getContact(item);
-                  return (
-                    <tr key={item.id} className="border-b align-top last:border-0">
-                      <td className="px-4 py-2">
-                        <p className="font-medium">{contact.name}</p>
-                        <p className="text-xs text-muted-foreground">{contact.detail}</p>
-                      </td>
-                      <td className="max-w-xs px-4 py-2">
-                        <p className="line-clamp-3 text-muted-foreground">
-                          {props.getMessage(item)}
-                        </p>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-2 text-muted-foreground">
-                        {item.created_at ? formatDateId(item.created_at, "short") : "—"}
-                      </td>
-                      <td className="px-4 py-2">
-                        <Badge tone={inquiryStatusTone(item.status)}>
-                          {STATUS_LABEL[item.status] ?? item.status}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-2">
-                        <LeadActions
-                          item={item}
-                          emailAction={props.emailAction}
-                          whatsappAction={props.whatsappAction}
-                          onManage={() => openManage(item)}
-                          onArchive={() => setArchiving(item)}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </Card>
+          </tbody>
+        </table>
+        {list.length === 0 && !leads.loading && (
+          <EmptyState title={`Tidak ada ${itemLabel}`} description="Coba filter lain." />
+        )}
+      </Card>
+
+      {pagination && (
+        <div className="mt-3">
           <TablePagination
             page={pagination.page}
-            pageCount={Math.max(1, pagination.total_pages)}
+            pageCount={pagination.total_pages}
             pageSize={pagination.limit}
             total={pagination.total}
             start={start}
             end={end}
             onPageChange={setPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size);
-              setPage(1);
-            }}
+            onPageSizeChange={changePageSize}
             itemLabel={itemLabel}
+            className="rounded-xl border bg-card"
           />
-        </>
+        </div>
       )}
 
       <CrudModal
-        open={managing !== null}
-        onOpenChange={(open) => {
-          if (!open) setManaging(null);
-        }}
-        title={`Kelola ${itemLabel}`}
-        onSubmit={() => void saveManage()}
-        submitting={saving}
+        open={Boolean(editing)}
+        onOpenChange={(open) => !open && setEditing(null)}
+        title={editing ? `Kelola ${editing.name}` : `Kelola ${itemLabel}`}
+        description="Status dan catatan ini hanya terlihat oleh admin."
+        onSubmit={submit}
       >
         <Field label="Status">
           <Select
-            value={manageStatus}
-            onChange={(event) => setManageStatus(event.target.value as LeadStatus)}
+            value={form.status}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, status: event.target.value as LeadStatus }))
+            }
           >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            <option value="new">Baru</option>
+            <option value="contacted">Sudah Dihubungi</option>
+            <option value="in_progress">Dalam Proses</option>
+            <option value="closed">Selesai</option>
+            <option value="spam">Spam</option>
           </Select>
         </Field>
-        <Field label="Catatan Admin" hint="Hanya terlihat oleh admin.">
+        <Field label="Catatan Admin">
           <TextArea
-            value={manageNote}
             rows={4}
-            onChange={(event) => setManageNote(event.target.value)}
+            value={form.internal_note}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, internal_note: event.target.value }))
+            }
           />
         </Field>
       </CrudModal>
 
       <ConfirmDialog
-        open={archiving !== null}
-        onOpenChange={(open) => {
-          if (!open) setArchiving(null);
-        }}
-        title={`Arsipkan ${itemLabel} ini?`}
-        description="Item yang diarsipkan tidak tampil di daftar aktif."
+        open={Boolean(target)}
+        onOpenChange={(open) => !open && setTarget(null)}
+        title={target ? `Arsipkan ${target.name}?` : `Arsipkan ${itemLabel}?`}
+        description="Data ini tidak akan tampil lagi pada daftar aktif."
         confirmLabel="Arsipkan"
-        onConfirm={() => void confirmArchive()}
+        onConfirm={confirmArchive}
       />
     </>
   );
 }
 
-function LeadActions<T extends LeadItem>({
-  item,
-  emailAction,
-  whatsappAction,
-  onManage,
+function LeadActions<TLead extends Lead>({
+  lead,
+  itemLabel,
+  onEdit,
   onArchive,
+  sendActions,
 }: {
-  item: T;
-  emailAction?: (item: T) => void;
-  whatsappAction?: (item: T) => void;
-  onManage: () => void;
+  lead: TLead;
+  itemLabel: string;
+  onEdit: () => void;
   onArchive: () => void;
+  sendActions?: LeadSendActions<TLead>;
 }) {
-  const actions: { label: string; run: () => void }[] = [];
-  if (emailAction) actions.push({ label: "Kirim Email", run: () => emailAction(item) });
-  if (whatsappAction) actions.push({ label: "Kirim WhatsApp", run: () => whatsappAction(item) });
-  return (
-    <div className="flex justify-end gap-1">
-      <Button size="sm" variant="outline" onClick={onManage}>
-        Kelola
-      </Button>
-      {actions.length === 1 ? (
-        <Button size="sm" variant="ghost" onClick={actions[0].run}>
-          {actions[0].label}
-        </Button>
-      ) : actions.length > 1 ? (
-        <>
-          {actions.map((action) => (
-            <Button key={action.label} size="sm" variant="ghost" onClick={action.run}>
-              {action.label}
-            </Button>
-          ))}
-        </>
-      ) : null}
-      <Button size="sm" variant="ghost" onClick={onArchive}>
-        Arsip
-      </Button>
-    </div>
-  );
-}
+  const canEmail = Boolean(sendActions?.email);
+  const canWhatsApp = Boolean(sendActions?.whatsapp);
 
-function LeadCard<T extends LeadItem>({
-  item,
-  getContact,
-  getMessage,
-  emailAction,
-  whatsappAction,
-  onManage,
-  onArchive,
-}: {
-  item: T;
-  getContact: (item: T) => { name: string; detail: string };
-  getMessage: (item: T) => string;
-  emailAction?: (item: T) => void;
-  whatsappAction?: (item: T) => void;
-  onManage: () => void;
-  onArchive: () => void;
-}) {
-  const contact = getContact(item);
   return (
-    <Card>
-      <p className="font-medium">{contact.name}</p>
-      <p className="text-xs text-muted-foreground">{contact.detail}</p>
-      <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{getMessage(item)}</p>
-      <div className="mt-2 flex items-center gap-2">
-        <Badge tone={inquiryStatusTone(item.status)}>
-          {STATUS_LABEL[item.status] ?? item.status}
-        </Badge>
-        {item.created_at ? (
-          <span className="text-xs text-muted-foreground">
-            {formatDateId(item.created_at, "short")}
-          </span>
-        ) : null}
-      </div>
-      <div className="mt-3">
-        <LeadActions
-          item={item}
-          emailAction={emailAction}
-          whatsappAction={whatsappAction}
-          onManage={onManage}
-          onArchive={onArchive}
+    <ActionButtonGroup className="mt-3 justify-start lg:mt-0 lg:justify-end">
+      {canEmail && canWhatsApp ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={`Kirim pesan ke ${lead.name}`}
+              title="Kirim Pesan"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-primary transition hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => sendActions?.email?.(lead)}>
+              <Mail className="h-4 w-4" /> Kirim Email
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => sendActions?.whatsapp?.(lead)}>
+              <MessageCircle className="h-4 w-4" /> Kirim WhatsApp
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : canWhatsApp ? (
+        <IconActionButton
+          label={`Kirim WhatsApp ke ${lead.name}`}
+          tooltip="Kirim WhatsApp"
+          onClick={() => sendActions?.whatsapp?.(lead)}
+          icon={<MessageCircle className="h-4 w-4" />}
+          tone="success"
         />
-      </div>
-    </Card>
+      ) : canEmail ? (
+        <IconActionButton
+          label={`Kirim Email ke ${lead.name}`}
+          tooltip="Kirim Email"
+          onClick={() => sendActions?.email?.(lead)}
+          icon={<Mail className="h-4 w-4" />}
+          tone="primary"
+        />
+      ) : null}
+      <IconActionButton
+        label={`Kelola ${itemLabel} ${lead.name}`}
+        tooltip="Kelola"
+        onClick={onEdit}
+        icon={<Edit2 className="h-4 w-4" />}
+      />
+      <IconActionButton
+        label={`Arsipkan ${itemLabel} ${lead.name}`}
+        tooltip="Arsipkan"
+        onClick={onArchive}
+        icon={<Archive className="h-4 w-4" />}
+        tone="muted"
+      />
+    </ActionButtonGroup>
   );
 }

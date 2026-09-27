@@ -5,7 +5,6 @@ import { emailTemplatesService } from "@/modules/email/services/email.service";
 import { EmailContentEditor } from "@/modules/email/components/EmailContentEditor";
 import { PageTitle } from "@/shared/components/ui/page-title";
 import { Card } from "@/shared/components/ui/card";
-import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { TablePagination } from "@/shared/components/ui/pagination";
 import { CrudModal, ConfirmDialog, Field, TextInput } from "@/modules/content/components/CrudModal";
@@ -107,10 +106,12 @@ export default function EmailTemplatesPage() {
       ) : error && !data ? (
         <ErrorState error={error} onRetry={reload} />
       ) : items.length === 0 ? (
-        <EmptyState
-          title="Belum ada template"
-          description="Buat template baru dari halaman Kirim Email."
-        />
+        <Card>
+          <EmptyState
+            title="Belum ada template"
+            description="Buat template baru dari halaman Kirim Email."
+          />
+        </Card>
       ) : (
         <>
           <div className="grid gap-3 md:grid-cols-2">
@@ -121,7 +122,7 @@ export default function EmailTemplatesPage() {
                     <p className="truncate font-medium">{item.name}</p>
                     <p className="truncate text-sm text-muted-foreground">{item.subject}</p>
                   </div>
-                  <Badge tone="secondary">{item.content_mode === "html" ? "HTML" : "Teks"}</Badge>
+                  <ModeBadge mode={item.content_mode} />
                 </div>
                 <div className="mt-3 flex gap-1">
                   <Button size="sm" variant="outline" onClick={() => openEdit(item)}>
@@ -208,5 +209,19 @@ export default function EmailTemplatesPage() {
         }}
       />
     </>
+  );
+}
+
+/** Port `ModeBadge` legacy (`routes/admin.email-templates.tsx`). */
+function ModeBadge({ mode }: { mode?: string | null }) {
+  const isHtml = mode === "html";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+        isHtml ? "bg-accent/20 text-accent-foreground" : "bg-secondary text-muted-foreground"
+      }`}
+    >
+      {isHtml ? "HTML" : "Teks"}
+    </span>
   );
 }
