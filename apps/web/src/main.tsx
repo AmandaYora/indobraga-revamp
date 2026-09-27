@@ -5,6 +5,8 @@ import App from "@/app/App";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/plus-jakarta-sans";
 import "@/styles/globals.css";
+import { useSiteSettingsStore } from "@/modules/site";
+import { readBootstrap } from "@/shared/services/bootstrap";
 
 async function enableMock() {
   // Mock aktif bila `VITE_API_MOCK=true` (dev:mock, test) — tidak masuk bundle produksi.
@@ -14,7 +16,16 @@ async function enableMock() {
   }
 }
 
+// BC-23: logo, nomor WhatsApp & kontak dari bootstrap Go harus ada di paint pertama,
+// jadi store diisi sebelum render (bukan di useEffect setelah mount).
+function hydrateSiteSettingsFromBootstrap() {
+  const bootstrap = readBootstrap(window.location.pathname);
+  const settings = bootstrap?.site_settings;
+  if (settings) useSiteSettingsStore.getState().hydrateFromBootstrap(settings);
+}
+
 void enableMock().finally(() => {
+  hydrateSiteSettingsFromBootstrap();
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <App />

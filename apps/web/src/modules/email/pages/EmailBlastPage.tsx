@@ -132,9 +132,11 @@ export default function EmailBlastPage() {
   async function handleImportFile(file: File | undefined) {
     if (!file) return;
     try {
-      const { default: readXlsxFile } = await import("read-excel-file/browser");
-      const rows = (await readXlsxFile(file)) as unknown[][];
-      setImportState(buildRecipientImport(rows, file.name));
+      // read-excel-file v9: default export membaca SEMUA sheet (`Sheet[]`); `readSheet`
+      // mengembalikan baris sheet pertama — bentuk yang dibutuhkan buildRecipientImport.
+      const { readSheet } = await import("read-excel-file/browser");
+      const rows = await readSheet(file);
+      setImportState(buildRecipientImport(rows as unknown[][], file.name));
     } catch {
       setImportState({
         ...EMPTY_IMPORT,
@@ -148,10 +150,18 @@ export default function EmailBlastPage() {
 
   async function handleDownloadTemplate() {
     try {
+      // write-excel-file v4 mengembalikan `{ toBlob, toFile }` (tanpa opsi fileName).
+      // Header tebal seperti template legacy.
       const { default: writeXlsxFile } = await import("write-excel-file/browser");
-      await writeXlsxFile([RECIPIENT_TEMPLATE_HEADERS, ...RECIPIENT_TEMPLATE_SAMPLE], {
-        fileName: "template-penerima-email-indobraga.xlsx",
-      });
+      const header = RECIPIENT_TEMPLATE_HEADERS.map((label) => ({
+        value: label,
+        fontWeight: "bold" as const,
+        type: String,
+      }));
+      const sampleRows = RECIPIENT_TEMPLATE_SAMPLE.map((row) =>
+        row.map((cell) => ({ value: cell, type: String })),
+      );
+      await writeXlsxFile([header, ...sampleRows]).toFile("template-penerima-email-indobraga.xlsx");
     } catch {
       toast.error("Template XLSX gagal diunduh");
     }

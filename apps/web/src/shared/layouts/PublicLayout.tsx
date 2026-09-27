@@ -23,14 +23,14 @@ export function PublicLayout() {
   const fetched = useRef(false);
 
   useEffect(() => {
+    // Hidrasi utama dari bootstrap terjadi di main.tsx sebelum render (BC-23); di sini hanya
+    // jaring pengaman untuk navigasi client dan fetch sekali ke API untuk data terbaru.
     const bootstrap = readBootstrap(location.pathname);
     if (bootstrap && isPublicSiteSettings(bootstrap.site_settings)) {
       hydrateFromBootstrap(bootstrap.site_settings);
     }
     if (fetched.current) return;
     fetched.current = true;
-    // Hydrate store agar logo & kontak tersedia sejak paint pertama (BC-23);
-    // API tetap dipanggil sekali untuk data terbaru.
     setLoading(true);
     siteService
       .siteSettings()

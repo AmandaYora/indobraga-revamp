@@ -1,10 +1,12 @@
-import { z } from "zod";
+// zod/mini: modul ini ada di jalur JS awal setiap halaman publik; varian mini jauh lebih
+// kecil daripada zod penuh (yang tetap dipakai form di chunk lazy).
+import * as z from "zod/mini";
 
 const bootstrapSchema = z.object({
   path: z.string(),
-  site_settings: z.record(z.string(), z.unknown()).optional(),
-  seo: z.record(z.string(), z.unknown()).optional(),
-  page: z.unknown().optional(),
+  site_settings: z.optional(z.record(z.string(), z.unknown())),
+  seo: z.optional(z.record(z.string(), z.unknown())),
+  page: z.optional(z.unknown()),
 });
 
 export type BootstrapPayload = z.infer<typeof bootstrapSchema>;
