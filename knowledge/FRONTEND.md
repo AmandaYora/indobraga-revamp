@@ -43,7 +43,33 @@ Head awal disisipkan Go (`data-server-seo`); komponen `<Seo>` (React 19 metadata
 tag setelah mount dan saat navigasi memakai `GET /api/v1/public/seo?path=`. Tepat satu canonical
 (BC-20). `/login` & `/admin/*` noindex. Bootstrap JSON dibaca sekali lalu dihapus.
 
+## Konvensi yang ditetapkan saat implementasi (2026-09-27)
+
+- **UI admin bersama = port legacy 1:1**: `shared/components/ui/{card,page-title,action-buttons,
+  icon-action-button,badge,pagination}.tsx`, `shared/components/feedback/states.tsx`,
+  `modules/content` (`CrudModal`, `ConfirmDialog`, `Field`, input). Jangan restyle; halaman admin memakai
+  komponen ini apa adanya.
+- **Status → label & warna** per domain di `modules/content/lib/status-map.ts` +
+  `components/StatusBadge.tsx` (label & tint legacy, fallback "Status belum dikenal"); `Badge` di
+  shared hanya tahu *tone*.
+- **Jalur JS publik tanpa barrel**: `PublicLayout`, route publik, dan halaman publik mengimpor
+  langsung dari file komponen/service (bukan `@/modules/<m>` index yang ikut mengekspor kode admin).
+  `AdminLayout` dimuat lewat `lazy()` di route `/admin`. Guard route mengimpor store auth langsung.
+- **Copy & SEO halaman publik** terpusat di `modules/site/lib/page-copy.ts` (`PAGE_SEO`, subtitle
+  PageHero) — nilainya dari legacy `route head()` dan `lib/seo.ts`.
+- **Pending UI publik**: `modules/site/hooks/use-public-pending.ts` (tunda 300 ms, tahan ≥ 300 ms);
+  skeleton per modul di `components/*Skeletons.tsx`.
+- **Mock**: `public/mockServiceWorker.js` dibutuhkan `dev:mock`; plugin build membuangnya dari `dist`.
+- **Font**: family terdaftar `Inter Variable` / `Plus Jakarta Sans Variable` (fontsource).
+- **XLSX**: `readSheet` (read-excel-file v9) dan `writeXlsxFile(...).toFile()` (write-excel-file v4);
+  jangan menimpa tipe library dengan `declare module`.
+- **Bundle awal beranda**: 178,5 KB gzip (legacy ±141 KB). Selisih utama dari Axios & Zod yang
+  diwajibkan standar; budget "≤ legacy" di PLAN-02 perlu diputuskan ulang oleh owner.
+
 ## Test (ADR-0011)
+
+> Ditangguhkan (keputusan owner 2026-09-27). File `*.test.*` dikecualikan dari `tsc` dan tidak
+> dijalankan di CI sampai testing diaktifkan kembali.
 
 Vitest (unit, component, page) + Testing Library + MSW; validasi setiap request/respons mock terhadap
 `openapi.yaml`; Playwright E2E + visual regression terhadap baseline legacy di `apps/web/e2e/`

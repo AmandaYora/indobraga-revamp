@@ -279,7 +279,7 @@ identik dan tidak ada data pribadi yang disentuh.
 
 ## 1.9 Verifikasi standar
 
-- [ ] Jalankan Final Checklist skill monorepo-standard satu per satu; semua "ya". — _belum_
+- [x] Jalankan Final Checklist skill monorepo-standard satu per satu; semua "ya". — _2026-09-27: lulus; 2 temuan pemeriksaan otomatis adalah false positive (`axios.create` di file test, kata "MySQL" di komentar compose)_
 - [x] `analysis/README.md` ada; tidak ada folder `docs/` paralel.
 - [x] `MODULE_MAP.md` punya kolom owned tables & external integrations.
 - [x] `.env` tidak ter-commit; `.gitignore` mencakup `.env`, `tmp/`, `dist/`, `coverage/`
@@ -306,7 +306,7 @@ identik dan tidak ada data pribadi yang disentuh.
 - [x] `openapi.yaml` lint 0 error, `LEGACY_MAPPING.md` 160/160 baris terisi, tipe TS ter-generate.
 - [ ] Baseline lengkap: screenshot publik & admin, fixture, SEO head, URL inventory, Lighthouse, — _sebagian — screenshot dibatalkan amandemen; Lighthouse & header belum lengkap_
       header, statistik DB.
-- [ ] Final Checklist standar lulus. — _belum_
+- [x] Final Checklist standar lulus. — _2026-09-27_
 - [x] Repo legacy bersih kembali (§1.0) dan tidak ada perubahan lain di legacy.
 
 ## Risiko & mitigasi

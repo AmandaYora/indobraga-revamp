@@ -51,6 +51,11 @@ kecuali disebut lain di kolom "Status sementara".
 | BC-18 | Reorder dengan ID tak dikenal → 404 `NOT_FOUND` | Legacy 500 (Prisma P2025 tidak ditangkap) | Kontrak mendokumentasikan 500 (paritas) |
 | BC-19 | Tipe JSON kanonik di kontrak (mis. `is_featured` boolean); legacy mengonversi implisit (`"5"`→5) | Frontend selalu mengirim tipe benar; tidak terlihat user | Kontrak tipe kanonik; backend Go boleh tetap toleran |
 | BC-29 | Toast sukses/gagal setelah kembali dari Google OAuth | Legacy tidak memberi umpan balik sama sekali | Mengikuti legacy (tanpa toast); query dibersihkan dari URL |
+| BC-30 | Angka awal pagination "start–end" benar (1-based) | Legacy menampilkan `start+1` (selisih satu) | Sudah diterapkan di `TablePagination` bersama |
+| BC-31 | Tombol simpan modal dikunci selama proses (cegah submit ganda) | Legacy bisa terkirim dua kali bila diklik cepat; tampilan tombol sama | Sudah diterapkan di modal template/akun email |
+| BC-32 | Query `connected/status/reason` dibersihkan dari URL setelah kembali dari OAuth | Legacy membiarkannya di URL | Sudah diterapkan (tanpa toast, paritas) |
+| BC-33 | Setelah kirim email, draf direset sehingga kirim berikutnya membuat kampanye baru | Legacy menyimpan `draftId` sehingga kirim kedua ditolak server | Mengikuti legacy |
+| BC-34 | Input file XLSX di-reset setelah unggah (file yang sama bisa dipilih ulang) | Legacy tidak me-reset | Mengikuti legacy |
 
 Kapabilitas yang tidak diubah tetapi dicatat sebagai backlog (tidak dikerjakan tanpa persetujuan)
 ada di `plans/README.md` §Backlog.
