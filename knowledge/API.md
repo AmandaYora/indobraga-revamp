@@ -11,7 +11,7 @@ jangan menyalin detail endpoint ke sini. Pemetaan 160 endpoint legacy → v1:
 |---|---|
 | Prefix | `/api/v1`; `robots.txt` & `sitemap.xml` di root |
 | Sukses | `{ success: true, message, data }` |
-| List offset | `data: [...]`, `meta: { page, limit, total, total_pages }`; `page` default 1, nilai invalid → default; `limit` di-clamp ke maksimum per endpoint; `total_pages = max(1, ceil(total/limit))` |
+| List offset | `data: [...]`, `meta: { page, limit, total, total_pages }`; `page` default 1 dan `limit` default per endpoint; nilai bukan bilangan bulat ≥ 1 atau `limit` di atas maksimum DTO → 400 `VALIDATION_ERROR` (paritas `ValidationPipe` legacy); endpoint yang DTO-nya tanpa batas (mis. kontak audience) meng-clamp `limit` ke maksimum; `total_pages = max(1, ceil(total/limit))` |
 | List cursor | `data: [...]`, `meta: { limit, next_cursor, has_more }` (portofolio & galeri publik); cursor = base64url JSON `{sort_order, id}` |
 | Error | `{ success: false, code, message, errors: [{ field, message }], request_id }`; pesan Indonesia |
 | Request ID | `X-Request-Id` masuk dipakai bila cocok `^[A-Za-z0-9_.:-]{8,128}$`, selain itu `req_<uuid>`; selalu di header respons |

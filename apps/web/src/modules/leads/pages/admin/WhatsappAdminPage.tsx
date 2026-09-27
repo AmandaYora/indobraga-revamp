@@ -25,8 +25,8 @@ export default function WhatsappAdminPage() {
         update={leadsService.updateWhatsappLead}
         archive={leadsService.archiveWhatsappLead}
         getContact={(lead) => lead.phone}
-        // Kontrak API: `generated_message` opsional (legacy selalu terisi dari `message`).
-        getMessage={(lead) => lead.generated_message ?? lead.message ?? ""}
+        // Legacy tidak mengirim `message` untuk prospek WhatsApp; yang tersimpan `generated_message`.
+        getMessage={(lead) => lead.generated_message ?? ""}
         sendActions={{
           whatsapp: (lead) => {
             if (!openWhatsAppLead(lead)) {
