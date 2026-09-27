@@ -22,6 +22,7 @@ apps/api/storage/
 !apps/api/migrations/*.sql
 !apps/api/internal/modules/*/infrastructure/queries/*.sql
 !apps/web/e2e/datasets/synthetic/**/*.sql
+!analysis/000-legacy-inventory/synthetic-dataset/*.sql
 !apps/api/testdata/synthetic/**/*.sql
 
 # Artefak baseline yang berisi data nyata (admin produksi, PLAN-05) disimpan di luar repo.
