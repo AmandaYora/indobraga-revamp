@@ -1,134 +1,176 @@
 import { useLoaderData } from "react-router-dom";
+import { OptionalImage } from "@/shared/components/ui/media-placeholder";
 import { PageHero } from "@/shared/components/ui/page-hero";
-import { Seo } from "@/modules/site";
 import { useApiQuery } from "@/shared/hooks/useApiQuery";
-import { siteService } from "@/modules/site";
-import { fallbackFacilities } from "@/modules/site/lib/fallbacks";
 import type { ContractSchemas } from "@/shared/types/contract";
+import { Seo } from "@/modules/site/components/Seo";
+import { PublicErrorState } from "@/modules/site/components/PublicErrorState";
+import { siteService } from "@/modules/site/services/site.service";
+import { fallbackFacilities } from "@/modules/site/lib/fallbacks";
+import { PAGE_HERO, PAGE_SEO } from "@/modules/site/lib/page-copy";
 import { FacilitiesContentSkeleton } from "@/modules/profile/components/FacilitiesSkeletons";
 
+type PublicFacilities = ContractSchemas["PublicFacilities"];
+
+/** Port 1:1 `FacilitiesPage` di `routes/_public.fasilitas.tsx` legacy. */
 export default function FacilitiesPage() {
-  const loaderData = useLoaderData() as ContractSchemas["PublicFacilities"] | null;
-  const { data, loading } = useApiQuery(["public", "facilities"], () => siteService.facilities(), {
-    initialData: loaderData ?? fallbackFacilities,
-    refetchOnMount: false,
-  });
+  const initialFacilities = useLoaderData() as PublicFacilities | null;
+  const { data, error, loading, reload } = useApiQuery(
+    ["public", "facilities"],
+    () => siteService.facilities(),
+    {
+      initialData: initialFacilities,
+      refetchOnMount: false,
+    },
+  );
   const facilities = data ?? fallbackFacilities;
-
-  if (loading && !data) return <FacilitiesContentSkeleton />;
-
-  const totalMonthly = facilities.production_capacities.reduce((sum, item) => {
-    const numeric = Number(
-      String(item.value)
-        .replace(/\./g, "")
-        .replace(/[^0-9]/g, ""),
-    );
-    return sum + (Number.isFinite(numeric) ? numeric : 0);
-  }, 0);
+  const displayedStrengths = facilities.strengths;
+  const displayedMachines = facilities.machines;
+  const displayedPrinting = facilities.printing_capacities;
+  const displayedProduction = facilities.production_capacities;
+  const displayedServices = facilities.services;
+  const totalProduction = displayedProduction.reduce(
+    (sum, item) => sum + Number(item.value.replace(".", "")),
+    0,
+  );
 
   return (
     <>
-      <Seo
-        title="Fasilitas"
-        description="Kapasitas produksi dan cetak kain custom Indobraga: sublimation, press, DTF, pattern making, sample, QC, finishing, packing."
-        path="/fasilitas"
-      />
-      <PageHero
-        kicker="Fasilitas"
-        title="Kapasitas produksi dan cetak kain custom"
-        subtitle="Didukung mesin sublimation, press, DTF, pattern making, sample, QC, finishing, hingga packing."
-      />
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {facilities.strengths.map((strength) => (
-            <div key={strength.id} className="rounded-2xl border bg-card p-6 shadow-card">
-              <p className="text-3xl font-bold text-primary">
-                {strength.value}
-                {strength.suffix ? (
-                  <span className="ml-1 text-sm font-normal text-muted-foreground">
-                    {strength.suffix}
-                  </span>
-                ) : null}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{strength.label}</p>
-            </div>
-          ))}
-        </div>
+      <Seo {...PAGE_SEO.facilities} />
+      <PageHero {...PAGE_HERO.facilities} image={displayedMachines[0]?.image_url ?? undefined} />
+      <section className="py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {error && <PublicErrorState error={error} onRetry={reload} />}
+          {loading && !data ? (
+            <FacilitiesContentSkeleton />
+          ) : (
+            <>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                {displayedStrengths.map((s) => (
+                  <div
+                    key={s.label}
+                    className="rounded-2xl border border-border bg-card p-6 shadow-card"
+                  >
+                    <div className="font-display text-3xl font-extrabold text-primary">
+                      {s.value}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{s.suffix}</p>
+                    <p className="mt-3 text-sm font-semibold">{s.label}</p>
+                  </div>
+                ))}
+              </div>
 
-        <section className="mt-12">
-          <h2 className="text-2xl font-bold">Kapasitas Produksi</h2>
-          <p className="mt-1 text-muted-foreground">
-            Total {totalMonthly.toLocaleString("id-ID")} pcs per bulan{" "}
-            <span className="ml-1 rounded-full bg-primary-soft px-2 py-0.5 text-xs text-primary">
-              Data CP Indobraga
-            </span>
-          </p>
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {facilities.production_capacities.map((capacity) => (
-              <li key={capacity.id} className="rounded-2xl border bg-card p-5 shadow-card">
-                <p className="text-xl font-bold">{capacity.value}</p>
-                <p className="text-sm text-muted-foreground">{capacity.unit}</p>
-                <p className="mt-1 text-sm font-medium">{capacity.product}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="mt-12 rounded-3xl bg-primary-deep p-8 text-white sm:p-10">
-          <h2 className="text-2xl font-bold">Printing, Sublimation, DTF</h2>
-          <p className="mt-1 text-white/70">
-            Atexco Model X Plus — mesin sublimasi berkapasitas besar untuk certified ink dan output
-            yang konsisten.
-          </p>
-          <ul className="mt-6 grid gap-4 md:grid-cols-3">
-            {facilities.printing_capacities.map((capacity) => (
-              <li key={capacity.id} className="rounded-2xl border border-white/15 p-5">
-                <p className="text-xl font-bold text-accent">
-                  {capacity.value} <span className="text-sm font-normal">{capacity.unit}</span>
-                </p>
-                <p className="mt-1 font-semibold">{capacity.label}</p>
-                {capacity.description ? (
-                  <p className="mt-1 text-sm text-white/70">{capacity.description}</p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="mt-12">
-          <h2 className="text-2xl font-bold">Mesin &amp; Area Produksi</h2>
-          <ul className="mt-6 space-y-4">
-            {facilities.machines.map((machine) => (
-              <li
-                key={machine.id}
-                className="grid gap-2 rounded-2xl border bg-card p-6 shadow-card sm:grid-cols-[200px_1fr]"
-              >
-                <p className="font-bold text-primary">{machine.metric}</p>
-                <div>
-                  <p className="font-semibold">{machine.name}</p>
-                  {machine.description ? (
-                    <p className="mt-1 text-sm text-muted-foreground">{machine.description}</p>
-                  ) : null}
+              <div className="mt-14 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-3xl border border-border bg-card p-6 shadow-card">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                        Kapasitas Produksi
+                      </span>
+                      <h2 className="mt-2 font-display text-2xl font-bold text-primary-deep">
+                        Total {totalProduction.toLocaleString("id-ID")} pcs per bulan
+                      </h2>
+                    </div>
+                    <span className="rounded-full bg-primary-soft px-3 py-1 text-xs font-bold text-primary">
+                      Data CP Indobraga
+                    </span>
+                  </div>
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                    {displayedProduction.map((item) => (
+                      <div key={item.product} className="rounded-2xl bg-secondary p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          {item.product}
+                        </p>
+                        <p className="mt-2 font-display text-3xl font-extrabold text-primary-deep">
+                          {item.value}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{item.unit}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </li>
-            ))}
-          </ul>
-        </section>
 
-        <section className="mt-12">
-          <h2 className="text-2xl font-bold">Apparel Manufacturing Services</h2>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {facilities.services.map((service) => (
-              <span
-                key={service.id}
-                className="rounded-full border border-input bg-card px-4 py-1.5 text-sm"
-              >
-                {service.name}
-              </span>
-            ))}
-          </div>
-        </section>
-      </div>
+                <div className="rounded-3xl bg-gradient-hero p-6 text-primary-foreground shadow-elegant">
+                  <span className="text-xs font-bold uppercase tracking-widest text-accent">
+                    Printing, Sublimation, DTF
+                  </span>
+                  <h2 className="mt-2 font-display text-2xl font-bold">Atexco Model X Plus</h2>
+                  <p className="mt-3 text-sm text-primary-foreground/75">
+                    Mesin sublimasi berkapasitas besar untuk certified ink, consistent output, dan
+                    kebutuhan produksi apparel skala bisnis.
+                  </p>
+                  <div className="mt-6 grid gap-3">
+                    {displayedPrinting.map((item) => (
+                      <div
+                        key={item.label}
+                        className="flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl bg-white/10 p-3 ring-1 ring-white/10 sm:gap-4"
+                      >
+                        <OptionalImage
+                          src={item.image_url}
+                          alt={item.label}
+                          className="h-16 w-16 shrink-0 rounded-xl object-cover ring-1 ring-white/15"
+                          placeholderClassName="h-16 w-16 shrink-0 rounded-xl ring-1 ring-white/15"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-accent">
+                            {item.label}
+                          </p>
+                          <p className="truncate text-[11px] text-primary-foreground/70">
+                            {item.description}
+                          </p>
+                          <p className="text-[11px] text-primary-foreground/60">{item.unit}</p>
+                        </div>
+                        <p className="shrink-0 font-display text-xl font-extrabold leading-none sm:text-2xl">
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-14 grid gap-8 md:grid-cols-2">
+                {displayedMachines.map((m) => (
+                  <article
+                    key={m.id}
+                    className="grid min-w-0 gap-5 overflow-hidden rounded-2xl bg-card shadow-card sm:grid-cols-[200px_1fr]"
+                  >
+                    <OptionalImage
+                      src={m.image_url}
+                      alt={m.name}
+                      className="h-full min-h-48 w-full object-cover"
+                      placeholderClassName="h-full min-h-48 w-full"
+                    />
+                    <div className="p-5 sm:pl-0">
+                      <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-bold text-primary">
+                        {m.metric}
+                      </span>
+                      <h3 className="mt-2 font-display text-xl font-bold">{m.name}</h3>
+                      <p className="mt-2 text-sm text-muted-foreground">{m.description}</p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="mt-14 rounded-3xl border border-border bg-card p-6 shadow-card">
+                <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                  Apparel Manufacturing Services
+                </span>
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {displayedServices.map((service) => (
+                    <div
+                      key={service.name}
+                      className="rounded-2xl bg-secondary px-4 py-3 text-sm font-semibold"
+                    >
+                      {service.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
     </>
   );
 }

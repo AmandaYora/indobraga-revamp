@@ -1,27 +1,24 @@
-import { useNavigation } from "react-router-dom";
-import { DelayedFallback } from "@/shared/components/feedback/DelayedFallback";
-import { HomePendingPage } from "@/modules/home";
-import { FacilitiesContentSkeleton } from "@/modules/profile";
-import { PortfolioGridSkeleton } from "@/modules/portfolio";
-import { GalleryGridSkeleton } from "@/modules/gallery";
-import { ArticleDetailSkeleton, NewsGridSkeleton } from "@/modules/news";
+import type { PendingRoute } from "@/modules/site/hooks/use-public-pending";
+import { HomePendingPage } from "@/modules/home/components/HomeSkeletons";
+import { PortfolioPendingPage } from "@/modules/portfolio/components/PortfolioSkeletons";
+import { FacilitiesPendingPage } from "@/modules/profile/components/FacilitiesSkeletons";
+import { GalleryPendingPage } from "@/modules/gallery/components/GallerySkeletons";
+import { ArticleDetailSkeleton, NewsPendingPage } from "@/modules/news/components/NewsSkeletons";
 
-/**
- * Pending UI navigasi publik: skeleton per route (paritas `pendingComponent`
- * legacy) muncul hanya bila navigasi > 300 ms via `DelayedFallback`.
- */
-export function PublicPending() {
-  const navigation = useNavigation();
-  const path = navigation.location?.pathname ?? "";
-  let skeleton = <NewsGridSkeleton />;
-  if (path === "/") skeleton = <HomePendingPage />;
-  else if (path === "/portfolio") skeleton = <PortfolioGridSkeleton />;
-  else if (path === "/fasilitas") skeleton = <FacilitiesContentSkeleton />;
-  else if (path === "/galeri") skeleton = <GalleryGridSkeleton />;
-  else if (path.startsWith("/berita/")) skeleton = <ArticleDetailSkeleton />;
-  return (
-    <DelayedFallback>
-      <div className="absolute inset-0 bg-background">{skeleton}</div>
-    </DelayedFallback>
-  );
+/** `pendingComponent` per route publik (paritas legacy). */
+export function PublicPending({ route }: { route: PendingRoute }) {
+  switch (route) {
+    case "home":
+      return <HomePendingPage />;
+    case "portfolio":
+      return <PortfolioPendingPage />;
+    case "facilities":
+      return <FacilitiesPendingPage />;
+    case "gallery":
+      return <GalleryPendingPage />;
+    case "news":
+      return <NewsPendingPage />;
+    case "news-detail":
+      return <ArticleDetailSkeleton />;
+  }
 }

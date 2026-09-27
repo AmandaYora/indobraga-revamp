@@ -1,12 +1,15 @@
 import { useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { SiteHeader } from "@/modules/site";
-import { SiteFooter } from "@/modules/site";
-import { PublicPending } from "@/modules/site";
-import { WhatsAppFab } from "@/modules/leads";
+// Import langsung dari file komponen/service (bukan barrel modul yang ikut mengekspor kode admin)
+// agar JS awal halaman publik tidak memuat kode admin.
+import { SiteHeader } from "@/modules/site/components/SiteHeader";
+import { SiteFooter } from "@/modules/site/components/SiteFooter";
+import { PublicPending } from "@/modules/site/components/PublicPending";
+import { usePublicPending } from "@/modules/site/hooks/use-public-pending";
+import { WhatsAppFab } from "@/modules/leads/components/WhatsAppFab";
+import { siteService } from "@/modules/site/services/site.service";
+import { useSiteSettingsStore } from "@/modules/site/stores/site-settings.store";
 import { readBootstrap } from "@/shared/services/bootstrap";
-import { siteService } from "@/modules/site";
-import { useSiteSettingsStore } from "@/modules/site";
 import type { ContractSchemas } from "@/shared/types/contract";
 
 function isPublicSiteSettings(
@@ -15,12 +18,14 @@ function isPublicSiteSettings(
   return typeof value === "object" && value !== null;
 }
 
+/** Port `components/public/PublicLayout.tsx` legacy + pending UI per route. */
 export function PublicLayout() {
   const location = useLocation();
   const hydrateFromBootstrap = useSiteSettingsStore((state) => state.hydrateFromBootstrap);
   const setFromApi = useSiteSettingsStore((state) => state.setFromApi);
   const setLoading = useSiteSettingsStore((state) => state.setLoading);
   const fetched = useRef(false);
+  const pendingRoute = usePublicPending();
 
   useEffect(() => {
     // Hidrasi utama dari bootstrap terjadi di main.tsx sebelum render (BC-23); di sini hanya
@@ -42,9 +47,12 @@ export function PublicLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <SiteHeader />
-      <main className="relative flex-1">
-        <Outlet />
-        <PublicPending />
+      <main className="flex-1">
+        {pendingRoute ? <PublicPending route={pendingRoute} /> : null}
+        {/* Halaman lama tetap ter-mount (state terjaga) tetapi disembunyikan selama skeleton tampil. */}
+        <div className={pendingRoute ? "hidden" : "contents"}>
+          <Outlet />
+        </div>
       </main>
       <SiteFooter />
       <WhatsAppFab />

@@ -1,1 +1,5 @@
-export { NewsGridSkeleton, ArticleDetailSkeleton } from "./components/NewsSkeletons";
+export {
+  NewsGridSkeleton,
+  ArticleDetailSkeleton,
+  NewsPendingPage,
+} from "./components/NewsSkeletons";

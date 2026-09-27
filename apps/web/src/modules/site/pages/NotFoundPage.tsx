@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Seo } from "@/modules/site";
+import { Seo } from "@/modules/site/components/Seo";
 
 /** Halaman Not Found — state baru bergaya sistem yang sama (BC-22). */
 export default function NotFoundPage() {

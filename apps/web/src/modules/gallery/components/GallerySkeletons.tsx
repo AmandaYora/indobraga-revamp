@@ -1,16 +1,17 @@
-import { Skeleton } from "@/shared/components/ui/skeleton";
-import { cn } from "@/shared/lib/cn";
+import { PageHero } from "@/shared/components/ui/page-hero";
+import { GalleryGridSkeleton } from "@/modules/site/components/PublicSkeletons";
+import { PAGE_HERO } from "@/modules/site/lib/page-copy";
 
-export function GalleryGridSkeleton({ count = 8 }: { count?: number }) {
+export { GalleryGridSkeleton };
+
+/** Port 1:1 `GalleryPendingPage` di `routes/_public.galeri.tsx` legacy. */
+export function GalleryPendingPage() {
   return (
-    <div role="status" aria-live="polite" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <span className="sr-only">Memuat galeri.</span>
-      {Array.from({ length: count }, (_, index) => (
-        <Skeleton
-          key={index}
-          className={cn(index % 7 === 0 && "row-span-2 sm:col-span-2", "aspect-square")}
-        />
-      ))}
-    </div>
+    <>
+      <PageHero {...PAGE_HERO.gallery} />
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <GalleryGridSkeleton />
+      </section>
+    </>
   );
 }

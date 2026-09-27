@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { fallbackSettings } from "@/modules/site";
+import { fallbackSettings } from "@/modules/site/lib/fallbacks";
 import type { ContractSchemas } from "@/shared/types/contract";
 
 type PublicSiteSettings = ContractSchemas["PublicSiteSettings"];

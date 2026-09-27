@@ -1,21 +1,19 @@
-import { Skeleton } from "@/shared/components/ui/skeleton";
+import { PageHero } from "@/shared/components/ui/page-hero";
+import { FacilitiesContentSkeleton } from "@/modules/site/components/PublicSkeletons";
+import { PAGE_HERO } from "@/modules/site/lib/page-copy";
 
-export function FacilitiesContentSkeleton() {
+export { FacilitiesContentSkeleton };
+
+/** Port 1:1 `FacilitiesPendingPage` di `routes/_public.fasilitas.tsx` legacy. */
+export function FacilitiesPendingPage() {
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="mx-auto max-w-7xl space-y-8 px-4 py-12 sm:px-6"
-    >
-      <span className="sr-only">Memuat fasilitas.</span>
-      <Skeleton className="h-8 w-56" />
-      <div className="grid gap-4 sm:grid-cols-4">
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-24" />
-      </div>
-      <Skeleton className="h-64" />
-    </div>
+    <>
+      <PageHero {...PAGE_HERO.facilities} />
+      <section className="py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <FacilitiesContentSkeleton />
+        </div>
+      </section>
+    </>
   );
 }

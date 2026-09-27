@@ -1,12 +1,19 @@
-import { Skeleton } from "@/shared/components/ui/skeleton";
+import { PageHero } from "@/shared/components/ui/page-hero";
+import { PortfolioGridSkeleton } from "@/modules/site/components/PublicSkeletons";
+import { PAGE_HERO } from "@/modules/site/lib/page-copy";
 
-export function PortfolioGridSkeleton({ count = 8 }: { count?: number }) {
+export { PortfolioGridSkeleton };
+
+/** Port 1:1 `PortfolioPendingPage` di `routes/_public.portfolio.tsx` legacy. */
+export function PortfolioPendingPage() {
   return (
-    <div role="status" aria-live="polite" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <span className="sr-only">Memuat portofolio.</span>
-      {Array.from({ length: count }, (_, index) => (
-        <Skeleton key={index} className="aspect-[4/3]" />
-      ))}
-    </div>
+    <>
+      <PageHero {...PAGE_HERO.portfolio} />
+      <section className="py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <PortfolioGridSkeleton />
+        </div>
+      </section>
+    </>
   );
 }

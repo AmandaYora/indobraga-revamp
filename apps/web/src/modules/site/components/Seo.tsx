@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { pageSeo, organizationJsonLd, websiteJsonLd } from "@/modules/site/lib/seo";
-import { useSiteSettingsStore } from "@/modules/site";
+import { useSiteSettingsStore } from "@/modules/site/stores/site-settings.store";
 
 export interface SeoInput {
   title?: string | null;
@@ -14,15 +14,17 @@ export interface SeoInput {
     modifiedTime?: string | null;
     section?: string | null;
   } | null;
+  /** JSON-LD tambahan (mis. Article) — DITAMBAHKAN setelah Organization + WebSite. */
   jsonLd?: Record<string, unknown>[];
 }
 
 const SERVER_SEO_SELECTOR = "[data-server-seo]";
 
 /**
- * SEO sisi client (React 19 metadata native). Tag server diberi atribut
- * `data-server-seo`; setelah `<Seo>` pertama mount, tag server dihapus agar
- * tidak duplikat — tepat 1 title, 1 canonical (publik), 1 set og:* (BC-20).
+ * SEO sisi client (React 19 metadata native) — setara `head()` root + route legacy.
+ * Tag server/statis diberi atribut `data-server-seo`; setelah `<Seo>` pertama mount, tag itu
+ * dihapus agar tidak duplikat — tepat 1 title, 1 canonical (publik), 1 set og:* (BC-20).
+ * Judul/deskripsi/OG default dari Pengaturan admin bila halaman tidak menentukan (BC-21).
  */
 export function Seo(input: SeoInput) {
   const settings = useSiteSettingsStore((state) => state.settings);
@@ -45,7 +47,8 @@ export function Seo(input: SeoInput) {
       .forEach((node) => node.parentNode?.removeChild(node));
   }, []);
 
-  const jsonLdScripts = input.jsonLd ?? [organizationJsonLd(settings), websiteJsonLd()];
+  // Paritas root legacy: Organization + WebSite di semua halaman; halaman boleh menambah.
+  const jsonLdScripts = [organizationJsonLd(), websiteJsonLd(), ...(input.jsonLd ?? [])];
 
   return (
     <>

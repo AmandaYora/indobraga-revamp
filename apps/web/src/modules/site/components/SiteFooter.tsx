@@ -1,74 +1,93 @@
 import { Link } from "react-router-dom";
-import { BrandLogo } from "@/modules/site";
-import { useSiteSettingsStore } from "@/modules/site";
+import { Instagram, Mail, MapPin, Phone, UserRound } from "lucide-react";
+import { BrandLogo } from "@/modules/site/components/BrandLogo";
+import { useSiteSettingsStore } from "@/modules/site/stores/site-settings.store";
 
-const EXPLORE_LINKS = [
-  { label: "Portofolio Produk", to: "/portfolio" },
-  { label: "Mesin & Fasilitas", to: "/fasilitas" },
-  { label: "Berita Perusahaan", to: "/berita?page=1" },
-  { label: "Hubungi Kami", to: "/kontak" },
-];
-
+/** Port 1:1 `components/public/SiteFooter.tsx` legacy. */
 export function SiteFooter() {
   const settings = useSiteSettingsStore((state) => state.settings);
-  const brand = settings.brand ?? "Indobraga";
-  const legalName = settings.legal_name ?? "PT. Braga Indonesia Perkasa";
-  const year = new Date().getFullYear();
-
+  const footerLogoUrl = settings.footer_logo_url ?? settings.logo_url;
+  const showBrandText = !footerLogoUrl || settings.show_brand_text !== false;
   return (
-    <footer className="bg-primary-deep text-white">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-4">
-        <div>
-          <BrandLogo
-            brand={brand}
-            logoUrl={settings.footer_logo_url ?? settings.logo_url}
-            textClassName="text-white"
-          />
-          <p className="mt-4 text-sm text-white/70">
-            {legalName} - mitra apparel manufacturing, garment production, cetak kain custom, dan
-            multiproduct facility asal Indonesia.
-          </p>
-        </div>
-        <nav aria-label="Jelajahi">
-          <p className="font-semibold">Jelajahi</p>
-          <ul className="mt-4 space-y-2 text-sm text-white/70">
-            {EXPLORE_LINKS.map((link) => (
-              <li key={link.to}>
-                <Link to={link.to} className="hover:text-accent">
-                  {link.label}
+    <footer className="bg-primary-deep text-primary-foreground">
+      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="grid gap-10 md:grid-cols-4">
+          <div className="md:col-span-2">
+            <div className="flex items-center gap-2">
+              <BrandLogo
+                brand={settings.brand}
+                logoUrl={footerLogoUrl}
+                showText={showBrandText}
+                markClassName={
+                  showBrandText
+                    ? "h-10 w-10 bg-white text-primary-deep"
+                    : "h-10 w-auto max-w-[220px]"
+                }
+                textClassName="font-display text-xl font-bold"
+              />
+            </div>
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-primary-foreground/70">
+              {settings.legal_name} - mitra apparel manufacturing, garment production, cetak kain
+              custom, dan multiproduct facility asal Indonesia.
+            </p>
+          </div>
+          <div>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-accent">
+              Jelajahi
+            </h2>
+            <ul className="space-y-2 text-sm text-primary-foreground/70">
+              <li>
+                <Link to="/portfolio" className="hover:text-accent">
+                  Portofolio Produk
                 </Link>
               </li>
-            ))}
-          </ul>
-        </nav>
-        <div>
-          <p className="font-semibold">Kontak</p>
-          <ul className="mt-4 space-y-2 text-sm text-white/70">
-            {settings.email ? <li>{settings.email}</li> : null}
-            {settings.phone ? <li>{settings.phone}</li> : null}
-            {settings.instagram ? <li>@{settings.instagram}</li> : null}
-            {settings.contact_person ? (
               <li>
-                {settings.contact_person}
-                {settings.contact_role ? ` — ${settings.contact_role}` : null}
+                <Link to="/fasilitas" className="hover:text-accent">
+                  Mesin & Fasilitas
+                </Link>
               </li>
-            ) : null}
-            {settings.address ? <li>{settings.address}</li> : null}
-          </ul>
+              <li>
+                <Link to="/berita?page=1" className="hover:text-accent">
+                  Berita Perusahaan
+                </Link>
+              </li>
+              <li>
+                <Link to="/kontak" className="hover:text-accent">
+                  Hubungi Kami
+                </Link>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-accent">
+              Kontak
+            </h2>
+            <ul className="space-y-3 text-sm text-primary-foreground/70">
+              <li className="flex gap-2">
+                <Mail className="mt-0.5 h-4 w-4 text-accent" />
+                {settings.email}
+              </li>
+              <li className="flex gap-2">
+                <Phone className="mt-0.5 h-4 w-4 text-accent" />
+                {settings.phone}
+              </li>
+              <li className="flex gap-2">
+                <Instagram className="mt-0.5 h-4 w-4 text-accent" />@{settings.instagram}
+              </li>
+              <li className="flex gap-2">
+                <UserRound className="mt-0.5 h-4 w-4 text-accent" />
+                {settings.contact_person}, {settings.contact_role}
+              </li>
+              <li className="flex gap-2">
+                <MapPin className="mt-0.5 h-4 w-4 text-accent" />
+                {settings.address}
+              </li>
+            </ul>
+          </div>
         </div>
-        <div>
-          <p className="font-semibold">Jam Operasional</p>
-          <p className="mt-4 text-sm text-white/70">
-            Senin – Sabtu
-            <br />
-            08.00 – 17.00 WIB
-          </p>
+        <div className="mt-12 border-t border-white/10 pt-6 text-xs text-primary-foreground/50">
+          Copyright {new Date().getFullYear()} {settings.legal_name}. Hak cipta dilindungi.
         </div>
-      </div>
-      <div className="border-t border-white/10">
-        <p className="mx-auto max-w-7xl px-4 py-4 text-center text-xs text-white/60 sm:px-6">
-          Copyright {year} {legalName}. Hak cipta dilindungi.
-        </p>
       </div>
     </footer>
   );

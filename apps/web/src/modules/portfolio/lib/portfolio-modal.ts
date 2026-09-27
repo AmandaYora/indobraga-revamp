@@ -1,28 +1,34 @@
 import type { ContractSchemas } from "@/shared/types/contract";
 
-export interface PortfolioModalItem {
-  id: number;
-  title: string;
-  category?: string | null;
-  short_description?: string | null;
-  images: { url: string; alt?: string | null }[];
-  cover?: string | null;
+type PublicPortfolioImage = ContractSchemas["PublicPortfolioImage"];
+type PublicPortfolioItem = ContractSchemas["PublicPortfolioItem"];
+
+/** URL terbaik satu gambar portofolio (paritas `imageSrc` di `PortfolioModal.tsx` legacy). */
+export function portfolioImageSrc(image: PublicPortfolioImage): string | null {
+  return image.large_url ?? image.medium_url ?? image.thumbnail_url ?? null;
 }
 
-export function toModalItem(item: ContractSchemas["PublicPortfolioItem"]): PortfolioModalItem {
-  const images = (item.images ?? []).map((url) => ({ url, alt: item.alt_text ?? item.title }));
-  if (images.length === 0 && (item.medium_url ?? item.thumbnail_url)) {
-    images.push({
-      url: (item.medium_url ?? item.thumbnail_url) as string,
-      alt: item.alt_text ?? item.title,
-    });
+/**
+ * Daftar gambar carousel modal (paritas legacy): gambar galeri yang punya URL; bila kosong,
+ * cover (`medium_url`/`thumbnail_url`) sebagai satu-satunya gambar.
+ */
+export function portfolioModalImages(item: PublicPortfolioItem | null): PublicPortfolioImage[] {
+  if (!item) {
+    return [];
   }
-  return {
-    id: item.id,
-    title: item.title,
-    category: item.category,
-    short_description: item.short_description,
-    images,
-    cover: item.medium_url ?? item.thumbnail_url,
-  };
+  const list = (item.images ?? []).filter((image) => Boolean(portfolioImageSrc(image)));
+  if (list.length > 0) {
+    return list;
+  }
+  if (item.medium_url ?? item.thumbnail_url) {
+    return [
+      {
+        thumbnail_url: item.thumbnail_url,
+        medium_url: item.medium_url,
+        large_url: item.medium_url,
+        alt_text: item.alt_text ?? item.title,
+      },
+    ];
+  }
+  return [];
 }
