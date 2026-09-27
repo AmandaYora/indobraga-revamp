@@ -4,7 +4,8 @@
     operationId: listEmailCampaigns
     tags: [campaigns]
     summary: Daftar kampanye email
-    description: Status SENDING legacy diekspos sebagai processing.
+    description: |
+      List offset, urut created_at desc, id desc. `q` (di-trim) mencari title, subject, email akun pengirim.
     x-module: campaigns
     x-permission: email_campaigns.read
     x-rate-limit: default
@@ -12,7 +13,7 @@
     x-legacy:
       method: GET
       path: /api/v1/admin/email-campaigns
-      changes: Prisma SENDING diekspos sebagai processing; selain itu hanya envelope v1.
+      changes: "Tidak ada perubahan bentuk data selain envelope v1."
     security: [{ sessionCookie: [] }]
     parameters:
       - name: page
@@ -26,6 +27,7 @@
       - name: q
         in: query
         required: false
+        description: Di-trim.
         schema: { type: string }
       - name: status
         in: query
@@ -50,11 +52,7 @@
                   properties:
                     data: { type: array, items: { $ref: '../components/schemas/email.yaml#/Campaign' } }
                     meta: { $ref: '../components/schemas/envelope.yaml#/PaginationMeta' }
-            example:
-              success: true
-              message: Data berhasil diambil.
-              data: [{ id: 1, title: Promo Lebaran, subject: Diskon, status: draft, total_recipients: 10, queued_count: 10, sent_count: 0, failed_count: 0, sender_account: { id: 1, provider: smtp, email_address: marketing@indobraga.com, display_name: Marketing, status: connected }, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }]
-              meta: { page: 1, limit: 10, total: 1, total_pages: 1 }
+            example: {"success": true, "message": "Data berhasil diambil.", "data": [{"id": 1, "title": "Promo Lebaran", "subject": "Diskon Kemasan", "body_text": "Halo {{ nama }}", "body_html": "<p>Halo {{ nama }}</p>", "status": "draft", "total_recipients": 10, "queued_count": 10, "sent_count": 0, "failed_count": 0, "started_at": null, "finished_at": null, "last_error": null, "sender_account": {"id": 1, "provider": "smtp", "email_address": "marketing@indobraga.com", "display_name": "Marketing", "status": "connected"}, "created_at": "2026-05-12T08:30:00.000Z", "updated_at": "2026-05-12T08:30:00.000Z"}], "meta": {"page": 1, "limit": 10, "total": 1, "total_pages": 1}}
       '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
@@ -64,7 +62,11 @@
     operationId: previewInquiryRecipients
     tags: [campaigns]
     summary: Pratinjau penerima dari inquiry
-    description: Batas hari Asia/Jakarta +07:00; limit 1000 (422 bila over).
+    description: |
+      Analisis penerima dari Pesan Kontak (legacy `InquiryRecipientFilterDto`): maks 10.000 inquiry
+      terbaru yang belum diarsip; tanpa `status` → semua kecuali `spam`. Email di-trim/lowercase,
+      invalid & duplikat dihitung terpisah. Melebihi batas TIDAK error — ditandai `over_limit`.
+      `date_from` > `date_to` → 422.
     x-module: campaigns
     x-permission: email_campaigns.manage
     x-rate-limit: default
@@ -78,6 +80,7 @@
       - name: q
         in: query
         required: false
+        description: Di-trim; mencari name, email, phone, company, message.
         schema: { type: string, maxLength: 120 }
       - name: status
         in: query
@@ -86,11 +89,13 @@
       - name: date_from
         in: query
         required: false
-        schema: { type: string, format: date }
+        description: Di-trim; ISO 8601 (`IsDateString`, tanggal atau tanggal-waktu). Hanya YYYY-MM-DD (10 karakter pertama) dipakai → awal hari Asia/Jakarta (+07:00).
+        schema: { type: string }
       - name: date_to
         in: query
         required: false
-        schema: { type: string, format: date }
+        description: Seperti `date_from` → akhir hari (23:59:59.999 +07:00).
+        schema: { type: string }
     responses:
       '200':
         description: Berhasil.
@@ -105,19 +110,19 @@
                   required: [data]
                   properties:
                     data: { $ref: '../components/schemas/email.yaml#/InquiryRecipientPreview' }
-            example:
-              success: true
-              message: Data berhasil diambil.
-              data: { total_inquiries: 10, eligible_recipients: 8, duplicate_emails: 1, invalid_emails: 1, recipient_limit: 1000, over_limit: false, sample_recipients: [] }
+            example: {"success": true, "message": "Data berhasil diambil.", "data": {"total_inquiries": 10, "eligible_recipients": 8, "duplicate_emails": 1, "invalid_emails": 1, "recipient_limit": 1000, "over_limit": false, "sample_recipients": [{"id": 12, "name": "Budi Santoso", "email": "budi@contoh.com", "company": "PT Contoh", "status": "new", "created_at": "2026-05-12T08:30:00.000Z"}]}}
       '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }
 /api/v1/admin/email-campaigns/{id}:
   get:
     operationId: getEmailCampaign
     tags: [campaigns]
     summary: Detail kampanye email
+    description: |
+      Tidak ada → 404 `NOT_FOUND` "Email massal tidak ditemukan.".
     x-module: campaigns
     x-permission: email_campaigns.read
     x-rate-limit: default
@@ -125,7 +130,7 @@
     x-legacy:
       method: GET
       path: /api/v1/admin/email-campaigns/{id}
-      changes: SENDING → processing; selain itu hanya envelope v1.
+      changes: "Tidak ada perubahan bentuk data selain envelope v1."
     security: [{ sessionCookie: [] }]
     parameters:
       - $ref: '../components/parameters.yaml#/IdPath'
@@ -143,11 +148,8 @@
                   required: [data]
                   properties:
                     data: { $ref: '../components/schemas/email.yaml#/Campaign' }
-            example:
-              success: true
-              message: Data berhasil diambil.
-              data: { id: 1, title: Promo Lebaran, subject: Diskon, status: draft, total_recipients: 10, queued_count: 10, sent_count: 0, failed_count: 0, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+            example: {"success": true, "message": "Data berhasil diambil.", "data": {"id": 1, "title": "Promo Lebaran", "subject": "Diskon Kemasan", "body_text": "Halo {{ nama }}", "body_html": "<p>Halo {{ nama }}</p>", "status": "draft", "total_recipients": 10, "queued_count": 10, "sent_count": 0, "failed_count": 0, "started_at": null, "finished_at": null, "last_error": null, "sender_account": {"id": 1, "provider": "smtp", "email_address": "marketing@indobraga.com", "display_name": "Marketing", "status": "connected"}, "created_at": "2026-05-12T08:30:00.000Z", "updated_at": "2026-05-12T08:30:00.000Z"}}
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -156,15 +158,21 @@
     operationId: updateEmailCampaign
     tags: [campaigns]
     summary: Ubah draf kampanye
-    description: Hanya draf (422 bila bukan); recipients mengganti semua.
+    description: |
+      Hanya kampanye `draft` (selain itu → 422 "Hanya draf email yang bisa diubah."). `email_account_id`
+      wajib akun `connected` (422). `recipients` dikirim → semua penerima diganti (dedup, dinormalisasi
+      seperti draf) dan hitungan di-reset; > `EMAIL_CAMPAIGN_RECIPIENT_MAX` → 422. Body HTML dihitung
+      ulang bila `body_text`/`body_html` dikirim (keduanya kosong → 422). Field string TIDAK di-trim
+      (legacy `UpdateCampaignDto` tanpa Transform). Batas body 5 MB (BC-06).
     x-module: campaigns
     x-permission: email_campaigns.manage
     x-rate-limit: default
     x-cache-control: no-store
+    x-body-limit-bytes: 5242880
     x-legacy:
       method: PATCH
       path: /api/v1/admin/email-campaigns/{id}
-      changes: Tidak ada perubahan bentuk data selain envelope v1.
+      changes: "Batas body JSON 5 MB (BC-06; legacy 100 KB default Express)."
     security: [{ sessionCookie: [], csrfHeader: [] }]
     parameters:
       - $ref: '../components/parameters.yaml#/IdPath'
@@ -201,14 +209,12 @@
                   required: [data]
                   properties:
                     data: { $ref: '../components/schemas/email.yaml#/Campaign' }
-            example:
-              success: true
-              message: Data berhasil diubah.
-              data: { id: 1, title: Promo Lebaran, subject: Diskon Terbaru, status: draft, total_recipients: 10, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+            example: {"success": true, "message": "Data berhasil diubah.", "data": {"id": 1, "title": "Promo Lebaran", "subject": "Diskon Kemasan Terbaru", "body_text": "Halo {{ nama }}", "body_html": "<p>Halo {{ nama }}</p>", "status": "draft", "total_recipients": 10, "queued_count": 10, "sent_count": 0, "failed_count": 0, "started_at": null, "finished_at": null, "last_error": null, "sender_account": {"id": 1, "provider": "smtp", "email_address": "marketing@indobraga.com", "display_name": "Marketing", "status": "connected"}, "created_at": "2026-05-12T08:30:00.000Z", "updated_at": "2026-05-12T08:30:00.000Z"}}
       '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '413': { $ref: '../components/responses.yaml#/PayloadTooLarge' }
       '422': { $ref: '../components/responses.yaml#/Unprocessable' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }
 /api/v1/admin/email-campaigns/draft:
@@ -216,15 +222,20 @@
     operationId: createCampaignDraft
     tags: [campaigns]
     summary: Buat draf kampanye manual
-    description: Penerima 1–1000, dedup email lowercase; akun pengirim wajib CONNECTED (422).
+    description: |
+      Draf manual. Penerima 1–1000 item, lalu di-dedup per email lowercase (hasil > batas → 422).
+      Akun pengirim wajib `connected` (422 "Akun pengirim harus sudah terhubung."). `body_html`
+      bermakna dipakai apa adanya, selain itu `body_text` dikonversi ke `<p>`; keduanya kosong → 422.
+      Variabel penerima dinormalisasi (lihat `RecipientInput.variables`). Batas body 5 MB (BC-06).
     x-module: campaigns
     x-permission: email_campaigns.manage
     x-rate-limit: default
     x-cache-control: no-store
+    x-body-limit-bytes: 5242880
     x-legacy:
       method: POST
       path: /api/v1/admin/email-campaigns/draft
-      changes: Tidak ada perubahan bentuk data selain envelope v1.
+      changes: "Batas body JSON 5 MB (BC-06; legacy 100 KB default Express)."
     security: [{ sessionCookie: [], csrfHeader: [] }]
     requestBody:
       required: true
@@ -233,8 +244,8 @@
           schema: { $ref: '../components/schemas/email.yaml#/CampaignDraftInput' }
           example: { title: Promo Lebaran, email_account_id: 1, subject: Diskon, body_html: "<p>Halo {{ nama }}</p>", recipients: [{ email: budi@contoh.com, name: Budi }] }
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Dibuat (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -253,6 +264,7 @@
       '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '413': { $ref: '../components/responses.yaml#/PayloadTooLarge' }
       '422': { $ref: '../components/responses.yaml#/Unprocessable' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }
 /api/v1/admin/email-campaigns/draft/from-inquiries:
@@ -260,6 +272,10 @@
     operationId: createCampaignDraftFromInquiries
     tags: [campaigns]
     summary: Buat draf dari inquiry
+    description: |
+      Penerima = hasil filter Pesan Kontak (seperti preview). Tidak ada email valid → 422 "Tidak ada
+      Pesan Kontak dengan email valid yang cocok."; melebihi batas → 422; rentang tanggal terbalik,
+      akun tidak `connected`, atau body kosong → 422.
     x-module: campaigns
     x-permission: email_campaigns.manage
     x-rate-limit: default
@@ -278,23 +294,16 @@
             required: [title, email_account_id, subject, inquiry_filter]
             additionalProperties: false
             properties:
-              title: { type: string, minLength: 1, maxLength: 190 }
+              title: { type: string, minLength: 1, maxLength: 190, description: "Di-trim." }
               email_account_id: { type: integer, minimum: 1 }
               subject: { type: string, minLength: 1, maxLength: 255 }
               body_text: { type: string }
               body_html: { type: string }
-              inquiry_filter:
-                type: object
-                additionalProperties: false
-                properties:
-                  q: { type: string, maxLength: 120 }
-                  status: { type: string, enum: [new, contacted, in_progress, closed, spam] }
-                  date_from: { type: string, format: date }
-                  date_to: { type: string, format: date }
+              inquiry_filter: { $ref: '../components/schemas/email.yaml#/InquiryRecipientFilter' }
           example: { title: Promo, email_account_id: 1, subject: Diskon, inquiry_filter: { status: new } }
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Dibuat (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -320,7 +329,10 @@
     operationId: createCampaignDraftFromAudience
     tags: [campaigns]
     summary: Buat draf dari audiens
-    description: Hanya kontak ACTIVE.
+    description: |
+      Penerima = kontak audiens `active` yang cocok filter (`q`, `source`; `status` diabaikan), urut
+      interaksi terakhir. Tidak ada → 422 "Tidak ada kontak aktif yang cocok dengan filter audience.";
+      > batas → 422; akun tidak `connected` atau body kosong → 422.
     x-module: campaigns
     x-permission: email_campaigns.manage
     x-rate-limit: default
@@ -339,22 +351,16 @@
             required: [title, email_account_id, subject, audience_filter]
             additionalProperties: false
             properties:
-              title: { type: string, minLength: 1, maxLength: 190 }
+              title: { type: string, minLength: 1, maxLength: 190, description: "Di-trim." }
               email_account_id: { type: integer, minimum: 1 }
               subject: { type: string, minLength: 1, maxLength: 255 }
               body_text: { type: string }
               body_html: { type: string }
-              audience_filter:
-                type: object
-                additionalProperties: false
-                properties:
-                  q: { type: string, maxLength: 120 }
-                  source: { type: string, enum: [inquiry, whatsapp_lead, manual_import, manual] }
-                  status: { type: string, enum: [active, unsubscribed, blocked] }
+              audience_filter: { $ref: '../components/schemas/email.yaml#/AudienceFilter' }
           example: { title: Promo, email_account_id: 1, subject: Diskon, audience_filter: { status: active } }
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Dibuat (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -380,7 +386,10 @@
     operationId: sendEmailCampaign
     tags: [campaigns]
     summary: Kirim kampanye
-    description: PENDING + reset penerima ke QUEUED; drain fire-and-forget.
+    description: |
+      Hanya `draft` (422), akun pengirim wajib `connected` (422), minimal satu penerima (422). Status →
+      `pending`, semua penerima di-reset ke `queued`; pengiriman dipicu segera (fire-and-forget) bila
+      worker in-app aktif (`EMAIL_WORKER_POLL_MS` > 0).
     x-module: campaigns
     x-permission: email_campaigns.send
     x-rate-limit: default
@@ -393,8 +402,8 @@
     parameters:
       - $ref: '../components/parameters.yaml#/IdPath'
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Berhasil (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -406,11 +415,8 @@
                   required: [data]
                   properties:
                     data: { $ref: '../components/schemas/email.yaml#/Campaign' }
-            example:
-              success: true
-              message: Kampanye mulai dikirim.
-              data: { id: 1, title: Promo, subject: Diskon, status: pending, total_recipients: 10, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+            example: {"success": true, "message": "Kampanye mulai dikirim.", "data": {"id": 1, "title": "Promo Lebaran", "subject": "Diskon Kemasan", "body_text": "Halo {{ nama }}", "body_html": "<p>Halo {{ nama }}</p>", "status": "pending", "total_recipients": 10, "queued_count": 10, "sent_count": 0, "failed_count": 0, "started_at": null, "finished_at": null, "last_error": null, "sender_account": {"id": 1, "provider": "smtp", "email_address": "marketing@indobraga.com", "display_name": "Marketing", "status": "connected"}, "created_at": "2026-05-12T08:30:00.000Z", "updated_at": "2026-05-12T08:30:00.000Z"}}
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -421,6 +427,10 @@
     operationId: resendFailedEmailCampaign
     tags: [campaigns]
     summary: Kirim ulang penerima gagal
+    description: |
+      Antre ulang HANYA penerima `failed` (status apa pun kampanyenya). Akun pengirim tidak `connected`
+      → 422; tidak ada penerima gagal → 422 "Tidak ada penerima gagal yang bisa dikirim ulang.". Kampanye
+      → `pending` dengan hitungan dihitung ulang.
     x-module: campaigns
     x-permission: email_campaigns.send
     x-rate-limit: default
@@ -433,8 +443,8 @@
     parameters:
       - $ref: '../components/parameters.yaml#/IdPath'
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Berhasil (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -446,20 +456,20 @@
                   required: [data]
                   properties:
                     data: { $ref: '../components/schemas/email.yaml#/Campaign' }
-            example:
-              success: true
-              message: Penerima gagal diantre ulang.
-              data: { id: 1, title: Promo, subject: Diskon, status: pending, total_recipients: 10, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+            example: {"success": true, "message": "Penerima gagal diantre ulang.", "data": {"id": 1, "title": "Promo Lebaran", "subject": "Diskon Kemasan", "body_text": "Halo {{ nama }}", "body_html": "<p>Halo {{ nama }}</p>", "status": "pending", "total_recipients": 10, "queued_count": 2, "sent_count": 8, "failed_count": 0, "started_at": null, "finished_at": null, "last_error": null, "sender_account": {"id": 1, "provider": "smtp", "email_address": "marketing@indobraga.com", "display_name": "Marketing", "status": "connected"}, "created_at": "2026-05-12T08:30:00.000Z", "updated_at": "2026-05-12T08:30:00.000Z"}}
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }
 /api/v1/admin/email-campaigns/{id}/recipients:
   get:
     operationId: listCampaignRecipients
     tags: [campaigns]
     summary: Daftar penerima kampanye
+    description: |
+      List offset, urut created_at asc, id asc. `q` (di-trim) mencari email & name. Kampanye tidak ada → 404.
     x-module: campaigns
     x-permission: email_campaigns.read
     x-rate-limit: default
@@ -482,6 +492,7 @@
       - name: q
         in: query
         required: false
+        description: Di-trim.
         schema: { type: string }
       - name: status
         in: query
@@ -517,7 +528,8 @@
     operationId: listCampaignLogs
     tags: [campaigns]
     summary: Daftar log kirim kampanye
-    description: Hanya super_admin (email_campaign_logs.read).
+    description: |
+      Hanya `super_admin` (`email_campaign_logs.read`). List offset, urut created_at desc, id desc. Kampanye tidak ada → 404.
     x-module: campaigns
     x-permission: email_campaign_logs.read
     x-rate-limit: default
@@ -540,7 +552,7 @@
       - name: status
         in: query
         required: false
-        description: Teks bebas.
+        description: Di-trim; dicocokkan persis (mis. `sent`, `temporary_failed`, `failed`).
         schema: { type: string }
     responses:
       '200':
@@ -572,7 +584,12 @@
     operationId: tickEmailCampaigns
     tags: [campaigns]
     summary: Tick worker kampanye email
-    description: Klaim optimistis via updateMany; batch 50; tanpa throttle antar kirim.
+    description: |
+      Pemicu manual worker kampanye (header `x-internal-worker-secret`; salah/tidak ada → 401). Worker
+      in-app legacy juga berjalan tiap `EMAIL_WORKER_POLL_MS`. Single-flight: bila drain lain sedang
+      berjalan → `status: idle` tanpa memproses. Sebelum klaim, lock kampanye/penerima yang lebih tua
+      dari `EMAIL_WORKER_STALE_MS` dilepas. Satu tick = satu batch (`EMAIL_WORKER_BATCH_SIZE`, 50) dari
+      satu kampanye; tanpa CSRF.
     x-module: campaigns
     x-permission: null
     x-rate-limit: default
@@ -583,8 +600,8 @@
       changes: Tidak ada perubahan bentuk data selain envelope v1.
     security: [{ workerSecret: [] }]
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Berhasil (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -601,5 +618,4 @@
               message: Data berhasil diambil.
               data: { claimed_campaign_id: 1, processed: 50, sent: 48, failed: 2, remaining: 0, status: completed }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
-      '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }

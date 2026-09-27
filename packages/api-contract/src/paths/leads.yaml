@@ -4,6 +4,8 @@
     operationId: listInquiries
     tags: [leads]
     summary: Daftar pesan kontak
+    description: |
+      Pesan kontak belum diarsip, urut created_at desc, id desc. `q` (di-trim) mencari name, email, phone, company, message.
     x-module: leads
     x-permission: leads.read
     x-rate-limit: default
@@ -11,7 +13,7 @@
     x-legacy:
       method: GET
       path: /api/v1/admin/inquiries
-      changes: Tidak ada perubahan bentuk data selain envelope v1; arsip disembunyikan.
+      changes: Tidak ada perubahan bentuk data selain envelope v1.
     security: [{ sessionCookie: [] }]
     parameters:
       - name: page
@@ -59,7 +61,8 @@
     operationId: getInquiry
     tags: [leads]
     summary: Detail pesan kontak
-    description: 404 bila diarsip.
+    description: |
+      Diarsip atau tidak ada → 404 `NOT_FOUND` "Pesan kontak tidak ditemukan.".
     x-module: leads
     x-permission: leads.read
     x-rate-limit: default
@@ -89,7 +92,7 @@
               success: true
               message: Data berhasil diambil.
               data: { id: 1, name: Budi, email: budi@contoh.com, phone: '08123456789', company: null, message: Halo., status: new, internal_note: null, notification_status: pending, source: website, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -98,6 +101,8 @@
     operationId: updateInquiry
     tags: [leads]
     summary: Ubah pesan kontak
+    description: |
+      Ubah `status` dan/atau `internal_note`. Diarsip atau tidak ada → 404.
     x-module: leads
     x-permission: leads.manage
     x-rate-limit: default
@@ -142,7 +147,8 @@
     operationId: archiveInquiry
     tags: [leads]
     summary: Arsipkan pesan kontak
-    description: Soft-archive; tanpa unarchive/hard-delete.
+    description: |
+      Soft-archive (`archived_at` = now); tanpa unarchive/hard-delete. Sudah diarsip atau tidak ada → 404.
     x-module: leads
     x-permission: leads.manage
     x-rate-limit: default
@@ -172,7 +178,7 @@
               success: true
               message: Data berhasil diarsipkan.
               data: { id: 1, status: archived }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -182,6 +188,8 @@
     operationId: listWhatsappLeads
     tags: [leads]
     summary: Daftar prospek WhatsApp
+    description: |
+      Prospek belum diarsip, urut created_at desc, id desc. `q` (di-trim) mencari name, phone, message.
     x-module: leads
     x-permission: leads.read
     x-rate-limit: default
@@ -226,7 +234,7 @@
             example:
               success: true
               message: Data berhasil diambil.
-              data: [{ id: 1, name: Siti, phone: '08123456789', message: null, generated_message: 'Halo Indobraga, saya Siti.', whatsapp_url: https://wa.me/6281200000001?text=Halo, status: new, internal_note: null, source: website, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }]
+              data: [{ id: 1, name: Siti, phone: '08123456789', generated_message: 'Halo Indobraga, saya Siti.', whatsapp_url: https://wa.me/6281200000001?text=Halo, status: new, internal_note: null, source: website, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }]
               meta: { page: 1, limit: 10, total: 1, total_pages: 1 }
       '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
@@ -237,6 +245,8 @@
     operationId: getWhatsappLead
     tags: [leads]
     summary: Detail prospek WhatsApp
+    description: |
+      Diarsip atau tidak ada → 404 `NOT_FOUND` "Prospek WhatsApp tidak ditemukan.".
     x-module: leads
     x-permission: leads.read
     x-rate-limit: default
@@ -265,8 +275,8 @@
             example:
               success: true
               message: Data berhasil diambil.
-              data: { id: 1, name: Siti, phone: '08123456789', message: null, generated_message: 'Halo Indobraga, saya Siti.', whatsapp_url: https://wa.me/6281200000001?text=Halo, status: new, internal_note: null, source: website, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+              data: { id: 1, name: Siti, phone: '08123456789', generated_message: 'Halo Indobraga, saya Siti.', whatsapp_url: https://wa.me/6281200000001?text=Halo, status: new, internal_note: null, source: website, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -275,6 +285,8 @@
     operationId: updateWhatsappLead
     tags: [leads]
     summary: Ubah prospek WhatsApp
+    description: |
+      Ubah `status` dan/atau `internal_note`. Diarsip atau tidak ada → 404.
     x-module: leads
     x-permission: leads.manage
     x-rate-limit: default
@@ -309,7 +321,7 @@
             example:
               success: true
               message: Data berhasil diubah.
-              data: { id: 1, name: Siti, phone: '08123456789', message: null, generated_message: 'Halo Indobraga, saya Siti.', whatsapp_url: https://wa.me/6281200000001?text=Halo, status: contacted, internal_note: null, source: website, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+              data: { id: 1, name: Siti, phone: '08123456789', generated_message: 'Halo Indobraga, saya Siti.', whatsapp_url: https://wa.me/6281200000001?text=Halo, status: contacted, internal_note: null, source: website, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
       '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
@@ -319,6 +331,8 @@
     operationId: archiveWhatsappLead
     tags: [leads]
     summary: Arsipkan prospek WhatsApp
+    description: |
+      Soft-archive (`archived_at` = now). Sudah diarsip atau tidak ada → 404.
     x-module: leads
     x-permission: leads.manage
     x-rate-limit: default
@@ -348,7 +362,7 @@
               success: true
               message: Data berhasil diarsipkan.
               data: { id: 1, status: archived }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }

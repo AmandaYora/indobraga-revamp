@@ -4,7 +4,8 @@
     operationId: getDashboard
     tags: [dashboard]
     summary: Ringkasan dashboard admin
-    description: Total + 5 inquiry, 5 whatsapp-lead, 5 kampanye terbaru.
+    description: |
+      Total + 5 inquiry, 5 prospek WhatsApp (belum diarsip) dan 5 kampanye terbaru dalam bentuk ringkas.
     x-module: dashboard
     x-permission: dashboard.read
     x-rate-limit: default
@@ -12,7 +13,7 @@
     x-legacy:
       method: GET
       path: /api/v1/admin/dashboard
-      changes: Tidak ada perubahan bentuk data selain envelope v1.
+      changes: "`totals.pending_revalidation` dihapus (BC-12); selebihnya sama."
     security: [{ sessionCookie: [] }]
     responses:
       '200':
@@ -28,14 +29,7 @@
                   required: [data]
                   properties:
                     data: { $ref: '../components/schemas/site.yaml#/DashboardSummary' }
-            example:
-              success: true
-              message: Data berhasil diambil.
-              data:
-                totals: { inquiries: 10, whatsapp_leads: 5, published_gallery: 9, published_news: 3, active_portfolios: 8, completed_media: 59, failed_media: 0, connected_email_accounts: 1, email_campaigns: 2, pending_email_campaigns: 0, pending_revalidation: 0 }
-                latest_inquiries: []
-                latest_whatsapp_leads: []
-                latest_email_campaigns: []
+            example: {"success": true, "message": "Data berhasil diambil.", "data": {"totals": {"inquiries": 10, "whatsapp_leads": 5, "published_gallery": 9, "published_news": 3, "active_portfolios": 8, "completed_media": 59, "failed_media": 0, "connected_email_accounts": 1, "email_campaigns": 2, "pending_email_campaigns": 0}, "latest_inquiries": [{"id": 12, "name": "Budi Santoso", "email": "budi@contoh.com", "phone": "0812-3456-789", "company": null, "status": "new", "created_at": "2026-05-12T08:30:00.000Z"}], "latest_whatsapp_leads": [{"id": 3, "name": "Siti", "phone": "08123456789", "status": "new", "created_at": "2026-05-12T08:30:00.000Z"}], "latest_email_campaigns": [{"id": 1, "title": "Promo Lebaran", "subject": "Diskon Kemasan", "status": "completed", "total_recipients": 10, "sent_count": 9, "failed_count": 1, "created_at": "2026-05-12T08:30:00.000Z"}]}}
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }

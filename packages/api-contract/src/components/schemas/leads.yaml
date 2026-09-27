@@ -1,33 +1,35 @@
-# Skema leads (inquiry + whatsapp-lead). Field dari backend.md §leads.
+# Skema leads (inquiry + whatsapp-lead) — presenter & DTO legacy apps/api/src/leads
+# (leads.service.ts:303-333, dto/*.ts). Semua key respons selalu dikirim.
 LeadStatus:
   type: string
   enum: [new, contacted, in_progress, closed, spam]
 
 Inquiry:
   type: object
-  required: [id, name, email, phone, message, status, created_at, updated_at]
+  description: "`presentInquiry` (leads.service.ts:303-318)."
+  required: [id, name, email, phone, company, message, status, internal_note, notification_status, source, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     name: { type: string }
-    email: { type: string, format: email }
+    email: { type: string }
     phone: { type: string }
     company: { type: [string, "null"] }
     message: { type: string }
     status: { $ref: '#/LeadStatus' }
     internal_note: { type: [string, "null"] }
-    notification_status: { type: [string, "null"], examples: ["pending"] }
-    source: { type: [string, "null"] }
+    notification_status: { type: [string, "null"], description: "`pending` saat dibuat; `sent`/`failed` setelah worker email notifikasi.", examples: ["pending"] }
+    source: { type: [string, "null"], description: "Header Referer saat dikirim, atau `website`." }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
 WhatsAppLead:
   type: object
-  required: [id, name, phone, status, created_at, updated_at]
+  description: "`presentWhatsAppLead` (leads.service.ts:320-333). Pesan disimpan dan diekspos sebagai `generated_message`."
+  required: [id, name, phone, generated_message, whatsapp_url, status, internal_note, source, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     name: { type: string }
     phone: { type: string }
-    message: { type: [string, "null"] }
     generated_message: { type: [string, "null"] }
     whatsapp_url: { type: [string, "null"], format: uri }
     status: { $ref: '#/LeadStatus' }
@@ -38,6 +40,7 @@ WhatsAppLead:
 
 CreateInquiryInput:
   type: object
+  description: Legacy `CreateInquiryDto` — semua string di-trim sebelum divalidasi.
   required: [name, email, phone, message]
   additionalProperties: false
   properties:
@@ -46,17 +49,18 @@ CreateInquiryInput:
     phone: { type: string, pattern: '^[0-9+()\-\s]{7,30}$', examples: ["0812-3456-789"] }
     company: { type: string, maxLength: 190 }
     message: { type: string, minLength: 10, maxLength: 5000, examples: ["Halo, saya butuh kemasan box untuk kopi 250gr sebanyak 5000 pcs."] }
-    website: { type: string, maxLength: 190, description: "Honeypot — biarkan kosong; bila terisi API mengembalikan id 0 tanpa menyimpan." }
+    website: { type: string, maxLength: 190, description: "Honeypot — biarkan kosong; bila terisi (setelah trim) API mengembalikan id 0 tanpa menyimpan." }
 
 CreateInquiryResult:
   type: object
   required: [id, status]
   properties:
-    id: { type: integer, minimum: 0, examples: [12] }
+    id: { type: integer, minimum: 0, description: "0 bila honeypot terisi.", examples: [12] }
     status: { $ref: '#/LeadStatus' }
 
 CreateWhatsAppLeadInput:
   type: object
+  description: Legacy `CreateWhatsAppLeadDto` — semua string di-trim sebelum divalidasi.
   required: [name, phone]
   additionalProperties: false
   properties:
@@ -75,10 +79,11 @@ CreateWhatsAppLeadResult:
 
 UpdateLeadInput:
   type: object
+  description: Legacy `UpdateLeadDto`.
   additionalProperties: false
   properties:
     status: { $ref: '#/LeadStatus' }
-    internal_note: { type: string, maxLength: 5000 }
+    internal_note: { type: string, maxLength: 5000, description: "Di-trim." }
 
 ArchiveLeadResult:
   type: object

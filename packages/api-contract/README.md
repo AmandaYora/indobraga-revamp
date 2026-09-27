@@ -45,10 +45,23 @@ packages/api-contract/
 - Error: `$ref` ke `components/responses.yaml` — tidak ada skema error ad-hoc.
 - Nullable: `type: [string, "null"]` (OpenAPI 3.1), bukan `nullable: true`.
 - Field snake_case, nilai enum lowercase. Pesan (`message`, `summary`, `description`) bahasa Indonesia.
+- Respons: bentuk **persis** presenter legacy — setiap key yang selalu dikirim legacy masuk
+  `required`, nullable mengikuti kolom Prisma; pratinjau media opsional memakai
+  `common.yaml#/NullableMediaPreview`.
 - Request body JSON: `additionalProperties: false` (field asing ditolak, paritas `forbidNonWhitelisted`),
   `required` eksplisit, batasan (`minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `enum`,
-  `format`) **persis** seperti DTO legacy.
-- Parameter `limit` didefinisikan inline per operasi dengan `default` dan `maximum` yang benar.
+  `format`) **persis** seperti DTO legacy — jangan menambah batas yang tidak ada di DTO; clamping /
+  normalisasi legacy (mis. `limit` audiens, `variables` penerima) ditulis di `description`, bukan
+  sebagai penolakan. Field `AdminContentDto` yang tidak relevan untuk suatu resource dicantumkan
+  `deprecated: true` (diterima lalu diabaikan, paritas DTO bersama).
+- Parameter `limit` didefinisikan inline per operasi dengan `default` dan `maximum` yang benar
+  (`maximum` hanya bila DTO legacy punya `@Max`; di luar batas → 400, bukan di-clamp).
+- Status sukses: `POST` → `201` (default NestJS), kecuali `POST /auth/login` & `/auth/logout` → `200`.
+- Parameter query tak dikenal: operasi dengan ≥ 1 parameter `in: query` menolaknya (400
+  `VALIDATION_ERROR`); operasi tanpa parameter query mengabaikan query string; pengecualian
+  `x-unknown-query: ignore` (callback OAuth Google).
+- Batas body JSON 1 MB, kecuali `x-body-limit-bytes` (BC-06: draf kampanye manual & ubah kampanye
+  5 MB, wajib mencantumkan `413`).
 
 ### Ekstensi wajib per operasi (dicek Redocly & `check-mapping.mjs`)
 
@@ -57,8 +70,15 @@ packages/api-contract/
 | `x-module` | modul Go pemilik: `auth, users, audit, media, settings, profile, portfolio, gallery, news, site, leads, audience, notifications, emailaccounts, emailtemplates, campaigns, dashboard, health` |
 | `x-permission` | string permission (`leads.read`, ...) atau `null` (publik / cukup sesi) |
 | `x-rate-limit` | `default` (120/60 dtk per IP), `exempt`, atau `{ limit: 5, window_seconds: 60 }` |
-| `x-cache-control` | nilai header persis: `no-store` · `public, max-age=60, stale-while-revalidate=300` · `public, max-age=300, stale-while-revalidate=600` |
+| `x-cache-control` | nilai header persis: `no-store` · `public, max-age=60, stale-while-revalidate=300` · `public, max-age=300, stale-while-revalidate=600` · SSE: `private, no-cache, no-store, must-revalidate, max-age=0, no-transform` (header bawaan NestJS `SseStream`) |
 | `x-legacy` | `{ method, path, changes }` — endpoint legacy yang digantikan (path gaya `{id}`) dan perubahan **spesifik** di luar perubahan envelope global; `null` untuk operasi baru. Bila satu endpoint legacy dipecah ke beberapa operasi (mis. route generik `/admin/{resource}/{id}/archive` → path eksplisit per resource, agar setiap modul Go mendaftarkan route-nya sendiri — BC-05), setiap pecahan memberi `split: true` |
+
+### Ekstensi opsional
+
+| Ekstensi | Nilai |
+|---|---|
+| `x-body-limit-bytes` | batas body JSON operasi (byte) bila ≠ 1 MB default (BC-06) |
+| `x-unknown-query` | `ignore` — parameter query tak dikenal diabaikan, bukan ditolak |
 
 ### Security
 
@@ -70,10 +90,13 @@ packages/api-contract/
 ### Respons yang wajib dicantumkan
 
 - Semua operasi: `429` (kecuali `x-rate-limit: exempt`).
-- Punya body/query yang divalidasi: `400` → `ValidationError`.
+- Punya body/query/path `{id}` yang divalidasi: `400` → `ValidationError`; bila 400 juga dipakai
+  aturan status (`BAD_REQUEST`) → `InvalidRequest`; bila body merujuk media (media belum
+  `completed` = 400 `UNPROCESSABLE_ENTITY`, paritas legacy) → `ValidationOrMediaNotReady`.
 - Admin: `401` → `Unauthenticated`, `403` → `Forbidden` (permission & CSRF).
 - Path `{id}`/`{slug}`: `404` → `NotFound`.
-- Aturan bisnis: `409` → `Conflict`, `422` → `Unprocessable`, upload `413`/`415`.
+- Aturan bisnis: `409` → `Conflict`, `422` → `Unprocessable`, upload `413`/`415` — hanya status yang
+  benar-benar dilempar legacy untuk operasi itu.
 - Setiap respons 2xx punya `example` yang realistis.
 
 Fragmen contoh: [`src/paths/health.yaml`](src/paths/health.yaml).

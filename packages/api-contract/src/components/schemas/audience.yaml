@@ -1,7 +1,8 @@
 # Skema audience. Field dari backend.md §audience.
 MarketingContact:
   type: object
-  required: [id, email, source, status, consent_status, created_at, updated_at]
+  description: "`AudienceService.present` (audience.service.ts:201-216)."
+  required: [id, name, email, phone, company, source, source_ref_id, status, consent_status, last_interaction_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     name: { type: [string, "null"] }
@@ -18,6 +19,7 @@ MarketingContact:
 
 AudiencePreview:
   type: object
+  description: "Filter `status` diabaikan: total & pengecualian dihitung per status dari filter `q`/`source`."
   required: [total_contacts, eligible_recipients, excluded_unsubscribed, excluded_blocked, sample_recipients]
   properties:
     total_contacts: { type: integer, minimum: 0 }
@@ -27,4 +29,15 @@ AudiencePreview:
     sample_recipients:
       type: array
       maxItems: 5
-      items: { $ref: '#/MarketingContact' }
+      description: "5 kontak `active` teratas (urut interaksi terakhir desc, created_at desc, id desc)."
+      items: { $ref: '#/AudienceSampleRecipient' }
+
+AudienceSampleRecipient:
+  type: object
+  description: "Bentuk ringkas contoh penerima (audience.service.ts:112-117)."
+  required: [id, name, email, company]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: [string, "null"] }
+    email: { type: string }
+    company: { type: [string, "null"] }

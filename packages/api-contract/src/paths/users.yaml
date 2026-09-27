@@ -4,7 +4,8 @@
     operationId: listUsers
     tags: [users]
     summary: Daftar user admin
-    description: List offset user (content_editor tidak melihat super_admin).
+    description: |
+      List offset, urut created_at desc, id desc. `search` (di-trim) mencari name & email. Viewer `content_editor` tidak melihat user `super_admin`.
     x-module: users
     x-permission: users.manage
     x-rate-limit: default
@@ -26,6 +27,7 @@
       - name: search
         in: query
         required: false
+        description: Di-trim; mencari name & email.
         schema: { type: string }
       - name: role
         in: query
@@ -64,7 +66,8 @@
     operationId: createUser
     tags: [users]
     summary: Buat user admin
-    description: Email di-lowercase; bcrypt cost 12; 409 bila duplikat.
+    description: |
+      Status awal `active`; bcrypt cost 12. `content_editor` membuat `super_admin` → 403. Email sudah dipakai → 409 `CONFLICT` "Email sudah digunakan.".
     x-module: users
     x-permission: users.manage
     x-rate-limit: default
@@ -81,8 +84,8 @@
           schema: { $ref: '../components/schemas/users.yaml#/CreateUserInput' }
           example: { name: Editor Baru, email: editor@indobraga.com, role: content_editor, temporary_password: sementara123 }
     responses:
-      '200':
-        description: User dibuat.
+      '201':
+        description: Dibuat (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -108,7 +111,8 @@
     operationId: getUser
     tags: [users]
     summary: Detail user admin
-    description: Content_editor mendapat 404 untuk super_admin.
+    description: |
+      Tidak ada, atau viewer `content_editor` melihat `super_admin` → 404 `NOT_FOUND` "Pengguna tidak ditemukan.".
     x-module: users
     x-permission: users.manage
     x-rate-limit: default
@@ -138,7 +142,7 @@
               success: true
               message: Data berhasil diambil.
               data: { id: 2, name: Editor Baru, email: editor@indobraga.com, role: content_editor, status: active, permissions: [dashboard.read], last_login_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -147,7 +151,8 @@
     operationId: updateUser
     tags: [users]
     summary: Ubah user admin
-    description: Ganti nama/role/password; ganti password user lain mencabut sesinya.
+    description: |
+      Ganti nama/role/password. 403 bila: `content_editor` memberi role `super_admin`; menurunkan role akun sendiri; menurunkan Super Admin aktif terakhir. `content_editor` mengubah `super_admin` → 404. Mengganti password user lain mencabut semua sesinya.
     x-module: users
     x-permission: users.manage
     x-rate-limit: default
@@ -192,7 +197,8 @@
     operationId: disableUser
     tags: [users]
     summary: Nonaktifkan user admin
-    description: Soft-disable + cabut sesi; tidak bisa menonaktifkan diri sendiri / super admin terakhir.
+    description: |
+      Soft-disable (status `inactive`) + cabut semua sesi. 403 bila akun sendiri atau Super Admin aktif terakhir; `content_editor` → `super_admin` → 404.
     x-module: users
     x-permission: users.manage
     x-rate-limit: default
@@ -222,7 +228,7 @@
               success: true
               message: User berhasil dinonaktifkan.
               data: { id: 2, status: disabled }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -232,7 +238,8 @@
     operationId: updateUserStatus
     tags: [users]
     summary: Ubah status user admin
-    description: Aktif/nonaktif; aturan proteksi sama dengan hapus.
+    description: |
+      Aktif/nonaktif. Menonaktifkan: 403 bila akun sendiri atau Super Admin aktif terakhir; sesi user dicabut. `content_editor` → `super_admin` → 404.
     x-module: users
     x-permission: users.manage
     x-rate-limit: default

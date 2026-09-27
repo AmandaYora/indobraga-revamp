@@ -1,14 +1,16 @@
-# Skema media. Field dari backend.md §media.
+# Skema media — presenter legacy `MediaService.present` (apps/api/src/media/media.service.ts:623-647).
 MediaItem:
   type: object
-  required: [id, media_type, mime_type, original_file_name, compression_status, created_at, updated_at]
+  description: |
+    Semua key selalu dikirim. URL diambil apa adanya dari baris media (TIDAK disaring status,
+    beda dengan `MediaPreview`). Gambar: `file_url` = `large_url`; video: `file_url` = `video_url`.
+  required: [id, media_type, mime_type, original_file_name, compression_status, file_url, thumbnail_url, medium_url, large_url, poster_url, video_url, width, height, duration_seconds, original_size, optimized_size, error, archived_at, deleted_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     media_type: { $ref: './common.yaml#/MediaKind' }
-    mime_type: { type: [string, "null"], examples: ["image/webp"] }
-    original_file_name: { type: [string, "null"], examples: ["hero-1.jpg"] }
+    mime_type: { type: string, description: "MIME hasil sniff magic bytes.", examples: ["image/jpeg"] }
+    original_file_name: { type: string, examples: ["hero-1.jpg"] }
     compression_status: { $ref: './common.yaml#/MediaStatus' }
-    previous_status: { type: [string, "null"], enum: [processing, completed, failed, archived, pending_delete, deleted, cleanup_failed, null] }
     file_url: { type: [string, "null"], format: uri }
     thumbnail_url: { type: [string, "null"], format: uri }
     medium_url: { type: [string, "null"], format: uri }
@@ -17,10 +19,10 @@ MediaItem:
     video_url: { type: [string, "null"], format: uri }
     width: { type: [integer, "null"] }
     height: { type: [integer, "null"] }
-    duration_seconds: { type: [number, "null"] }
-    original_size: { type: [integer, "null"], description: "Byte (BIGINT)." }
-    optimized_size: { type: [integer, "null"] }
-    error: { type: [string, "null"] }
+    duration_seconds: { type: [integer, "null"] }
+    original_size: { type: [integer, "null"], description: "Byte file asli (null bila 0/kosong)." }
+    optimized_size: { type: [integer, "null"], description: "Total byte varian tersimpan (null bila 0/kosong)." }
+    error: { type: [string, "null"], description: "Pesan error pemrosesan/penghapusan." }
     archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     deleted_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }

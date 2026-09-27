@@ -9,7 +9,9 @@ BadRequest:
       schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
 
 ValidationError:
-  description: Validasi gagal (`VALIDATION_ERROR`) — `errors[]` berisi field & pesan; field asing ditolak.
+  description: |
+    Validasi gagal (`VALIDATION_ERROR`) — `errors[]` berisi field & pesan; field body/query asing
+    ditolak (pesan legacy `property <nama> should not exist`).
   headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
   content:
     application/json:
@@ -20,6 +22,61 @@ ValidationError:
         message: Periksa kembali data yang diisi.
         errors: [{ field: email, message: Email tidak valid. }]
         request_id: req_4b5d9d6e-7d3a-4d3f-9a55-0c5b4f0c2f31
+
+InvalidRequest:
+  description: |
+    Request tidak valid. `code` = `VALIDATION_ERROR` (path/query/body gagal validasi DTO, termasuk
+    parameter query tak dikenal) atau `BAD_REQUEST` (aturan status/bisnis — lihat deskripsi operasi).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+      examples:
+        validation:
+          summary: Validasi gagal
+          value:
+            success: false
+            code: VALIDATION_ERROR
+            message: Periksa kembali data yang diisi.
+            errors: [{ field: id, message: id harus berupa angka bulat. }]
+            request_id: req_4b5d9d6e-7d3a-4d3f-9a55-0c5b4f0c2f31
+        bad_request:
+          summary: Aturan status/bisnis
+          value:
+            success: false
+            code: BAD_REQUEST
+            message: Konten ini sudah berada di arsip.
+            errors: []
+            request_id: req_4b5d9d6e-7d3a-4d3f-9a55-0c5b4f0c2f31
+
+ValidationOrMediaNotReady:
+  description: |
+    Request tidak valid (HTTP 400). `code` = `VALIDATION_ERROR` (validasi DTO atau bagian wajib
+    kosong — "Lengkapi bagian wajib: …") atau `UNPROCESSABLE_ENTITY` bila media yang dirujuk tidak
+    ada / belum `completed` ("Media belum siap dipakai. Tunggu proses selesai atau unggah media
+    lain."). Status 400 untuk media belum siap adalah paritas legacy (`assertCompletedMedia`,
+    admin-content.service.ts:1784-1796 melempar `BadRequestException` ber-code `UNPROCESSABLE_ENTITY`).
+  headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
+  content:
+    application/json:
+      schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
+      examples:
+        validation:
+          summary: Validasi gagal
+          value:
+            success: false
+            code: VALIDATION_ERROR
+            message: "Lengkapi bagian wajib: judul."
+            errors: []
+            request_id: req_4b5d9d6e-7d3a-4d3f-9a55-0c5b4f0c2f31
+        media_not_ready:
+          summary: Media belum completed
+          value:
+            success: false
+            code: UNPROCESSABLE_ENTITY
+            message: Media belum siap dipakai. Tunggu proses selesai atau unggah media lain.
+            errors: []
+            request_id: req_4b5d9d6e-7d3a-4d3f-9a55-0c5b4f0c2f31
 
 Unauthenticated:
   description: Belum login atau sesi tidak valid (`UNAUTHENTICATED`).
@@ -50,7 +107,9 @@ Conflict:
       schema: { $ref: './schemas/envelope.yaml#/ErrorEnvelope' }
 
 PayloadTooLarge:
-  description: Ukuran request/file melebihi batas (`PAYLOAD_TOO_LARGE`).
+  description: |
+    Ukuran request/file melebihi batas (`PAYLOAD_TOO_LARGE`) — body JSON di atas `x-body-limit-bytes`
+    operasi (default 1 MB) atau file upload di atas batas media.
   headers: { X-Request-Id: { $ref: './headers.yaml#/XRequestId' } }
   content:
     application/json:

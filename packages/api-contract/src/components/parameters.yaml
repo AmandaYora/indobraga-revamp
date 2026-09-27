@@ -1,41 +1,58 @@
 # Parameter umum. Parameter `limit` sengaja TIDAK disediakan di sini karena default & maksimum
 # berbeda per endpoint — definisikan inline di operasi dengan `default` dan `maximum` yang benar.
+#
+# Validasi query/path mengikuti ValidationPipe legacy (core/validation.pipe.ts): nilai yang
+# gagal validasi → 400 `VALIDATION_ERROR` (bukan fallback ke default).
 
 IdPath:
   name: id
   in: path
   required: true
+  description: ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`).
   schema: { type: integer, format: int64, minimum: 1 }
+
+ArchiveIdPath:
+  name: id
+  in: path
+  required: true
+  description: |
+    ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+    (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+    (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+  schema: { type: integer, format: int64 }
 
 SlugPath:
   name: slug
   in: path
   required: true
+  description: Tidak cocok pola → 400 `VALIDATION_ERROR` (legacy `SlugParamDto`, tanpa batas panjang).
   schema:
     type: string
     pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
-    maxLength: 190
 
 Page:
   name: page
   in: query
   required: false
-  description: Halaman (mulai 1). Nilai tidak valid → 1.
+  description: Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`; tidak dikirim → 1.
   schema: { type: integer, minimum: 1, default: 1 }
 
 Q:
   name: q
   in: query
   required: false
-  description: Kata kunci pencarian.
-  schema: { type: string, maxLength: 120 }
+  description: Kata kunci pencarian (di-trim; pencocokan `contains`).
+  schema: { type: string }
 
 Cursor:
   name: cursor
   in: query
   required: false
-  description: Cursor dari `meta.next_cursor` respons sebelumnya.
-  schema: { type: string, maxLength: 512 }
+  description: |
+    Cursor opaque dari `meta.next_cursor` respons sebelumnya (base64url JSON `{sort_order, id}`).
+    Tidak bisa di-decode atau bukan `{sort_order: number, id: number}` → 400 `BAD_REQUEST`
+    ("Cursor tidak valid."). Tanpa batas panjang (legacy `IsString`).
+  schema: { type: string }
 
 RequestIdHeader:
   name: X-Request-Id

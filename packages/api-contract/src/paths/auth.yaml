@@ -5,8 +5,10 @@
     tags: [auth]
     summary: Login admin
     description: |
-      Login dengan email & password; mengeset cookie sesi (httpOnly) dan cookie CSRF (non-httpOnly).
-      Rate limit ketat 5/60 dtk per IP.
+      Login dengan email & password; status 200 (legacy `@HttpCode(200)`). Mengeset cookie sesi
+      `indobraga_admin_session` (httpOnly) dan cookie CSRF `indobraga_csrf` (non-httpOnly), masa
+      berlaku `ADMIN_SESSION_TTL_DAYS` (7) hari. Tanpa CSRF. User tidak ada / nonaktif / password
+      salah → 401 `UNAUTHENTICATED` "Email atau kata sandi belum sesuai.". Rate limit 5/60 dtk per IP.
     x-module: auth
     x-permission: null
     x-rate-limit:
@@ -52,7 +54,9 @@
     operationId: logout
     tags: [auth]
     summary: Logout admin
-    description: Mencabut sesi dan membersihkan kedua cookie.
+    description: |
+      Status 200 (legacy `@HttpCode(200)`). Wajib sesi valid (401) dan CSRF (403). Mencabut sesi
+      (`revoked_at`) lalu menghapus kedua cookie lewat dua header `Set-Cookie` kedaluwarsa.
     x-module: auth
     x-permission: null
     x-rate-limit: default
@@ -67,6 +71,7 @@
         description: Logout berhasil.
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+          Set-Cookie: { $ref: '../components/headers.yaml#/ClearCookie' }
         content:
           application/json:
             schema:
@@ -88,7 +93,7 @@
     operationId: getSessionUser
     tags: [auth]
     summary: Ambil user sesi
-    description: Mengembalikan user dari sesi aktif.
+    description: Mengembalikan user dari sesi aktif (sesi tidak ada/dicabut/kedaluwarsa/user nonaktif → 401).
     x-module: auth
     x-permission: null
     x-rate-limit: default

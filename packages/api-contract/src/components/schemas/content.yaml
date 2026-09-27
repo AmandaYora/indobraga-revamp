@@ -1,123 +1,155 @@
-# Skema admin-content (12 resource + site-settings). Field dari analysis/000-legacy-inventory/backend.md.
-# Setiap item wajib: status, previous_status, archived_at, created_at, updated_at.
+# Skema admin-content (12 resource + site-settings) — bentuk respons PERSIS presenter legacy
+# `AdminContentService.present*` (apps/api/src/admin-content/admin-content.service.ts:1974-2266).
+# Semua key selalu dikirim (required); nullable mengikuti kolom Prisma.
+# Pratinjau media: `MediaPreview` / `NullableMediaPreview` (common.yaml).
 # Slug memakai pola ^[a-z0-9]+(-[a-z0-9]+)*$.
 
 HeroSection:
   type: object
-  required: [id, title, status, previous_status, archived_at, created_at, updated_at]
+  description: "Presenter `presentHero` (:2001-2016). List/create/update/status/arsip TIDAK menyertakan `slides`."
+  required: [id, title, subtitle, cta_label, cta_href, status, previous_status, archived_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
-    title: { type: string, maxLength: 190, examples: ["Jasa Cetak Kardus & Packaging"] }
+    title: { type: string, examples: ["Jasa Cetak Kardus & Packaging"] }
     subtitle: { type: [string, "null"], examples: ["Sejak 2010 melayani seluruh Indonesia."] }
     cta_label: { type: [string, "null"], examples: ["Hubungi Kami"] }
     cta_href: { type: [string, "null"], examples: ["/kontak"] }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
     archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
-    slides:
-      type: array
-      description: Diisi pada detail; list tidak menyertakan slides.
-      items: { $ref: '#/HeroSlide' }
+
+HeroSectionDetail:
+  description: "Detail hero (`getHero`, :279-293) = `HeroSection` + `slides` (semua slide, tanpa filter status, urutan DB)."
+  allOf:
+    - $ref: '#/HeroSection'
+    - type: object
+      required: [slides]
+      properties:
+        slides:
+          type: array
+          items: { $ref: '#/HeroSlide' }
 
 HeroSlide:
   type: object
-  required: [id, title, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  description: "Presenter `presentHeroSlide` (:2018-2039)."
+  required: [id, hero_section_id, label, title, metric, alt_text, media_file_id, media_file, sort_order, status, previous_status, archived_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
-    hero_section_id: { type: integer, minimum: 0, description: "0 = ikut hero pertama (sentinel form); id nyata > 0.", examples: [1] }
+    hero_section_id: { $ref: './common.yaml#/Id' }
     label: { type: [string, "null"], examples: ["Terpercaya"] }
     title: { type: string, examples: ["Cetak Offset Berkualitas"] }
     metric: { type: [string, "null"], examples: ["10.000+ pcs/hari"] }
     alt_text: { type: [string, "null"] }
     media_file_id: { type: [integer, "null"], minimum: 1 }
-    media:
-      $ref: './common.yaml#/MediaPreview'
-      description: Pratinjau media (URL null bila belum completed).
-    sort_order: { type: integer, minimum: 0, maximum: 1000000, examples: [1] }
+    media_file: { $ref: './common.yaml#/NullableMediaPreview' }
+    sort_order: { type: integer, examples: [1] }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
     archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
 Partner:
   type: object
-  required: [id, name, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  description: "Presenter `presentPartner` (:2041-2059)."
+  required: [id, name, segment, logo_media_id, logo_media, sort_order, status, previous_status, archived_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
-    name: { type: string, maxLength: 190, examples: ["PT Maju Bersama"] }
+    name: { type: string, examples: ["PT Maju Bersama"] }
     segment: { type: [string, "null"], examples: ["FMCG"] }
     logo_media_id: { type: [integer, "null"], minimum: 1 }
-    logo: { $ref: './common.yaml#/MediaPreview' }
-    sort_order: { type: integer, minimum: 0, maximum: 1000000, examples: [1] }
+    logo_media: { $ref: './common.yaml#/NullableMediaPreview' }
+    sort_order: { type: integer, examples: [1] }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
     archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
 ProductionStrength:
   type: object
-  required: [id, label, value, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  description: "Presenter `presentStrength` (:2061-2076)."
+  required: [id, label, value, suffix, sort_order, status, previous_status, archived_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     label: { type: string, examples: ["Kapasitas Harian"] }
     value: { type: string, examples: ["50.000"] }
     suffix: { type: [string, "null"], examples: ["pcs"] }
-    sort_order: { type: integer, minimum: 0, maximum: 1000000, examples: [1] }
+    sort_order: { type: integer, examples: [1] }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
     archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
 PortfolioCategory:
   type: object
+  description: "Presenter `presentPortfolioCategory` (:2078-2092)."
   required: [id, name, slug, sort_order, status, previous_status, archived_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
-    name: { type: string, maxLength: 190, examples: ["Box & Karton"] }
-    slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 190, examples: ["box-karton"] }
-    sort_order: { type: integer, minimum: 0, maximum: 1000000, examples: [1] }
+    name: { type: string, examples: ["Box & Karton"] }
+    slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', examples: ["box-karton"] }
+    sort_order: { type: integer, examples: [1] }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
     archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
+PortfolioImage:
+  type: object
+  description: "Satu gambar galeri portofolio (`presentPortfolio` → `images[]`, :2103-2108), urut `sort_order` naik."
+  required: [id, media_file_id, sort_order, media_file]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    media_file_id: { $ref: './common.yaml#/Id' }
+    sort_order: { type: integer, minimum: 0, examples: [0] }
+    media_file: { $ref: './common.yaml#/MediaPreview' }
+
 Portfolio:
   type: object
-  required: [id, title, slug, sort_order, is_featured, status, previous_status, archived_at, created_at, updated_at]
+  description: |
+    Presenter `presentPortfolio` (:2094-2136). `media_file_id`/`media_file` = cover (gambar
+    pertama galeri); `media_file_ids`/`media_files`/`images` = galeri berurutan (diturunkan dari
+    `images`). Kolom `description` legacy diekspos sebagai `short_description`.
+  required: [id, title, slug, category_id, category, category_slug, short_description, media_file_id, media_file, media_file_ids, media_files, images, is_featured, sort_order, status, previous_status, archived_at, published_at, seo_title, seo_description, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     title: { type: string, examples: ["Kemasan Kopi Premium"] }
     slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', examples: ["kemasan-kopi-premium"] }
-    category_id: { type: [integer, "null"], minimum: 1, description: "Wajib PUBLISHED saat create/publish.", examples: [2] }
-    category: { type: [string, "null"], description: "Teks denormalisasi.", examples: ["Box & Karton"] }
+    category_id: { type: [integer, "null"], minimum: 1, examples: [2] }
+    category: { type: string, description: "Nama kategori relasi, fallback teks denormalisasi.", examples: ["Box & Karton"] }
+    category_slug: { type: [string, "null"], examples: ["box-karton"] }
     short_description: { type: [string, "null"] }
-    description: { type: [string, "null"] }
-    image_media_id: { type: [integer, "null"], minimum: 1, description: "Cover (gambar pertama)." }
-    cover_image: { $ref: './common.yaml#/MediaPreview' }
+    media_file_id: { type: [integer, "null"], minimum: 1, description: "Cover (= gambar galeri pertama)." }
+    media_file: { $ref: './common.yaml#/NullableMediaPreview' }
+    media_file_ids:
+      type: array
+      items: { $ref: './common.yaml#/Id' }
+    media_files:
+      type: array
+      items: { $ref: './common.yaml#/MediaPreview' }
     images:
       type: array
-      description: Galeri (maks 10 saat input; diganti atomik hanya bila dikirim).
-      items: { $ref: './common.yaml#/MediaPreview' }
+      items: { $ref: '#/PortfolioImage' }
     is_featured: { type: boolean, examples: [true] }
-    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    sort_order: { type: integer }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     published_at: { $ref: './common.yaml#/NullableTimestamp' }
     seo_title: { type: [string, "null"] }
     seo_description: { type: [string, "null"] }
-    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
 Machine:
   type: object
-  required: [id, name, slug, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  description: "Presenter `presentMachine` (:2138-2158)."
+  required: [id, name, slug, metric, description, media_file_id, media_file, sort_order, status, previous_status, archived_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     name: { type: string, examples: ["Heidelberg Speedmaster"] }
@@ -125,17 +157,18 @@ Machine:
     metric: { type: [string, "null"], examples: ["18.000 lbr/jam"] }
     description: { type: [string, "null"] }
     media_file_id: { type: [integer, "null"], minimum: 1 }
-    image: { $ref: './common.yaml#/MediaPreview' }
-    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    media_file: { $ref: './common.yaml#/NullableMediaPreview' }
+    sort_order: { type: integer }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
     archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
 PrintingCapacity:
   type: object
-  required: [id, label, value, unit, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  description: "Presenter `presentPrintingCapacity` (:2160-2182)."
+  required: [id, label, value, unit, description, media_file_id, media_file, sort_order, status, previous_status, archived_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     label: { type: string, examples: ["Offset Printing"] }
@@ -143,114 +176,117 @@ PrintingCapacity:
     unit: { type: string, examples: ["lembar/hari"] }
     description: { type: [string, "null"] }
     media_file_id: { type: [integer, "null"], minimum: 1 }
-    image: { $ref: './common.yaml#/MediaPreview' }
-    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    media_file: { $ref: './common.yaml#/NullableMediaPreview' }
+    sort_order: { type: integer }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
     archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
 ProductionCapacity:
   type: object
+  description: "Presenter `presentProductionCapacity` (:2184-2199)."
   required: [id, product, value, unit, sort_order, status, previous_status, archived_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     product: { type: string, examples: ["Kardus Box"] }
     value: { type: string, examples: ["100.000"] }
     unit: { type: string, examples: ["pcs/bulan"] }
-    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    sort_order: { type: integer }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
     archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
 ServiceItem:
   type: object
+  description: "Presenter `presentService` (:2201-2214)."
   required: [id, name, sort_order, status, previous_status, archived_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     name: { type: string, examples: ["Desain Kemasan"] }
-    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    sort_order: { type: integer }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
     archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
 GalleryItem:
   type: object
-  required: [id, media_file_id, media_type, caption, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  description: "Presenter `presentGalleryItem` (:2216-2238). `media_type` = `video` bila tipe VIDEO, selain itu `image`."
+  required: [id, media_type, caption, media_file_id, media_file, poster_media_id, poster_media, sort_order, status, previous_status, archived_at, published_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
-    media_file_id: { type: integer, minimum: 1 }
     media_type: { type: string, enum: [image, video] }
     caption: { type: string, examples: ["Proses cetak offset"] }
+    media_file_id: { type: [integer, "null"], minimum: 1, description: "Null bila media terhapus (FK SetNull)." }
+    media_file: { $ref: './common.yaml#/NullableMediaPreview' }
     poster_media_id: { type: [integer, "null"], minimum: 1 }
-    poster: { $ref: './common.yaml#/MediaPreview' }
-    media: { $ref: './common.yaml#/MediaPreview' }
-    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    poster_media: { $ref: './common.yaml#/NullableMediaPreview' }
+    sort_order: { type: integer }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
-    published_at: { $ref: './common.yaml#/NullableTimestamp' }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
     archived_at: { $ref: './common.yaml#/NullableTimestamp' }
+    published_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
 NewsArticle:
   type: object
-  required: [id, title, slug, category, excerpt, content, sort_order, status, previous_status, archived_at, created_at, updated_at]
+  description: "Presenter `presentNews` (:2240-2266). Berita tidak punya `sort_order` (urut `published_at` desc, `id` desc)."
+  required: [id, title, slug, category, excerpt, content, thumbnail_media_file_id, thumbnail_media_file, og_image_media_file_id, og_image_media_file, status, previous_status, archived_at, published_at, seo_title, seo_description, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     title: { type: string, examples: ["Tips Memilih Kemasan"] }
     slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', examples: ["tips-memilih-kemasan"] }
     category: { type: string, examples: ["Tips"] }
     excerpt: { type: string, examples: ["Ringkasan singkat artikel."] }
-    content: { type: array, items: { type: string }, description: "Paragraf (disimpan JSON)." }
+    content: { type: array, items: { type: string }, description: "Paragraf (JSON array string; elemen non-string dibuang)." }
     thumbnail_media_file_id: { type: [integer, "null"], minimum: 1 }
-    thumbnail: { $ref: './common.yaml#/MediaPreview' }
+    thumbnail_media_file: { $ref: './common.yaml#/NullableMediaPreview' }
     og_image_media_file_id: { type: [integer, "null"], minimum: 1 }
-    og_image: { $ref: './common.yaml#/MediaPreview' }
-    sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+    og_image_media_file: { $ref: './common.yaml#/NullableMediaPreview' }
     status: { $ref: './common.yaml#/ContentStatus' }
-    previous_status: { type: [string, "null"], enum: [draft, published, inactive, archived, null] }
+    previous_status: { $ref: './common.yaml#/NullableContentStatus' }
+    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     published_at: { $ref: './common.yaml#/NullableTimestamp' }
     seo_title: { type: [string, "null"] }
     seo_description: { type: [string, "null"] }
-    archived_at: { $ref: './common.yaml#/NullableTimestamp' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
 SiteSettings:
   type: object
-  required: [id, brand, show_brand_text, created_at, updated_at]
+  description: |
+    Pengaturan admin (`getSiteSettings`, :133-185). Tanpa objek pratinjau media.
+    `logo_url`/`footer_logo_url`/`contact_hero_image_url` = `large_url ?? medium_url ?? public_url`;
+    `og_image_url` = `public_url ?? large_url` — TIDAK disaring status media (beda dengan publik).
+  required: [id, brand, legal_name, email, phone, whatsapp, instagram, contact_person, contact_role, address, seo_title, seo_description, show_brand_text, logo_media_file_id, logo_url, footer_logo_media_file_id, footer_logo_url, og_media_file_id, og_image_url, contact_hero_media_file_id, contact_hero_image_url, created_at, updated_at]
   properties:
     id: { type: integer, const: 1 }
-    brand: { type: [string, "null"], examples: ["Indobraga"] }
-    legal_name: { type: [string, "null"], examples: ["PT. Braga Indonesia Perkasa"] }
-    email: { type: [string, "null"], format: email, examples: ["info@indobraga.com"] }
-    phone: { type: [string, "null"], examples: ["022-123456"] }
-    whatsapp: { type: [string, "null"], examples: ["6281200000001"] }
-    instagram: { type: [string, "null"] }
-    contact_person: { type: [string, "null"] }
-    contact_role: { type: [string, "null"] }
-    address: { type: [string, "null"] }
+    brand: { type: string, examples: ["Indobraga"] }
+    legal_name: { type: string, examples: ["PT. Braga Indonesia Perkasa"] }
+    email: { type: string, examples: ["info@indobraga.com"] }
+    phone: { type: string, examples: ["022-123456"] }
+    whatsapp: { type: string, examples: ["6281200000001"] }
+    instagram: { type: string }
+    contact_person: { type: string }
+    contact_role: { type: string }
+    address: { type: string }
     seo_title: { type: [string, "null"] }
     seo_description: { type: [string, "null"] }
     show_brand_text: { type: boolean, examples: [false] }
     logo_media_file_id: { type: [integer, "null"], minimum: 1 }
-    footer_logo_media_file_id: { type: [integer, "null"], minimum: 1 }
-    og_media_file_id: { type: [integer, "null"], minimum: 1 }
-    contact_hero_media_file_id: { type: [integer, "null"], minimum: 1 }
     logo_url: { type: [string, "null"], format: uri }
+    footer_logo_media_file_id: { type: [integer, "null"], minimum: 1 }
     footer_logo_url: { type: [string, "null"], format: uri }
+    og_media_file_id: { type: [integer, "null"], minimum: 1 }
     og_image_url: { type: [string, "null"], format: uri }
+    contact_hero_media_file_id: { type: [integer, "null"], minimum: 1 }
     contact_hero_image_url: { type: [string, "null"], format: uri }
-    logo: { $ref: './common.yaml#/MediaPreview' }
-    footer_logo: { $ref: './common.yaml#/MediaPreview' }
-    og_image: { $ref: './common.yaml#/MediaPreview' }
-    contact_hero_image: { $ref: './common.yaml#/MediaPreview' }
     created_at: { $ref: './common.yaml#/Timestamp' }
     updated_at: { $ref: './common.yaml#/Timestamp' }
 
@@ -263,6 +299,7 @@ ContentStatusUpdate:
 
 ReorderInput:
   type: object
+  description: "Legacy `ReorderDto`: `items` min 1; `id` & `sort_order` hanya wajib bilangan bulat (tanpa batas)."
   required: [items]
   additionalProperties: false
   properties:
@@ -274,15 +311,15 @@ ReorderInput:
         required: [id, sort_order]
         additionalProperties: false
         properties:
-          id: { $ref: './common.yaml#/Id' }
-          sort_order: { type: integer, minimum: 0, maximum: 1000000 }
+          id: { type: integer }
+          sort_order: { type: integer }
 
 ReorderResult:
   type: object
   required: [status, count]
   properties:
     status: { type: string, const: updated }
-    count: { type: integer, minimum: 1, examples: [7] }
+    count: { type: integer, minimum: 1, description: "Jumlah item yang dikirim.", examples: [7] }
 
 ContentDeleteResult:
   type: object

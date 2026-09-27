@@ -9,7 +9,8 @@ NotificationSeverity:
 
 Notification:
   type: object
-  required: [id, type, severity, title, message, read, created_at]
+  description: "`NotificationsService.present` (notifications.service.ts:435-447); `read` = sudah dibaca user sesi."
+  required: [id, type, severity, title, message, resource_type, resource_id, read, created_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     type: { $ref: '#/NotificationType' }
@@ -36,6 +37,7 @@ ReadAllResult:
 
 NotificationsTickResult:
   type: object
+  description: "`processed` = job yang diklaim (maks `NOTIFICATION_WORKER_BATCH_SIZE`, 20) = sent + failed + retried."
   required: [processed, sent, failed, retried]
   properties:
     processed: { type: integer, minimum: 0 }

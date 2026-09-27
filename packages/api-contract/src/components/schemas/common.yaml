@@ -67,8 +67,10 @@ MediaStatus:
 MediaPreview:
   type: object
   description: |
-    Ringkasan media yang disematkan di respons modul lain (admin konten, settings).
-    URL bernilai null bila media belum `completed`.
+    Pratinjau media yang disematkan di respons admin konten (paritas legacy
+    `AdminContentService.presentMediaPreview`, admin-content.service.ts:1974-1999).
+    Semua key selalu dikirim. URL (`file_url`…`video_url`) bernilai null bila media belum
+    `completed` (`getPublicMediaUrls`); `file_url` = `public_url` legacy.
   required:
     - id
     - media_type
@@ -89,8 +91,8 @@ MediaPreview:
   properties:
     id: { $ref: '#/Id' }
     media_type: { $ref: '#/MediaKind' }
-    mime_type: { type: [string, "null"], examples: ["image/webp"] }
-    original_file_name: { type: [string, "null"] }
+    mime_type: { type: string, examples: ["image/webp"] }
+    original_file_name: { type: string, examples: ["hero-1.jpg"] }
     compression_status: { $ref: '#/MediaStatus' }
     file_url: { type: [string, "null"], format: uri }
     thumbnail_url: { type: [string, "null"], format: uri }
@@ -100,9 +102,20 @@ MediaPreview:
     video_url: { type: [string, "null"], format: uri }
     width: { type: [integer, "null"] }
     height: { type: [integer, "null"] }
-    duration_seconds: { type: [number, "null"] }
+    duration_seconds: { type: [integer, "null"] }
     created_at: { $ref: '#/Timestamp' }
     updated_at: { $ref: '#/Timestamp' }
+
+NullableMediaPreview:
+  description: "`MediaPreview`, atau null bila tidak ada media yang dirujuk (legacy `presentMediaPreview` → null)."
+  oneOf:
+    - $ref: '#/MediaPreview'
+    - type: "null"
+
+NullableContentStatus:
+  type: [string, "null"]
+  description: Status sebelum diarsipkan (`previous_status`); null bila tidak sedang/pernah diarsip.
+  enum: [draft, published, inactive, archived, null]
 
 DeletedResult:
   type: object

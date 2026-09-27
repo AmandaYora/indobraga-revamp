@@ -4,13 +4,46 @@ info:
   version: 1.0.0
   summary: Kontrak API v1 Indobraga — company profile, dashboard admin, email marketing.
   description: |
-    Sumber kebenaran antarmuka `apps/web` ↔ `apps/api` (ADR-0004).
+    Sumber kebenaran antarmuka `apps/web` ↔ `apps/api` (ADR-0004). Spesifikasi perilaku: backend
+    legacy NestJS (`../indobraga/apps/api/src`); setiap penyimpangan tercatat di `x-legacy.changes`
+    dan/atau BC di ADR-0012.
 
     - Semua endpoint JSON berada di bawah `/api/v1`; `robots.txt` & `sitemap.xml` di root.
     - Envelope sukses: `{ success: true, message, data }` (+ `meta` untuk list).
     - Envelope error: `{ success: false, code, message, errors[], request_id }`.
     - Setiap respons membawa header `X-Request-Id`.
-    - Ekstensi per operasi: `x-module`, `x-permission`, `x-rate-limit`, `x-cache-control`, `x-legacy`.
+    - Ekstensi per operasi: `x-module`, `x-permission`, `x-rate-limit`, `x-cache-control`, `x-legacy`;
+      opsional `x-body-limit-bytes`, `x-unknown-query`.
+
+    **Status HTTP (paritas legacy).** `POST` sukses → **201** (default NestJS tanpa `@HttpCode`),
+    kecuali `POST /auth/login` dan `POST /auth/logout` → 200. `GET`/`PATCH`/`DELETE` sukses → 200.
+
+    **Urutan pemeriksaan.** rate limit (429) → sesi (401) → permission (403) → CSRF untuk method
+    non-aman (403) → validasi path/query/body (400) → aturan bisnis. Guard legacy berjalan sebelum
+    ValidationPipe, sehingga request tanpa sesi ke endpoint admin selalu 401 walau parameternya
+    tidak valid.
+
+    **Validasi (legacy `ValidationPipe`: `whitelist`, `forbidNonWhitelisted`, `transform`,
+    `enableImplicitConversion`).** String bertanda "di-trim" dipangkas sebelum divalidasi.
+    Path `{id}` bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (kecuali route arsip/batal-arsip
+    konten → `BAD_REQUEST`, lihat parameter `ArchiveIdPath`). `page`/`limit` di luar batas → 400
+    `VALIDATION_ERROR` (tidak di-clamp), kecuali operasi yang menyatakan clamping di deskripsinya.
+    Field body di luar skema → 400 `VALIDATION_ERROR` (`errors[].field` = nama field, pesan
+    `property <nama> should not exist`). `IsOptional` legacy juga menerima `null`: field yang
+    bertipe nullable di kontrak memakai `null` untuk mengosongkan kolom. Legacy mengonversi nilai
+    primitif ke tipe DTO sebelum validasi (`enableImplicitConversion`, mis. `"5"` → 5, 123 →
+    `"123"`); kontrak mendeklarasikan tipe JSON kanonik dan klien wajib mengirim tipe tersebut.
+
+    **Parameter query tak dikenal.** Operasi yang mendeklarasikan ≥ 1 parameter `in: query`
+    (legacy: handler dengan `@Query() dto`) menolak parameter query lain → 400 `VALIDATION_ERROR`
+    (pesan `property <nama> should not exist`). Operasi tanpa parameter query (legacy: tanpa
+    `@Query()`) mengabaikan seluruh query string. Pengecualian ditandai `x-unknown-query: ignore`
+    (callback OAuth Google — wajib menoleransi `scope`, `authuser`, `prompt`, `hd`, `iss`, dst.).
+
+    **Batas body.** Body JSON maksimum 1 MB (1.048.576 byte) kecuali operasi dengan
+    `x-body-limit-bytes` (draf kampanye manual & ubah kampanye: 5 MB, BC-06). Melebihi batas →
+    413 `PAYLOAD_TOO_LARGE` berenvelope. Legacy: batas default Express 100 KB dan error body-parser
+    tidak berenvelope (BC-06). Upload media multipart: batas 100 MB (lihat `uploadMedia`).
   license:
     name: UNLICENSED
     identifier: UNLICENSED
@@ -58,13 +91,20 @@ components:
     sessionCookie:
       type: apiKey
       in: cookie
-      name: indobraga_session
-      description: Cookie sesi admin (httpOnly, SameSite=Lax, Secure di produksi). Nama dapat diubah lewat `SESSION_COOKIE_NAME`.
+      name: indobraga_admin_session
+      description: |
+        Cookie sesi admin (httpOnly, SameSite=Lax, Path=/, Secure hanya di produksi, Max-Age =
+        `ADMIN_SESSION_TTL_DAYS` hari). Nama default `indobraga_admin_session` = default legacy
+        `config/env.ts`; dapat diubah lewat `SESSION_COOKIE_NAME`.
     csrfHeader:
       type: apiKey
       in: header
       name: x-csrf-token
-      description: Double-submit CSRF — nilai cookie `indobraga_csrf` (non-httpOnly) dikirim ulang di header ini untuk method non-aman.
+      description: |
+        Double-submit CSRF — nilai cookie `indobraga_csrf` (`CSRF_COOKIE_NAME`, default legacy;
+        non-httpOnly) dikirim ulang di header ini untuk method non-aman pada endpoint yang butuh
+        sesi. Cookie/header kosong atau berbeda → 403 `FORBIDDEN` ("Halaman sudah kedaluwarsa.
+        Muat ulang halaman lalu coba lagi.").
     workerSecret:
       type: apiKey
       in: header

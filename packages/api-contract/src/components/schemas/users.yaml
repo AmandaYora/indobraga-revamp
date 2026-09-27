@@ -1,7 +1,8 @@
-# Skema users. Field dari backend.md §users.
+# Skema users — presenter & DTO legacy apps/api/src/users (users.service.ts:207-219, dto/*.ts).
 SafeUser:
   type: object
-  required: [id, name, email, role, status, permissions, created_at, updated_at]
+  description: "`toSafeUser` (users.service.ts:207-219). Semua key selalu dikirim."
+  required: [id, name, email, role, status, permissions, last_login_at, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     name: { type: string, examples: ["Editor Konten"] }
@@ -17,21 +18,30 @@ SafeUser:
 
 CreateUserInput:
   type: object
+  description: Legacy `CreateUserDto`.
   required: [name, email, role, temporary_password]
   additionalProperties: false
   properties:
-    name: { type: string, minLength: 1, examples: ["Editor Baru"] }
-    email: { type: string, format: email, description: "Di-lowercase oleh server.", examples: ["Editor@Indobraga.com"] }
+    name: { type: string, minLength: 1, description: "Di-trim; kosong → 400.", examples: ["Editor Baru"] }
+    email: { type: string, format: email, description: "Di-trim & di-lowercase sebelum divalidasi.", examples: ["Editor@Indobraga.com"] }
     role: { $ref: './common.yaml#/AdminRole' }
-    temporary_password: { type: string, minLength: 8, maxLength: 200, examples: ["sementara123"] }
+    temporary_password: { type: string, minLength: 8, description: "Tanpa batas maksimum di DTO (bcrypt memakai 72 byte pertama).", examples: ["sementara123"] }
 
 UpdateUserInput:
   type: object
+  description: Legacy `UpdateUserDto`. Email tidak bisa diubah.
   additionalProperties: false
   properties:
-    name: { type: string, minLength: 1 }
+    name: { type: string, description: "Di-trim; string kosong diterima (tanpa `IsNotEmpty`)." }
     role: { $ref: './common.yaml#/AdminRole' }
-    new_password: { type: string, minLength: 8, maxLength: 200, description: "Mengganti password & mencabut sesi user tersebut." }
+    new_password:
+      type: string
+      description: |
+        `""` → dianggap tidak dikirim (password tidak diubah). Selain itu minimal 8 karakter, tanpa
+        batas maksimum. Mengganti password user LAIN juga mencabut semua sesinya.
+      anyOf:
+        - { maxLength: 0 }
+        - { minLength: 8 }
 
 UpdateUserStatusInput:
   type: object

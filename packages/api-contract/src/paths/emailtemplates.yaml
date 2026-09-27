@@ -4,6 +4,8 @@
     operationId: listEmailTemplates
     tags: [emailtemplates]
     summary: Daftar template email
+    description: |
+      List offset (default 50, maks 100), urut updated_at desc, id desc. `q` (di-trim) mencari name & subject.
     x-module: emailtemplates
     x-permission: email_campaigns.read
     x-rate-limit: default
@@ -11,7 +13,7 @@
     x-legacy:
       method: GET
       path: /api/v1/admin/email-templates
-      changes: Tidak ada perubahan bentuk data selain envelope v1; limit default 50 maks 100.
+      changes: "Tidak ada perubahan bentuk data selain envelope v1."
     security: [{ sessionCookie: [] }]
     parameters:
       - name: page
@@ -25,6 +27,7 @@
       - name: q
         in: query
         required: false
+        description: Di-trim.
         schema: { type: string }
     responses:
       '200':
@@ -54,7 +57,8 @@
     operationId: createEmailTemplate
     tags: [emailtemplates]
     summary: Buat template email
-    description: Mode html butuh body_html; mode text butuh body_text (422 bila tidak).
+    description: |
+      Mode `html` butuh `body_html` non-kosong (422 "Isi email (HTML) wajib diisi."); mode `text` butuh `body_text` non-kosong (422 "Isi email wajib diisi."). Template tidak dirender server-side.
     x-module: emailtemplates
     x-permission: email_campaigns.manage
     x-rate-limit: default
@@ -71,8 +75,8 @@
           schema: { $ref: '../components/schemas/email.yaml#/CreateEmailTemplateInput' }
           example: { name: Promo Lebaran, subject: Diskon Kemasan, content_mode: html, body_html: "<p>Halo {{ nama }}</p>" }
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Dibuat (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -98,6 +102,8 @@
     operationId: updateEmailTemplate
     tags: [emailtemplates]
     summary: Ubah template email
+    description: |
+      Ubah parsial; body digabung dengan nilai tersimpan lalu divalidasi seperti create (422). Tidak ada → 404 "Template email tidak ditemukan.".
     x-module: emailtemplates
     x-permission: email_campaigns.manage
     x-rate-limit: default
@@ -143,7 +149,8 @@
     operationId: deleteEmailTemplate
     tags: [emailtemplates]
     summary: Hapus template email
-    description: Hard-delete; template tidak dirender server-side.
+    description: |
+      Hard-delete (tidak dirujuk kampanye). Tidak ada → 404.
     x-module: emailtemplates
     x-permission: email_campaigns.manage
     x-rate-limit: default
@@ -173,7 +180,7 @@
               success: true
               message: Data berhasil dihapus.
               data: { id: 1, status: deleted }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }

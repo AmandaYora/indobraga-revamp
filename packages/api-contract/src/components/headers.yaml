@@ -19,5 +19,28 @@ RetryAfter:
   schema: { type: integer }
 
 SetCookie:
-  description: Cookie sesi (httpOnly) dan/atau cookie CSRF (non-httpOnly).
+  description: |
+    Dua header `Set-Cookie` (paritas legacy auth/cookie.utils.ts): cookie sesi
+    `indobraga_admin_session` (`SESSION_COOKIE_NAME`; httpOnly, `SameSite=Lax`, `Path=/`,
+    `Max-Age` = `ADMIN_SESSION_TTL_DAYS` hari, `Secure` hanya di produksi) dan cookie CSRF
+    `indobraga_csrf` (`CSRF_COOKIE_NAME`; atribut sama tetapi TANPA httpOnly).
+  schema:
+    type: string
+    examples: ["indobraga_admin_session=Zm9v...; Max-Age=604800; Path=/; Expires=Tue, 19 May 2026 08:30:00 GMT; HttpOnly; SameSite=Lax"]
+
+ClearCookie:
+  description: |
+    Dua header `Set-Cookie` yang menghapus cookie sesi dan cookie CSRF (legacy `res.clearCookie`):
+    nilai kosong, `Path=/`, `Expires=Thu, 01 Jan 1970 00:00:00 GMT`, `HttpOnly`, `SameSite=Lax`
+    (+ `Secure` di produksi) — atribut yang sama dipakai untuk kedua cookie.
+  schema:
+    type: string
+    examples: ["indobraga_admin_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax"]
+
+CacheControl:
+  description: Nilai persis sama dengan ekstensi `x-cache-control` operasi.
+  schema: { type: string }
+
+ContentDisposition:
+  description: Nama file unduhan.
   schema: { type: string }

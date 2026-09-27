@@ -1,14 +1,16 @@
 # Skema auth (login/logout/me). Field dari backend.md §auth.
 LoginInput:
   type: object
+  description: Legacy `LoginDto` (`IsEmail` + `IsNotEmpty`, `IsString` + `IsNotEmpty`; tanpa batas panjang).
   required: [email, password]
   additionalProperties: false
   properties:
-    email: { type: string, format: email, maxLength: 190, examples: ["admin@indobraga.com"] }
-    password: { type: string, minLength: 1, maxLength: 200, examples: ["rahasia123"] }
+    email: { type: string, format: email, description: "Di-trim & di-lowercase saat mencari user (bukan saat validasi).", examples: ["admin@indobraga.com"] }
+    password: { type: string, minLength: 1, examples: ["rahasia123"] }
 
 AuthUser:
   type: object
+  description: "`toAuthenticatedAdmin` (auth.service.ts). Permission diturunkan dari role."
   required: [id, name, email, role, permissions]
   properties:
     id: { $ref: './common.yaml#/Id' }

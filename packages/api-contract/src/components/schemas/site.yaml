@@ -1,86 +1,125 @@
-# Skema site: publik (home dkk), dashboard, SEO. Field dari backend.md §public-content, §seo-assets, §dashboard.
+# Skema site: publik (home dkk), dashboard, SEO — bentuk respons PERSIS presenter legacy
+# `PublicContentService` (apps/api/src/public-content/public-content.service.ts:39-504),
+# `SeoAssetsService` dan `DashboardService`. Semua key selalu dikirim (required).
+# URL gambar publik disaring status media: null bila media tidak ada / belum `completed`
+# (media/media-presenter.ts `getBestImageUrl` = large→medium→public→thumbnail,
+# `getMediumUrl` = medium→large→public→thumbnail, `getThumbnailUrl` = thumbnail→medium→public).
+
 PublicSiteSettings:
   type: object
-  required: [brand, show_brand_text]
+  description: "`getSiteSettings` (:39-77). Gambar via `getBestImageUrl`."
+  required: [brand, legal_name, email, phone, whatsapp, instagram, contact_person, contact_role, address, show_brand_text, logo_url, footer_logo_url, contact_hero_image_url, seo]
   properties:
-    brand: { type: [string, "null"], examples: ["Indobraga"] }
-    legal_name: { type: [string, "null"] }
-    email: { type: [string, "null"], format: email }
-    phone: { type: [string, "null"] }
-    whatsapp: { type: [string, "null"] }
-    instagram: { type: [string, "null"] }
-    contact_person: { type: [string, "null"] }
-    contact_role: { type: [string, "null"] }
-    address: { type: [string, "null"] }
+    brand: { type: string, examples: ["Indobraga"] }
+    legal_name: { type: string, examples: ["PT. Braga Indonesia Perkasa"] }
+    email: { type: string, examples: ["info@indobraga.com"] }
+    phone: { type: string }
+    whatsapp: { type: string }
+    instagram: { type: string }
+    contact_person: { type: string }
+    contact_role: { type: string }
+    address: { type: string }
     show_brand_text: { type: boolean }
     logo_url: { type: [string, "null"], format: uri }
     footer_logo_url: { type: [string, "null"], format: uri }
     contact_hero_image_url: { type: [string, "null"], format: uri }
     seo:
       type: object
-      required: [title, description]
+      required: [title, description, og_image_url]
       properties:
-        title: { type: [string, "null"] }
-        description: { type: [string, "null"] }
+        title: { type: [string, "null"], description: "`site_settings.seo_title` apa adanya." }
+        description: { type: [string, "null"], description: "`site_settings.seo_description` apa adanya." }
         og_image_url: { type: [string, "null"], format: uri }
 
-PublicHome:
+PublicHeroSlide:
   type: object
-  required: [hero, partners, strengths, featured_portfolios, facilities_summary, latest_news]
+  description: "Slide hero publik (hanya slide `published`, urut sort_order, id)."
+  required: [id, label, title, metric, image_url, alt_text]
   properties:
-    hero:
-      type: object
-      required: [title, slides]
-      properties:
-        title: { type: [string, "null"] }
-        subtitle: { type: [string, "null"] }
-        primary_cta:
-          type: [object, "null"]
-          properties:
-            label: { type: string }
-            url: { type: string }
-        slides:
-          type: array
-          items: { $ref: './content.yaml#/HeroSlide' }
-    partners:
-      type: array
-      items: { $ref: './content.yaml#/Partner' }
-    strengths:
-      type: array
-      items: { $ref: './content.yaml#/ProductionStrength' }
-    featured_portfolios:
-      type: array
-      maxItems: 6
-      items: { $ref: './content.yaml#/Portfolio' }
-    facilities_summary:
-      type: object
-      required: [machines, printing_capacities, production_capacities, services]
-      properties:
-        machines: { type: array, maxItems: 3, items: { $ref: './content.yaml#/Machine' } }
-        printing_capacities: { type: array, maxItems: 3, items: { $ref: './content.yaml#/PrintingCapacity' } }
-        production_capacities: { type: array, maxItems: 6, items: { $ref: './content.yaml#/ProductionCapacity' } }
-        services: { type: array, maxItems: 10, items: { $ref: './content.yaml#/ServiceItem' } }
-    latest_news:
-      type: array
-      maxItems: 3
-      items: { $ref: './content.yaml#/NewsArticle' }
+    id: { $ref: './common.yaml#/Id' }
+    label: { type: [string, "null"] }
+    title: { type: string }
+    metric: { type: [string, "null"] }
+    image_url: { type: [string, "null"], format: uri, description: "`getBestImageUrl`." }
+    alt_text: { type: string, description: "`alt_text` slide, fallback `title`." }
 
-PublicPortfolioItem:
+PublicHeroCta:
   type: object
-  required: [id, title, slug]
+  description: "Tombol utama hero; hanya ada bila `cta_label` terisi."
+  required: [label, url]
+  properties:
+    label: { type: string, minLength: 1 }
+    url: { type: [string, "null"], description: "`cta_href` apa adanya (boleh null)." }
+
+PublicHero:
+  type: object
+  description: "Hero `published` pertama (id terkecil)."
+  required: [title, subtitle, primary_cta, slides]
+  properties:
+    title: { type: string }
+    subtitle: { type: [string, "null"] }
+    primary_cta:
+      description: "Null bila `cta_label` kosong/null."
+      oneOf:
+        - $ref: '#/PublicHeroCta'
+        - type: "null"
+    slides:
+      type: array
+      items: { $ref: '#/PublicHeroSlide' }
+
+PublicPartner:
+  type: object
+  required: [id, name, segment, logo_url]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string }
+    segment: { type: [string, "null"] }
+    logo_url: { type: [string, "null"], format: uri, description: "`getBestImageUrl`." }
+
+PublicStrength:
+  type: object
+  required: [id, label, value, suffix]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    label: { type: string }
+    value: { type: string }
+    suffix: { type: [string, "null"] }
+
+PublicPortfolioCard:
+  type: object
+  description: "Kartu portofolio publik (beranda `featured_portfolios`)."
+  required: [id, title, slug, category, category_slug, thumbnail_url, medium_url, alt_text, short_description]
   properties:
     id: { $ref: './common.yaml#/Id' }
     title: { type: string }
     slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
-    category: { type: [string, "null"] }
+    category: { type: string, description: "Nama kategori relasi, fallback teks denormalisasi." }
     category_slug: { type: [string, "null"] }
-    thumbnail_url: { type: [string, "null"], format: uri }
-    medium_url: { type: [string, "null"], format: uri }
-    alt_text: { type: [string, "null"] }
-    short_description: { type: [string, "null"] }
-    images:
-      type: array
-      items: { type: string, format: uri }
+    thumbnail_url: { type: [string, "null"], format: uri, description: "Cover via `getThumbnailUrl`." }
+    medium_url: { type: [string, "null"], format: uri, description: "Cover via `getMediumUrl`." }
+    alt_text: { type: string, description: "= `title`." }
+    short_description: { type: [string, "null"], description: "Kolom `description` portofolio." }
+
+PublicPortfolioImage:
+  type: object
+  description: "Gambar galeri portofolio publik (urut sort_order); gambar tanpa URL sama sekali (media belum completed) dibuang."
+  required: [thumbnail_url, medium_url, large_url, alt_text]
+  properties:
+    thumbnail_url: { type: [string, "null"], format: uri, description: "`getThumbnailUrl`." }
+    medium_url: { type: [string, "null"], format: uri, description: "`getMediumUrl`." }
+    large_url: { type: [string, "null"], format: uri, description: "`getBestImageUrl`." }
+    alt_text: { type: string, description: "= `title` portofolio." }
+
+PublicPortfolioItem:
+  description: "Item list portofolio publik (`getPortfolio`, :215-268) = kartu + `images`."
+  allOf:
+    - $ref: '#/PublicPortfolioCard'
+    - type: object
+      required: [images]
+      properties:
+        images:
+          type: array
+          items: { $ref: '#/PublicPortfolioImage' }
 
 PublicPortfolioCategory:
   type: object
@@ -89,65 +128,154 @@ PublicPortfolioCategory:
     id: { $ref: './common.yaml#/Id' }
     name: { type: string }
     slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
-    count: { type: integer, minimum: 0 }
+    count: { type: integer, minimum: 1, description: "Jumlah portofolio `published` (kategori tanpa portofolio published tidak ditampilkan)." }
+
+PublicMachine:
+  type: object
+  description: "`presentMachine` (:466-476)."
+  required: [id, name, slug, metric, description, image_url, alt_text]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string }
+    slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
+    metric: { type: [string, "null"] }
+    description: { type: [string, "null"] }
+    image_url: { type: [string, "null"], format: uri, description: "`getMediumUrl`." }
+    alt_text: { type: string, description: "= `name`." }
+
+PublicPrintingCapacity:
+  type: object
+  description: "`presentPrintingCapacity` (:478-490)."
+  required: [id, label, value, unit, description, image_url, alt_text]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    label: { type: string }
+    value: { type: string }
+    unit: { type: string }
+    description: { type: [string, "null"] }
+    image_url: { type: [string, "null"], format: uri, description: "`getMediumUrl`." }
+    alt_text: { type: string, description: "= `label`." }
+
+PublicProductionCapacity:
+  type: object
+  required: [id, product, value, unit]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    product: { type: string }
+    value: { type: string }
+    unit: { type: string }
+
+PublicService:
+  type: object
+  required: [id, name]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string }
+
+PublicHome:
+  type: object
+  description: "`getHome` (:79-213). Semua bagian hanya memuat item `published`, urut sort_order, id."
+  required: [hero, partners, strengths, featured_portfolios, facilities_summary, latest_news]
+  properties:
+    hero:
+      description: "Null bila tidak ada hero `published`."
+      oneOf:
+        - $ref: '#/PublicHero'
+        - type: "null"
+    partners:
+      type: array
+      items: { $ref: '#/PublicPartner' }
+    strengths:
+      type: array
+      items: { $ref: '#/PublicStrength' }
+    featured_portfolios:
+      type: array
+      maxItems: 6
+      description: "Portofolio `published` + `featured` dengan kategori `published`."
+      items: { $ref: '#/PublicPortfolioCard' }
+    facilities_summary:
+      type: object
+      required: [machines, printing_capacities, production_capacities, services]
+      properties:
+        machines: { type: array, maxItems: 3, items: { $ref: '#/PublicMachine' } }
+        printing_capacities: { type: array, maxItems: 3, items: { $ref: '#/PublicPrintingCapacity' } }
+        production_capacities: { type: array, maxItems: 6, items: { $ref: '#/PublicProductionCapacity' } }
+        services: { type: array, maxItems: 10, items: { $ref: '#/PublicService' } }
+    latest_news:
+      type: array
+      maxItems: 3
+      description: "Urut `published_at` desc, `id` desc."
+      items: { $ref: '#/PublicNewsItem' }
 
 PublicFacilities:
   type: object
+  description: "`getFacilities` (:296-345) — tanpa batas jumlah."
   required: [strengths, machines, printing_capacities, production_capacities, services]
   properties:
-    strengths: { type: array, items: { $ref: './content.yaml#/ProductionStrength' } }
-    machines: { type: array, items: { $ref: './content.yaml#/Machine' } }
-    printing_capacities: { type: array, items: { $ref: './content.yaml#/PrintingCapacity' } }
-    production_capacities: { type: array, items: { $ref: './content.yaml#/ProductionCapacity' } }
-    services: { type: array, items: { $ref: './content.yaml#/ServiceItem' } }
+    strengths: { type: array, items: { $ref: '#/PublicStrength' } }
+    machines: { type: array, items: { $ref: '#/PublicMachine' } }
+    printing_capacities: { type: array, items: { $ref: '#/PublicPrintingCapacity' } }
+    production_capacities: { type: array, items: { $ref: '#/PublicProductionCapacity' } }
+    services: { type: array, items: { $ref: '#/PublicService' } }
 
 PublicGalleryItem:
   type: object
-  required: [id, type]
+  description: |
+    `getGallery` (:347-396). `thumbnail_url` = poster.thumbnail ?? poster.public ?? media.thumbnail
+    ?? media.poster ?? media.medium ?? media.public; `media_url` video = video_url ?? public_url,
+    gambar = large_url ?? public_url ?? medium_url (semua disaring status completed).
+  required: [id, type, thumbnail_url, media_url, caption, alt_text, published_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     type: { type: string, enum: [image, video] }
     thumbnail_url: { type: [string, "null"], format: uri }
     media_url: { type: [string, "null"], format: uri }
-    caption: { type: [string, "null"] }
-    alt_text: { type: [string, "null"] }
+    caption: { type: string }
+    alt_text: { type: string, description: "= `caption`." }
     published_at: { $ref: './common.yaml#/NullableTimestamp' }
 
 PublicNewsItem:
   type: object
-  required: [id, title, slug]
+  description: "`presentNewsListItem` (:492-504)."
+  required: [id, title, slug, category, thumbnail_url, excerpt, published_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     title: { type: string }
     slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
-    category: { type: [string, "null"] }
-    thumbnail_url: { type: [string, "null"], format: uri }
-    excerpt: { type: [string, "null"] }
+    category: { type: string }
+    thumbnail_url: { type: [string, "null"], format: uri, description: "`getThumbnailUrl`." }
+    excerpt: { type: string }
     published_at: { $ref: './common.yaml#/NullableTimestamp' }
 
 PublicNewsDetail:
   type: object
-  required: [id, title, slug, content]
+  description: "`getNewsDetail` (:426-464)."
+  required: [id, title, slug, category, thumbnail_url, excerpt, content, seo, published_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     title: { type: string }
     slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
-    category: { type: [string, "null"] }
-    thumbnail_url: { type: [string, "null"], format: uri }
-    excerpt: { type: [string, "null"] }
-    content: { type: array, items: { type: string } }
+    category: { type: string }
+    thumbnail_url: { type: [string, "null"], format: uri, description: "Thumbnail via `getBestImageUrl` (ukuran besar, beda dengan list)." }
+    excerpt: { type: string }
+    content:
+      type: array
+      items: { type: string }
+      description: "Array string; blok objek `{text}` diratakan ke teksnya; nilai lain dibuang."
     seo:
       type: object
+      required: [title, description, canonical_url, og_image_url]
       properties:
-        title: { type: [string, "null"] }
-        description: { type: [string, "null"] }
-        canonical_url: { type: [string, "null"], format: uri }
-        og_image_url: { type: [string, "null"], format: uri }
+        title: { type: string, description: "`seo_title` ?? `title`." }
+        description: { type: string, description: "`seo_description` ?? `excerpt`." }
+        canonical_url: { type: string, format: uri, description: "`<PUBLIC_SITE_URL>/berita/<slug>`." }
+        og_image_url: { type: [string, "null"], format: uri, description: "OG media via `getBestImageUrl`, fallback thumbnail." }
     published_at: { $ref: './common.yaml#/NullableTimestamp' }
 
 SeoLegacy:
   type: object
-  required: [title, description, canonical_url, noindex]
+  description: "`SeoAssetsService.seo` (seo-assets.service.ts:66-155)."
+  required: [title, description, canonical_url, og_image_url, noindex]
   properties:
     title: { type: string }
     description: { type: string }
@@ -184,38 +312,77 @@ SeoByPath:
 
 DashboardSummary:
   type: object
+  description: "`DashboardService.summary` (dashboard.service.ts:39-103). `totals.pending_revalidation` legacy dihapus (BC-12)."
   required: [totals, latest_inquiries, latest_whatsapp_leads, latest_email_campaigns]
   properties:
     totals:
       type: object
-      required: [inquiries, whatsapp_leads, published_gallery, published_news, active_portfolios, completed_media, failed_media, connected_email_accounts, email_campaigns, pending_email_campaigns, pending_revalidation]
+      required: [inquiries, whatsapp_leads, published_gallery, published_news, active_portfolios, completed_media, failed_media, connected_email_accounts, email_campaigns, pending_email_campaigns]
       properties:
-        inquiries: { type: integer, minimum: 0 }
-        whatsapp_leads: { type: integer, minimum: 0 }
+        inquiries: { type: integer, minimum: 0, description: "Pesan kontak belum diarsip." }
+        whatsapp_leads: { type: integer, minimum: 0, description: "Prospek WhatsApp belum diarsip." }
         published_gallery: { type: integer, minimum: 0 }
         published_news: { type: integer, minimum: 0 }
-        active_portfolios: { type: integer, minimum: 0 }
+        active_portfolios: { type: integer, minimum: 0, description: "Portofolio `published`." }
         completed_media: { type: integer, minimum: 0 }
         failed_media: { type: integer, minimum: 0 }
         connected_email_accounts: { type: integer, minimum: 0 }
         email_campaigns: { type: integer, minimum: 0 }
-        pending_email_campaigns: { type: integer, minimum: 0 }
-        pending_revalidation: { type: integer, minimum: 0 }
+        pending_email_campaigns: { type: integer, minimum: 0, description: "Kampanye `pending` + `processing`." }
     latest_inquiries:
       type: array
       maxItems: 5
-      items: { $ref: './leads.yaml#/Inquiry' }
+      items: { $ref: '#/DashboardInquiry' }
     latest_whatsapp_leads:
       type: array
       maxItems: 5
-      items: { $ref: './leads.yaml#/WhatsAppLead' }
+      items: { $ref: '#/DashboardWhatsAppLead' }
     latest_email_campaigns:
       type: array
       maxItems: 5
-      items: { $ref: './email.yaml#/Campaign' }
+      items: { $ref: '#/DashboardCampaign' }
+
+DashboardInquiry:
+  type: object
+  description: "Bentuk ringkas `presentInquiry` dashboard (:105-115); belum diarsip, terbaru dulu."
+  required: [id, name, email, phone, company, status, created_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string }
+    email: { type: string }
+    phone: { type: string }
+    company: { type: [string, "null"] }
+    status: { $ref: './leads.yaml#/LeadStatus' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+
+DashboardWhatsAppLead:
+  type: object
+  description: "Bentuk ringkas `presentWhatsAppLead` dashboard (:117-125); belum diarsip, terbaru dulu."
+  required: [id, name, phone, status, created_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string }
+    phone: { type: string }
+    status: { $ref: './leads.yaml#/LeadStatus' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
+
+DashboardCampaign:
+  type: object
+  description: "Bentuk ringkas `presentCampaign` dashboard (:127-138); terbaru dulu."
+  required: [id, title, subject, status, total_recipients, sent_count, failed_count, created_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    title: { type: string }
+    subject: { type: string }
+    status: { $ref: './email.yaml#/CampaignStatus' }
+    total_recipients: { type: integer, minimum: 0 }
+    sent_count: { type: integer, minimum: 0 }
+    failed_count: { type: integer, minimum: 0 }
+    created_at: { $ref: './common.yaml#/Timestamp' }
 
 RevalidationTickResult:
   type: object
+  description: "`processed` = jumlah entri yang diproses; `cache_keys` = kunci cache distinct."
   required: [processed, cache_keys]
   properties:
     processed: { type: integer, minimum: 0, examples: [3] }

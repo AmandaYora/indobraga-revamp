@@ -4,7 +4,8 @@
     operationId: listMedia
     tags: [media]
     summary: Daftar media
-    description: Arsip/pending_delete/deleted/cleanup_failed disembunyikan by default.
+    description: |
+      List offset (default 16, maks 100), urut created_at desc, id desc. Tanpa filter `compression_status`, media `archived`/`pending_delete`/`deleted`/`cleanup_failed` disembunyikan.
     x-module: media
     x-permission: media.manage
     x-rate-limit: default
@@ -12,7 +13,7 @@
     x-legacy:
       method: GET
       path: /api/v1/admin/media
-      changes: Tidak ada perubahan bentuk data selain envelope v1; limit default 16.
+      changes: "Tidak ada perubahan bentuk data selain envelope v1."
     security: [{ sessionCookie: [] }]
     parameters:
       - name: page
@@ -26,7 +27,7 @@
       - name: q
         in: query
         required: false
-        description: Cari nama file/mime.
+        description: Di-trim; mencari nama file asli & MIME.
         schema: { type: string }
       - name: media_type
         in: query
@@ -39,6 +40,7 @@
       - name: usage
         in: query
         required: false
+        description: Di-trim; dicocokkan persis ke `usage` saat upload (teks bebas, tidak divalidasi enum).
         schema: { type: string }
     responses:
       '200':
@@ -68,7 +70,13 @@
     operationId: uploadMedia
     tags: [media]
     summary: Unggah media
-    description: multipart file (memori, batas 100MB) + usage hero|partner|portfolio|machine|gallery|news|og|other. Gambar 10MB, video 100MB; sniff magic bytes; varian WebP 480/960/1600 q82.
+    description: |
+      multipart/form-data, field file `file` (disimpan di memori; batas multer 100 MB → 413).
+      File tidak dikirim → 400 `VALIDATION_ERROR` "File wajib diunggah."; file di field lain → 400
+      `BAD_REQUEST`. Tipe dideteksi dari magic bytes (bukan ekstensi/MIME klien): tidak dikenali → 415.
+      Gambar > `UPLOAD_IMAGE_MAX_MB` (10) / video > `UPLOAD_VIDEO_MAX_MB` (100) → 413 "Ukuran
+      gambar|video melebihi batas N MB.". Gambar diproses sinkron (rotasi EXIF; varian WebP q82 lebar
+      480/960/1600) → `completed`; video disimpan apa adanya → `completed`.
     x-module: media
     x-permission: media.manage
     x-rate-limit: default
@@ -84,17 +92,18 @@
         multipart/form-data:
           schema:
             type: object
+            additionalProperties: false
             required: [file, usage]
             properties:
               file: { type: string, format: binary, description: Gambar (≤10MB) atau video (≤100MB). }
               usage: { $ref: '../components/schemas/media.yaml#/MediaUsage' }
-              alt_text: { type: string }
-              caption: { type: string }
+              alt_text: { type: string, description: "Di-trim; hanya disimpan di metadata varian (tidak diekspos)." }
+              caption: { type: string, description: "Di-trim; hanya disimpan di metadata varian (tidak diekspos)." }
           encoding:
             file: { contentType: application/octet-stream }
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Dibuat (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -110,7 +119,7 @@
               success: true
               message: Data berhasil dibuat.
               data: { id: 10, media_type: image, mime_type: image/webp, original_file_name: hero-1.jpg, compression_status: completed, file_url: https://media.indobraga.com/l.webp, thumbnail_url: null, medium_url: null, large_url: null, poster_url: null, video_url: null, width: 1600, height: 900, duration_seconds: null, original_size: 123456, optimized_size: 98765, error: null, archived_at: null, deleted_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+      '400': { $ref: '../components/responses.yaml#/InvalidRequest' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '413': { $ref: '../components/responses.yaml#/PayloadTooLarge' }
@@ -121,6 +130,8 @@
     operationId: getMedia
     tags: [media]
     summary: Detail media
+    description: |
+      Detail media (status apa pun). Tidak ada → 404 "Media tidak ditemukan.".
     x-module: media
     x-permission: media.manage
     x-rate-limit: default
@@ -150,7 +161,7 @@
               success: true
               message: Data berhasil diambil.
               data: { id: 10, media_type: image, mime_type: image/webp, original_file_name: hero-1.jpg, compression_status: completed, file_url: https://media.indobraga.com/l.webp, thumbnail_url: null, medium_url: null, large_url: null, poster_url: null, video_url: null, width: 1600, height: 900, duration_seconds: null, original_size: 123456, optimized_size: 98765, error: null, archived_at: null, deleted_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -159,7 +170,11 @@
     operationId: deleteMedia
     tags: [media]
     summary: Hapus permanen media
-    description: Ditolak 409 bila masih dirujuk atau cleanup storage gagal (CLEANUP_FAILED).
+    description: |
+      Hapus permanen. Masih dirujuk konten/pengaturan → 409 `CONFLICT` "Media masih dipakai oleh
+      konten website. Lepaskan dari konten terlebih dahulu.". Penghapusan objek storage gagal → status
+      `cleanup_failed` dan 409 `MEDIA_CLEANUP_FAILED` "Media belum berhasil dihapus dari penyimpanan.
+      Coba lagi atau hubungi administrator.".
     x-module: media
     x-permission: media.manage
     x-rate-limit: default
@@ -167,7 +182,7 @@
     x-legacy:
       method: DELETE
       path: /api/v1/admin/media/{id}
-      changes: Tidak ada perubahan bentuk data selain envelope v1.
+      changes: "Gagal hapus storage mengembalikan code `MEDIA_CLEANUP_FAILED` + pesan domain (BC-04); legacy melebur code tak dikenal menjadi `CONFLICT` dengan pesan generik \"Data yang sama sudah ada.\"."
     security: [{ sessionCookie: [], csrfHeader: [] }]
     parameters:
       - $ref: '../components/parameters.yaml#/IdPath'
@@ -189,7 +204,7 @@
               success: true
               message: Data berhasil dihapus permanen.
               data: { id: 10, status: permanently_deleted }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -200,7 +215,8 @@
     operationId: archiveMedia
     tags: [media]
     summary: Arsipkan media
-    description: Ditolak 409 bila masih dirujuk.
+    description: |
+      Arsipkan (`previous_status` = status saat ini; bila sudah archived dipertahankan, tanpa error). Masih dirujuk → 409 `CONFLICT`. Tidak ada → 404.
     x-module: media
     x-permission: media.manage
     x-rate-limit: default
@@ -230,7 +246,7 @@
               success: true
               message: Data berhasil diarsipkan.
               data: { id: 10, media_type: image, mime_type: image/webp, original_file_name: hero-1.jpg, compression_status: archived, file_url: https://media.indobraga.com/l.webp, thumbnail_url: null, medium_url: null, large_url: null, poster_url: null, video_url: null, width: 1600, height: 900, duration_seconds: null, original_size: 123456, optimized_size: 98765, error: null, archived_at: 2026-05-12T08:30:00.000Z, deleted_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -241,7 +257,8 @@
     operationId: unarchiveMedia
     tags: [media]
     summary: Batalkan arsip media
-    description: Kembali ke previousStatus atau COMPLETED.
+    description: |
+      Kembalikan ke `previous_status` (fallback `completed`). Tidak sedang diarsip → 400 `BAD_REQUEST` "Media ini tidak berada di arsip.".
     x-module: media
     x-permission: media.manage
     x-rate-limit: default
@@ -271,7 +288,7 @@
               success: true
               message: Arsip berhasil dibatalkan.
               data: { id: 10, media_type: image, mime_type: image/webp, original_file_name: hero-1.jpg, compression_status: completed, file_url: https://media.indobraga.com/l.webp, thumbnail_url: null, medium_url: null, large_url: null, poster_url: null, video_url: null, width: 1600, height: 900, duration_seconds: null, original_size: 123456, optimized_size: 98765, error: null, archived_at: null, deleted_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/InvalidRequest' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -281,7 +298,10 @@
     operationId: retryMedia
     tags: [media]
     summary: Coba lagi media gagal
-    description: Hanya bila FAILED; hanya menulis ulang pesan error (file asli tidak disimpan).
+    description: |
+      Hanya untuk status `failed` (selain itu → 400 `BAD_REQUEST` "Media ini belum perlu diproses
+      ulang."). File asli tidak disimpan, sehingga hanya menulis ulang `error` = "File asli sudah tidak
+      tersedia. Silakan unggah ulang media ini." (status tetap `failed`).
     x-module: media
     x-permission: media.manage
     x-rate-limit: default
@@ -294,8 +314,8 @@
     parameters:
       - $ref: '../components/parameters.yaml#/IdPath'
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Berhasil (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -311,9 +331,8 @@
               success: true
               message: Data berhasil diubah.
               data: { id: 10, media_type: image, mime_type: image/webp, original_file_name: hero-1.jpg, compression_status: failed, file_url: null, thumbnail_url: null, medium_url: null, large_url: null, poster_url: null, video_url: null, width: null, height: null, duration_seconds: null, original_size: 123456, optimized_size: null, error: Gagal memproses., archived_at: null, deleted_at: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/InvalidRequest' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
-      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }

@@ -1,4 +1,5 @@
-# Skema email: accounts + templates + campaigns. Field dari backend.md §email-accounts/campaigns/templates.
+# Skema email: accounts + templates + campaigns — presenter & DTO legacy
+# apps/api/src/{email-accounts,email-templates,email-campaigns}. Semua key respons selalu dikirim.
 EmailProvider:
   type: string
   enum: [google, smtp]
@@ -13,17 +14,23 @@ SmtpSecurity:
 
 EmailAccount:
   type: object
-  required: [id, provider, email_address, status, created_at, updated_at]
+  description: |
+    `EmailAccountsService.present` (email-accounts.service.ts:456-478). Secret tidak pernah dikirim.
+    Field `smtp_*` selalu null untuk akun Google.
+  required: [id, provider, auth_type, email_address, display_name, status, smtp_host, smtp_port, smtp_security, smtp_username, last_validated_at, connected_at, last_error, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     provider: { $ref: '#/EmailProvider' }
-    auth_type: { type: [string, "null"], examples: ["oauth2"] }
+    auth_type: { type: string, enum: [oauth, smtp], description: "`oauth` untuk Google, `smtp` untuk SMTP." }
     email_address: { type: string, format: email }
-    display_name: { type: [string, "null"] }
+    display_name: { type: string }
     status: { $ref: '#/EmailAccountStatus' }
     smtp_host: { type: [string, "null"] }
     smtp_port: { type: [integer, "null"], minimum: 1, maximum: 65535 }
-    smtp_security: { type: [string, "null"], enum: [ssl_tls, starttls, none, null] }
+    smtp_security:
+      oneOf:
+        - $ref: '#/SmtpSecurity'
+        - type: "null"
     smtp_username: { type: [string, "null"] }
     last_validated_at: { $ref: './common.yaml#/NullableTimestamp' }
     connected_at: { $ref: './common.yaml#/NullableTimestamp' }
@@ -33,10 +40,11 @@ EmailAccount:
 
 OAuthUrlInput:
   type: object
+  description: Legacy `GoogleOAuthUrlDto` (string di-trim).
   additionalProperties: false
   properties:
-    email_hint: { type: string, format: email, maxLength: 190 }
-    display_name: { type: string, maxLength: 190 }
+    email_hint: { type: string, format: email, maxLength: 190, description: "Di-trim; disimpan lowercase; dipakai sebagai `login_hint`." }
+    display_name: { type: string, maxLength: 190, description: "Di-trim; nama tampilan akun setelah terhubung (fallback email)." }
 
 OAuthUrlResult:
   type: object
@@ -47,10 +55,11 @@ OAuthUrlResult:
 
 SmtpAccountInput:
   type: object
+  description: Legacy `SmtpAccountDto` — string (kecuali password) di-trim; semua wajib.
   required: [email_address, display_name, smtp_host, smtp_port, smtp_security, smtp_username, smtp_password]
   additionalProperties: false
   properties:
-    email_address: { type: string, format: email, maxLength: 190 }
+    email_address: { type: string, format: email, maxLength: 190, description: "Disimpan lowercase." }
     display_name: { type: string, maxLength: 190 }
     smtp_host: { type: string, maxLength: 190, examples: ["mail.indobraga.com"] }
     smtp_port: { type: integer, minimum: 1, maximum: 65535, examples: [465] }
@@ -60,6 +69,7 @@ SmtpAccountInput:
 
 SmtpTestResult:
   type: object
+  description: "Gagal → `valid: false`, `message` = \"<pesan> (<detail>)\" (mis. \"Koneksi SMTP gagal. (Invalid login)\")."
   required: [valid, message]
   properties:
     valid: { type: boolean }
@@ -67,25 +77,35 @@ SmtpTestResult:
 
 UpdateEmailAccountInput:
   type: object
+  description: Legacy `UpdateEmailAccountDto` — string (kecuali password) di-trim.
   additionalProperties: false
   properties:
-    email_address: { type: string, format: email, maxLength: 190 }
+    email_address: { type: string, format: email, maxLength: 190, description: "Hanya SMTP; disimpan lowercase." }
     display_name: { type: string, maxLength: 190 }
     status: { $ref: '#/EmailAccountStatus' }
     smtp_host: { type: string, maxLength: 190 }
     smtp_port: { type: integer, minimum: 1, maximum: 65535 }
     smtp_security: { $ref: '#/SmtpSecurity' }
     smtp_username: { type: string, maxLength: 190 }
-    smtp_password: { type: string, maxLength: 1000 }
+    smtp_password: { type: string, maxLength: 1000, description: "Tidak dikirim → password tersimpan dipakai untuk verifikasi ulang." }
 
 SmtpReconnectResult:
   type: object
+  description: Hasil reconnect akun SMTP (verifikasi ulang kredensial tersimpan).
   required: [provider, valid, account, message]
   properties:
     provider: { type: string, const: smtp }
     valid: { type: boolean }
     account: { $ref: '#/EmailAccount' }
-    message: { type: string }
+    message: { type: string, description: "Berhasil: \"Koneksi SMTP berhasil. Akun aktif kembali.\"; gagal: \"<pesan> (<detail>)\"." }
+
+EmailAccountReconnectResult:
+  description: |
+    Akun Google → payload URL OAuth baru (sama dengan `POST /google/oauth-url`, `email_hint` =
+    email akun, `display_name` = nama akun). Akun SMTP → `SmtpReconnectResult`.
+  oneOf:
+    - $ref: '#/OAuthUrlResult'
+    - $ref: '#/SmtpReconnectResult'
 
 DeleteEmailAccountResult:
   type: object
@@ -96,11 +116,12 @@ DeleteEmailAccountResult:
 
 EmailTemplate:
   type: object
-  required: [id, name, subject, content_mode, created_at, updated_at]
+  description: "`EmailTemplatesService.present` (email-templates.service.ts:152-163)."
+  required: [id, name, subject, content_mode, body_text, body_html, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
-    name: { type: string, maxLength: 190 }
-    subject: { type: string, maxLength: 255 }
+    name: { type: string }
+    subject: { type: string }
     content_mode: { type: string, enum: [text, html] }
     body_text: { type: [string, "null"] }
     body_html: { type: [string, "null"] }
@@ -109,6 +130,9 @@ EmailTemplate:
 
 CreateEmailTemplateInput:
   type: object
+  description: |
+    Legacy `CreateEmailTemplateDto` (string di-trim). `content_mode: html` wajib `body_html`
+    non-kosong, `text` wajib `body_text` non-kosong (422). Body pasangan yang kosong disimpan null.
   required: [name, subject, content_mode]
   additionalProperties: false
   properties:
@@ -120,6 +144,7 @@ CreateEmailTemplateInput:
 
 UpdateEmailTemplateInput:
   type: object
+  description: Legacy `UpdateEmailTemplateDto` (string di-trim); body digabung dengan nilai tersimpan lalu divalidasi ulang seperti create.
   additionalProperties: false
   properties:
     name: { type: string, minLength: 1, maxLength: 190 }
@@ -137,6 +162,7 @@ DeleteEmailTemplateResult:
 
 CampaignStatus:
   type: string
+  description: "`processing` = status Prisma legacy `SENDING` (legacy juga mengekspos `processing`)."
   enum: [draft, pending, processing, completed, failed, cancelled]
 
 RecipientStatus:
@@ -145,23 +171,24 @@ RecipientStatus:
 
 SenderAccount:
   type: object
-  required: [id, provider, email_address, status]
+  required: [id, provider, email_address, display_name, status]
   properties:
     id: { $ref: './common.yaml#/Id' }
     provider: { $ref: '#/EmailProvider' }
     email_address: { type: string, format: email }
-    display_name: { type: [string, "null"] }
+    display_name: { type: string }
     status: { $ref: '#/EmailAccountStatus' }
 
 Campaign:
   type: object
-  required: [id, title, subject, status, total_recipients, created_at, updated_at]
+  description: "`presentCampaign` (email-campaigns.service.ts:1157-1182)."
+  required: [id, title, subject, body_text, body_html, status, total_recipients, queued_count, sent_count, failed_count, started_at, finished_at, last_error, sender_account, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
-    title: { type: string, maxLength: 190 }
-    subject: { type: string, maxLength: 255 }
+    title: { type: string }
+    subject: { type: string }
     body_text: { type: [string, "null"] }
-    body_html: { type: [string, "null"] }
+    body_html: { type: [string, "null"], description: "HTML efektif: HTML bermakna yang dikirim, atau `body_text` dikonversi ke `<p>`." }
     status: { $ref: '#/CampaignStatus' }
     total_recipients: { type: integer, minimum: 0 }
     queued_count: { type: integer, minimum: 0 }
@@ -176,92 +203,102 @@ Campaign:
 
 RecipientInput:
   type: object
+  description: Legacy `EmailRecipientDto` (name & email di-trim).
   required: [email]
   additionalProperties: false
   properties:
-    name: { type: string, maxLength: 190 }
-    email: { type: string, format: email, maxLength: 190 }
+    name: { type: string, maxLength: 190, description: "Di-trim; kosong → tanpa nama." }
+    email: { type: string, format: email, maxLength: 190, description: "Di-trim; di-lowercase & di-dedup server." }
     variables:
       type: object
-      maxProperties: 50
-      additionalProperties: { type: string, maxLength: 2000 }
+      additionalProperties: true
+      description: |
+        Objek bebas (`IsObject`; array ditolak). Tidak ditolak karena ukuran — server
+        MENORMALISASI: key di-trim + lowercase, key tidak cocok `^[a-z0-9_]+$` dibuang, maksimal 50
+        key pertama yang valid, nilai `String(v)` (null → "") dipotong 2.000 karakter, lalu `email`
+        ditimpa email penerima dan `nama` diisi nama penerima bila tidak ada.
 
 CampaignDraftInput:
   type: object
+  description: Legacy `CampaignDraftDto` (title, subject, body di-trim).
   required: [title, email_account_id, subject, recipients]
   additionalProperties: false
   properties:
     title: { type: string, minLength: 1, maxLength: 190 }
-    email_account_id: { type: integer, minimum: 1 }
+    email_account_id: { type: integer, minimum: 1, description: "Akun wajib ada & `connected` (422)." }
     subject: { type: string, minLength: 1, maxLength: 255 }
     body_text: { type: string }
-    body_html: { type: string }
+    body_html: { type: string, description: "Dipakai bila berisi teks bermakna; selain itu `body_text` dikonversi ke HTML. Keduanya kosong → 422 \"Isi email wajib diisi.\"." }
     recipients:
       type: array
       minItems: 1
       maxItems: 1000
+      description: "Setelah dedup email (lowercase) > `EMAIL_CAMPAIGN_RECIPIENT_MAX` (1000) → 422."
       items: { $ref: '#/RecipientInput' }
 
-CampaignFilterDraftInput:
+InquiryRecipientFilter:
   type: object
-  required: [title, email_account_id, subject]
+  description: Legacy `InquiryRecipientFilterDto`. Tanpa `status` → semua kecuali `spam`; inquiry diarsip tidak ikut.
   additionalProperties: false
   properties:
-    title: { type: string, minLength: 1, maxLength: 190 }
-    email_account_id: { type: integer, minimum: 1 }
-    subject: { type: string, minLength: 1, maxLength: 255 }
-    body_text: { type: string }
-    body_html: { type: string }
-    inquiry_filter:
-      type: object
-      additionalProperties: false
-      properties:
-        q: { type: string, maxLength: 120 }
-        status: { type: string, enum: [new, contacted, in_progress, closed, spam] }
-        date_from: { type: string, format: date }
-        date_to: { type: string, format: date }
-    audience_filter:
-      type: object
-      additionalProperties: false
-      properties:
-        q: { type: string, maxLength: 120 }
-        source: { type: string, enum: [inquiry, whatsapp_lead, manual_import, manual] }
-        status: { type: string, enum: [active, unsubscribed, blocked] }
+    q: { type: string, maxLength: 120, description: "Di-trim; mencari name, email, phone, company, message." }
+    status: { $ref: './leads.yaml#/LeadStatus' }
+    date_from: { type: string, description: "Di-trim; ISO 8601 (`IsDateString`, tanggal atau tanggal-waktu). Hanya 10 karakter pertama (YYYY-MM-DD) dipakai → 00:00:00.000 Asia/Jakarta (+07:00)." }
+    date_to: { type: string, description: "Seperti `date_from` → 23:59:59.999 +07:00. `date_from` > `date_to` → 422 \"Rentang tanggal Pesan Kontak tidak valid.\"." }
+
+AudienceFilter:
+  type: object
+  description: Legacy `AudienceFilterDto`.
+  additionalProperties: false
+  properties:
+    q: { type: string, maxLength: 120, description: "Di-trim; mencari name, email, phone, company." }
+    source: { type: string, enum: [inquiry, whatsapp_lead, manual_import, manual] }
+    status: { type: string, enum: [active, unsubscribed, blocked], description: "Diabaikan untuk draf kampanye: hanya kontak `active` yang menjadi penerima." }
 
 CampaignDraftResult:
   type: object
   required: [id, status, total_recipients]
   properties:
     id: { $ref: './common.yaml#/Id' }
-    status: { $ref: '#/CampaignStatus' }
+    status: { type: string, const: draft }
     total_recipients: { type: integer, minimum: 1 }
+
+InquiryRecipientSample:
+  type: object
+  description: "Contoh penerima dari inquiry (`previewInquiryRecipients`, email-campaigns.service.ts:229-236)."
+  required: [id, name, email, company, status, created_at]
+  properties:
+    id: { $ref: './common.yaml#/Id' }
+    name: { type: string }
+    email: { type: string, description: "Sudah di-trim & lowercase." }
+    company: { type: [string, "null"] }
+    status: { $ref: './leads.yaml#/LeadStatus' }
+    created_at: { $ref: './common.yaml#/Timestamp' }
 
 InquiryRecipientPreview:
   type: object
+  description: "Maks 10.000 inquiry terbaru dianalisis; email invalid & duplikat tidak dihitung eligible."
   required: [total_inquiries, eligible_recipients, duplicate_emails, invalid_emails, recipient_limit, over_limit, sample_recipients]
   properties:
     total_inquiries: { type: integer, minimum: 0 }
     eligible_recipients: { type: integer, minimum: 0 }
     duplicate_emails: { type: integer, minimum: 0 }
     invalid_emails: { type: integer, minimum: 0 }
-    recipient_limit: { type: integer, const: 1000 }
+    recipient_limit: { type: integer, minimum: 1, description: "`EMAIL_CAMPAIGN_RECIPIENT_MAX` (default 1000).", examples: [1000] }
     over_limit: { type: boolean }
     sample_recipients:
       type: array
       maxItems: 5
-      items:
-        type: object
-        properties:
-          name: { type: [string, "null"] }
-          email: { type: string, format: email }
+      items: { $ref: '#/InquiryRecipientSample' }
 
 CampaignRecipient:
   type: object
-  required: [id, campaign_id, email, status, attempts, created_at, updated_at]
+  description: "`presentRecipient` (email-campaigns.service.ts:1184-1200)."
+  required: [id, campaign_id, email, name, status, attempts, next_attempt_at, sent_at, failed_at, error_code, error_message, created_at, updated_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     campaign_id: { $ref: './common.yaml#/Id' }
-    email: { type: string, format: email }
+    email: { type: string }
     name: { type: [string, "null"] }
     status: { $ref: '#/RecipientStatus' }
     attempts: { type: integer, minimum: 0 }
@@ -275,20 +312,21 @@ CampaignRecipient:
 
 CampaignLog:
   type: object
-  required: [id, campaign_id, recipient_email, status, created_at]
+  description: "Log kirim (`logs`, email-campaigns.service.ts:594-606)."
+  required: [id, campaign_id, recipient_id, recipient_email, provider, status, message_id, error_code, error_message, response_meta, created_at]
   properties:
     id: { $ref: './common.yaml#/Id' }
     campaign_id: { $ref: './common.yaml#/Id' }
     recipient_id: { type: [integer, "null"] }
-    recipient_email: { type: string, format: email }
-    provider: { type: [string, "null"] }
-    status: { type: string }
+    recipient_email: { type: [string, "null"], description: "Null bila penerima sudah terhapus (FK SetNull)." }
+    provider: { $ref: '#/EmailProvider' }
+    status: { type: string, description: "Hasil adapter: `sent`, `temporary_failed`, `failed`.", examples: ["sent"] }
     message_id: { type: [string, "null"] }
     error_code: { type: [string, "null"] }
     error_message: { type: [string, "null"] }
     response_meta:
       type: [object, "null"]
-      additionalProperties: true
+      additionalProperties: { type: [string, number, boolean, "null"] }
     created_at: { $ref: './common.yaml#/Timestamp' }
 
 EmailTickResult:
@@ -300,4 +338,4 @@ EmailTickResult:
     sent: { type: integer, minimum: 0 }
     failed: { type: integer, minimum: 0 }
     remaining: { type: integer, minimum: 0 }
-    status: { type: [string, "null"] }
+    status: { type: string, enum: [idle, processing, completed], description: "`idle` bila tidak ada kampanye yang diklaim (atau drain lain sedang berjalan)." }

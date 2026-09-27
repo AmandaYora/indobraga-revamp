@@ -4,6 +4,8 @@
     operationId: listAudienceContacts
     tags: [audience]
     summary: Daftar kontak marketing
+    description: |
+      List offset, urut last_interaction_at desc, created_at desc, id desc. `limit` > 100 TIDAK ditolak — di-clamp ke 100 (`meta.limit` = 100; legacy `ListAudienceQueryDto` tanpa `@Max`).
     x-module: audience
     x-permission: audience.read
     x-rate-limit: default
@@ -11,7 +13,7 @@
     x-legacy:
       method: GET
       path: /api/v1/admin/audience/contacts
-      changes: Tidak ada perubahan bentuk data selain envelope v1; limit di-clamp 100.
+      changes: "Tidak ada perubahan bentuk data selain envelope v1."
     security: [{ sessionCookie: [] }]
     parameters:
       - name: page
@@ -21,10 +23,12 @@
       - name: limit
         in: query
         required: false
-        schema: { type: integer, minimum: 1, default: 10, maximum: 100 }
+        description: Bilangan bulat ≥ 1; nilai > 100 di-clamp menjadi 100.
+        schema: { type: integer, minimum: 1, default: 10 }
       - name: q
         in: query
         required: false
+        description: Di-trim (maks 120 setelah trim); mencari name, email, phone, company.
         schema: { type: string, maxLength: 120 }
       - name: source
         in: query
@@ -63,6 +67,8 @@
     operationId: previewAudience
     tags: [audience]
     summary: Pratinjau audiens
+    description: |
+      Ringkasan audiens untuk draf kampanye. Filter `status` divalidasi tetapi diabaikan (total dihitung dari `q`/`source`; eligible = kontak `active`).
     x-module: audience
     x-permission: audience.read
     x-rate-limit: default
@@ -76,6 +82,7 @@
       - name: q
         in: query
         required: false
+        description: Di-trim (maks 120 setelah trim); mencari name, email, phone, company.
         schema: { type: string, maxLength: 120 }
       - name: source
         in: query
@@ -102,7 +109,7 @@
             example:
               success: true
               message: Data berhasil diambil.
-              data: { total_contacts: 10, eligible_recipients: 8, excluded_unsubscribed: 1, excluded_blocked: 1, sample_recipients: [] }
+              data: { total_contacts: 10, eligible_recipients: 8, excluded_unsubscribed: 1, excluded_blocked: 1, sample_recipients: [{ id: 1, name: Budi, email: budi@contoh.com, company: null }] }
       '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
@@ -112,7 +119,13 @@
     operationId: exportAudienceCsv
     tags: [audience]
     summary: Ekspor audiens CSV
-    description: text/csv attachment indobraga-audience.csv; BOM UTF-8, CRLF, semua sel quoted; maks 10.000 baris.
+    description: |
+      CSV tanpa envelope, maks 10.000 baris (urut last_interaction_at desc, created_at desc, id desc).
+      Header respons: `Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment;
+      filename="indobraga-audience.csv"` (+ `Cache-Control: no-store`). Body: BOM UTF-8 (`\uFEFF`), baris
+      dipisah CRLF (`\r\n`) termasuk setelah baris terakhir, setiap sel di-quote (`"` di-escape `""`).
+      Kolom: Nama, Email, Telepon, Perusahaan, Sumber, Status, Consent, Interaksi Terakhir, Dibuat
+      (nilai enum lowercase; tanggal ISO 8601 UTC lengkap; null → string kosong).
     x-module: audience
     x-permission: audience.export
     x-rate-limit: default
@@ -126,6 +139,7 @@
       - name: q
         in: query
         required: false
+        description: Di-trim (maks 120 setelah trim); mencari name, email, phone, company.
         schema: { type: string, maxLength: 120 }
       - name: source
         in: query
@@ -140,10 +154,12 @@
         description: File CSV.
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+          Content-Type: { schema: { type: string, const: text/csv; charset=utf-8 } }
+          Content-Disposition: { schema: { type: string, const: 'attachment; filename="indobraga-audience.csv"' } }
         content:
           text/csv:
             schema: { type: string }
-            example: "\"Nama\",\"Email\",\"Telepon\",\"Perusahaan\",\"Sumber\",\"Status\",\"Consent\",\"Interaksi Terakhir\",\"Dibuat\"\n\"Budi\",\"budi@contoh.com\",\"08123456789\",\"\",\"inquiry\",\"active\",\"implied\",\"2026-05-12\",\"2026-05-12\"\n"
+            example: "\uFEFF\"Nama\",\"Email\",\"Telepon\",\"Perusahaan\",\"Sumber\",\"Status\",\"Consent\",\"Interaksi Terakhir\",\"Dibuat\"\r\n\"Budi\",\"budi@contoh.com\",\"08123456789\",\"\",\"inquiry\",\"active\",\"implied\",\"2026-05-12T08:30:00.000Z\",\"2026-05-12T08:30:00.000Z\"\r\n"
       '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }

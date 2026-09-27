@@ -4,7 +4,8 @@
     operationId: listEmailAccounts
     tags: [emailaccounts]
     summary: Daftar akun email
-    description: Secret tidak pernah dikembalikan.
+    description: |
+      List offset, urut created_at desc, id desc. `q` (di-trim) mencari email, display_name, smtp_host, smtp_username. Secret tidak pernah dikembalikan.
     x-module: emailaccounts
     x-permission: email_accounts.read
     x-rate-limit: default
@@ -26,6 +27,7 @@
       - name: q
         in: query
         required: false
+        description: Di-trim.
         schema: { type: string }
       - name: provider
         in: query
@@ -50,11 +52,7 @@
                   properties:
                     data: { type: array, items: { $ref: '../components/schemas/email.yaml#/EmailAccount' } }
                     meta: { $ref: '../components/schemas/envelope.yaml#/PaginationMeta' }
-            example:
-              success: true
-              message: Data berhasil diambil.
-              data: [{ id: 1, provider: smtp, email_address: marketing@indobraga.com, display_name: Marketing, status: connected, smtp_host: mail.indobraga.com, smtp_port: 465, smtp_security: ssl_tls, smtp_username: marketing@indobraga.com, last_validated_at: 2026-05-12T08:30:00.000Z, connected_at: 2026-05-12T08:30:00.000Z, last_error: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }]
-              meta: { page: 1, limit: 10, total: 1, total_pages: 1 }
+            example: {"success": true, "message": "Data berhasil diambil.", "data": [{"id": 1, "provider": "smtp", "auth_type": "smtp", "email_address": "marketing@indobraga.com", "display_name": "Marketing", "status": "connected", "smtp_host": "mail.indobraga.com", "smtp_port": 465, "smtp_security": "ssl_tls", "smtp_username": "marketing@indobraga.com", "last_validated_at": "2026-05-12T08:30:00.000Z", "connected_at": "2026-05-12T08:30:00.000Z", "last_error": null, "created_at": "2026-05-12T08:30:00.000Z", "updated_at": "2026-05-12T08:30:00.000Z"}], "meta": {"page": 1, "limit": 10, "total": 1, "total_pages": 1}}
       '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
@@ -64,7 +62,11 @@
     operationId: getGoogleOAuthUrl
     tags: [emailaccounts]
     summary: Buat URL OAuth Google
-    description: State base64url(JSON{nonce,admin_user_id,exp}).HMAC, disimpan sha256 hex, 10 menit sekali pakai.
+    description: |
+      Body opsional. State = base64url(JSON{nonce, admin_user_id, exp}) + "." + base64url(HMAC-SHA256
+      SESSION_SECRET); disimpan sebagai sha256 hex, berlaku 10 menit, sekali pakai. URL: scope `openid
+      email https://www.googleapis.com/auth/gmail.send`, `access_type=offline`, `prompt=consent`,
+      `login_hint` = `email_hint`.
     x-module: emailaccounts
     x-permission: email_accounts.manage
     x-rate-limit: default
@@ -81,8 +83,8 @@
           schema: { $ref: '../components/schemas/email.yaml#/OAuthUrlInput' }
           example: { email_hint: marketing@indobraga.com }
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Dibuat (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -107,20 +109,33 @@
     operationId: googleOAuthCallback
     tags: [emailaccounts]
     summary: Callback OAuth Google (redirect)
-    description: 302 ke ${PUBLIC_SITE_URL}/admin/email-accounts?connected=google&status=success|error&reason=oauth_denied|missing_code|invalid_state|provider_failed.
+    description: |
+      Selalu 302 ke `<PUBLIC_SITE_URL>/admin/email-accounts?connected=google&status=success|error`
+      (+ `&reason=oauth_denied|missing_code|invalid_state|provider_failed` bila error), tanpa envelope.
+      `error` terisi → state dikonsumsi, reason `oauth_denied`; `code` kosong → `missing_code`; state
+      tidak valid/kedaluwarsa/terpakai → `invalid_state`; pertukaran token gagal → `provider_failed`.
+      Hanya `state` yang wajib (tidak ada → 400 `VALIDATION_ERROR` JSON).
+      
+      **Parameter tak dikenal WAJIB diabaikan** (`x-unknown-query: ignore`): Google selalu menambahkan
+      `scope`, dan sering `authuser`, `prompt`, `hd`, `iss`, dst. Legacy memakai `forbidNonWhitelisted`
+      pada `GoogleOAuthCallbackQueryDto` sehingga parameter tersebut menghasilkan 400 `VALIDATION_ERROR`
+      (`property scope should not exist`) alih-alih redirect — alur Google sungguhan gagal di legacy
+      (e2e legacy hanya mengirim `code` & `state`). v1 menoleransinya.
     x-module: emailaccounts
     x-permission: null
     x-rate-limit: default
     x-cache-control: no-store
+    x-unknown-query: ignore
     x-legacy:
       method: GET
       path: /api/v1/oauth/google/email/callback
-      changes: Sama persis (302 redirect tanpa envelope).
+      changes: "302 redirect tanpa envelope (sama). Parameter query tak dikenal diabaikan; legacy menolak dengan 400 VALIDATION_ERROR (forbidNonWhitelisted) sehingga callback Google asli gagal."
     security: []
     parameters:
       - name: code
         in: query
         required: false
+        description: Kode otorisasi Google.
         schema: { type: string, maxLength: 2000 }
       - name: state
         in: query
@@ -129,10 +144,36 @@
       - name: error
         in: query
         required: false
+        description: Dikirim Google bila user menolak (mis. `access_denied`).
         schema: { type: string, maxLength: 500 }
+      - name: scope
+        in: query
+        required: false
+        description: Dikirim Google; diabaikan.
+        schema: { type: string }
+      - name: authuser
+        in: query
+        required: false
+        description: Dikirim Google; diabaikan.
+        schema: { type: string }
+      - name: prompt
+        in: query
+        required: false
+        description: Dikirim Google; diabaikan.
+        schema: { type: string }
+      - name: hd
+        in: query
+        required: false
+        description: Domain Google Workspace; diabaikan.
+        schema: { type: string }
+      - name: iss
+        in: query
+        required: false
+        description: Issuer (RFC 9207); diabaikan.
+        schema: { type: string }
     responses:
       '200':
-        description: Redirect OAuth (didokumentasikan sebagai 302; 200 dicantumkan agar memenuhi lint 2xx).
+        description: TIDAK PERNAH dikirim — hanya pemenuh aturan lint `operation-2xx-response`; respons nyata selalu 302.
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
           Location: { schema: { type: string, format: uri } }
@@ -151,7 +192,11 @@
     operationId: testSmtpAccount
     tags: [emailaccounts]
     summary: Uji koneksi SMTP
-    description: verify() dengan timeout SMTP_TEST_TIMEOUT_MS; security none ditolak di produksi.
+    description: |
+      Verifikasi kredensial SMTP (nodemailer `verify()`, timeout `SMTP_TEST_TIMEOUT_MS`) tanpa menyimpan.
+      Gagal TIDAK error — 201 dengan `valid: false`. `smtp_security: none` di produksi selalu gagal
+      ("SMTP tanpa enkripsi tidak boleh digunakan di production."). Mode mock: host/username/password
+      mengandung "fail" → gagal.
     x-module: emailaccounts
     x-permission: email_accounts.manage
     x-rate-limit: default
@@ -168,8 +213,8 @@
           schema: { $ref: '../components/schemas/email.yaml#/SmtpAccountInput' }
           example: { email_address: marketing@indobraga.com, display_name: Marketing, smtp_host: mail.indobraga.com, smtp_port: 465, smtp_security: ssl_tls, smtp_username: marketing@indobraga.com, smtp_password: rahasia }
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Berhasil (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -181,21 +226,19 @@
                   required: [data]
                   properties:
                     data: { $ref: '../components/schemas/email.yaml#/SmtpTestResult' }
-            example:
-              success: true
-              message: Data berhasil diambil.
-              data: { valid: true, message: Koneksi SMTP berhasil. }
+            example: {"success": true, "message": "Data berhasil diambil.", "data": {"valid": true, "message": "Koneksi SMTP berhasil."}}
       '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
-      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }
 /api/v1/admin/email-accounts/smtp:
   post:
     operationId: createSmtpAccount
     tags: [emailaccounts]
     summary: Buat/upsert akun SMTP
-    description: Verifikasi dulu (422 bila gagal), lalu upsert pada (provider, email).
+    description: |
+      Verifikasi dulu (gagal → 422 dengan pesan "<pesan> (<detail>)"), lalu upsert pada (provider smtp,
+      email lowercase) → status `connected`. Akun SMTP dengan email sama diperbarui (bukan 409).
     x-module: emailaccounts
     x-permission: email_accounts.manage
     x-rate-limit: default
@@ -212,8 +255,8 @@
           schema: { $ref: '../components/schemas/email.yaml#/SmtpAccountInput' }
           example: { email_address: marketing@indobraga.com, display_name: Marketing, smtp_host: mail.indobraga.com, smtp_port: 465, smtp_security: ssl_tls, smtp_username: marketing@indobraga.com, smtp_password: rahasia }
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Dibuat/diperbarui (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -225,10 +268,7 @@
                   required: [data]
                   properties:
                     data: { $ref: '../components/schemas/email.yaml#/EmailAccount' }
-            example:
-              success: true
-              message: Data berhasil dibuat.
-              data: { id: 1, provider: smtp, email_address: marketing@indobraga.com, display_name: Marketing, status: connected, smtp_host: mail.indobraga.com, smtp_port: 465, smtp_security: ssl_tls, smtp_username: marketing@indobraga.com, last_validated_at: 2026-05-12T08:30:00.000Z, connected_at: 2026-05-12T08:30:00.000Z, last_error: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
+            example: {"success": true, "message": "Data berhasil dibuat.", "data": {"id": 1, "provider": "smtp", "auth_type": "smtp", "email_address": "marketing@indobraga.com", "display_name": "Marketing", "status": "connected", "smtp_host": "mail.indobraga.com", "smtp_port": 465, "smtp_security": "ssl_tls", "smtp_username": "marketing@indobraga.com", "last_validated_at": "2026-05-12T08:30:00.000Z", "connected_at": "2026-05-12T08:30:00.000Z", "last_error": null, "created_at": "2026-05-12T08:30:00.000Z", "updated_at": "2026-05-12T08:30:00.000Z"}}
       '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
@@ -239,7 +279,13 @@
     operationId: updateEmailAccount
     tags: [emailaccounts]
     summary: Ubah akun email
-    description: Akun Google hanya display_name/status (400 bila lain); perubahan SMTP memicu re-verify → CONNECTED.
+    description: |
+      Akun Google: hanya `display_name`/`status`; field SMTP atau `email_address` → 400 `BAD_REQUEST`
+      "Akun Google perlu dihubungkan ulang untuk mengubah aksesnya.". Akun SMTP: perubahan field SMTP /
+      `email_address` memicu verifikasi ulang (gagal → 422; password tersimpan dipakai bila
+      `smtp_password` tidak dikirim, tidak ada → 422) lalu status `connected` bila `status` tidak
+      dikirim. `status: connected` mengisi `connected_at` & menghapus `last_error`. Email bentrok dengan
+      akun SMTP lain → 409 `CONFLICT` "Akun pengirim dengan alamat email tersebut sudah ada.".
     x-module: emailaccounts
     x-permission: email_accounts.manage
     x-rate-limit: default
@@ -271,21 +317,21 @@
                   required: [data]
                   properties:
                     data: { $ref: '../components/schemas/email.yaml#/EmailAccount' }
-            example:
-              success: true
-              message: Data berhasil diubah.
-              data: { id: 1, provider: smtp, email_address: marketing@indobraga.com, display_name: Marketing Baru, status: connected, smtp_host: mail.indobraga.com, smtp_port: 465, smtp_security: ssl_tls, smtp_username: marketing@indobraga.com, last_validated_at: 2026-05-12T08:30:00.000Z, connected_at: 2026-05-12T08:30:00.000Z, last_error: null, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/ValidationError' }
+            example: {"success": true, "message": "Data berhasil diubah.", "data": {"id": 1, "provider": "smtp", "auth_type": "smtp", "email_address": "marketing@indobraga.com", "display_name": "Marketing Baru", "status": "connected", "smtp_host": "mail.indobraga.com", "smtp_port": 465, "smtp_security": "ssl_tls", "smtp_username": "marketing@indobraga.com", "last_validated_at": "2026-05-12T08:30:00.000Z", "connected_at": "2026-05-12T08:30:00.000Z", "last_error": null, "created_at": "2026-05-12T08:30:00.000Z", "updated_at": "2026-05-12T08:30:00.000Z"}}
+      '400': { $ref: '../components/responses.yaml#/InvalidRequest' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '409': { $ref: '../components/responses.yaml#/Conflict' }
       '422': { $ref: '../components/responses.yaml#/Unprocessable' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }
   delete:
     operationId: deleteEmailAccount
     tags: [emailaccounts]
     summary: Hapus akun email
-    description: Hard-delete; 422 bila masih dirujuk kampanye (FK Restrict).
+    description: |
+      Hard-delete. Masih dipakai kampanye → 422 "Akun ini dipakai oleh N pengiriman email sehingga
+      tidak bisa dihapus permanen. Nonaktifkan akun agar riwayat pengiriman tetap tersimpan.".
     x-module: emailaccounts
     x-permission: email_accounts.manage
     x-rate-limit: default
@@ -315,7 +361,7 @@
               success: true
               message: Data berhasil dihapus.
               data: { id: 1, status: deleted }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -326,7 +372,11 @@
     operationId: reconnectEmailAccount
     tags: [emailaccounts]
     summary: Sambung ulang akun email
-    description: Google → payload oauth-url baru; SMTP → verifikasi ulang kredensial tersimpan (NEEDS_RECONNECT bila gagal).
+    description: |
+      Google → URL OAuth baru (`{authorization_url, state_expires_at}`, sama dengan `oauth-url`).
+      SMTP → verifikasi ulang kredensial tersimpan: berhasil → `connected`; gagal → `needs_reconnect`
+      + `last_error` (tetap 201, `valid: false`). Konfigurasi SMTP tidak lengkap (host/port/password)
+      → 422 "Konfigurasi SMTP belum lengkap. Ubah akun dan lengkapi detail SMTP terlebih dahulu.".
     x-module: emailaccounts
     x-permission: email_accounts.manage
     x-rate-limit: default
@@ -339,8 +389,8 @@
     parameters:
       - $ref: '../components/parameters.yaml#/IdPath'
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Berhasil (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -351,21 +401,27 @@
                 - type: object
                   required: [data]
                   properties:
-                    data: { $ref: '../components/schemas/email.yaml#/SmtpReconnectResult' }
-            example:
-              success: true
-              message: Data berhasil diambil.
-              data: { provider: smtp, valid: true, account: { id: 1, provider: smtp, email_address: marketing@indobraga.com, display_name: Marketing, status: connected, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }, message: Koneksi SMTP berhasil. }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+                    data: { $ref: '../components/schemas/email.yaml#/EmailAccountReconnectResult' }
+            examples:
+              smtp:
+                summary: Akun SMTP
+                value: {"success": true, "message": "Data berhasil diambil.", "data": {"provider": "smtp", "valid": true, "account": {"id": 1, "provider": "smtp", "auth_type": "smtp", "email_address": "marketing@indobraga.com", "display_name": "Marketing", "status": "connected", "smtp_host": "mail.indobraga.com", "smtp_port": 465, "smtp_security": "ssl_tls", "smtp_username": "marketing@indobraga.com", "last_validated_at": "2026-05-12T08:30:00.000Z", "connected_at": "2026-05-12T08:30:00.000Z", "last_error": null, "created_at": "2026-05-12T08:30:00.000Z", "updated_at": "2026-05-12T08:30:00.000Z"}, "message": "Koneksi SMTP berhasil. Akun aktif kembali."}}
+              google:
+                summary: Akun Google
+                value: {"success": true, "message": "Data berhasil diambil.", "data": {"authorization_url": "https://accounts.google.com/o/oauth2/v2/auth?client_id=xxx&state=yyy", "state_expires_at": "2026-05-12T08:40:00.000Z"}}
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '422': { $ref: '../components/responses.yaml#/Unprocessable' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }
 /api/v1/admin/email-accounts/{id}/disable:
   post:
     operationId: disableEmailAccount
     tags: [emailaccounts]
     summary: Nonaktifkan akun email
+    description: |
+      Set status `disabled` (tanpa verifikasi). Tidak ada → 404.
     x-module: emailaccounts
     x-permission: email_accounts.manage
     x-rate-limit: default
@@ -378,8 +434,8 @@
     parameters:
       - $ref: '../components/parameters.yaml#/IdPath'
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Berhasil (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -391,11 +447,8 @@
                   required: [data]
                   properties:
                     data: { $ref: '../components/schemas/email.yaml#/EmailAccount' }
-            example:
-              success: true
-              message: Data berhasil diubah.
-              data: { id: 1, provider: smtp, email_address: marketing@indobraga.com, display_name: Marketing, status: disabled, created_at: 2026-05-12T08:30:00.000Z, updated_at: 2026-05-12T08:30:00.000Z }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+            example: {"success": true, "message": "Data berhasil diubah.", "data": {"id": 1, "provider": "smtp", "auth_type": "smtp", "email_address": "marketing@indobraga.com", "display_name": "Marketing", "status": "disabled", "smtp_host": "mail.indobraga.com", "smtp_port": 465, "smtp_security": "ssl_tls", "smtp_username": "marketing@indobraga.com", "last_validated_at": "2026-05-12T08:30:00.000Z", "connected_at": "2026-05-12T08:30:00.000Z", "last_error": null, "created_at": "2026-05-12T08:30:00.000Z", "updated_at": "2026-05-12T08:30:00.000Z"}}
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }

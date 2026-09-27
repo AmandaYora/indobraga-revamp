@@ -4,6 +4,8 @@
     operationId: listNotifications
     tags: [notifications]
     summary: Daftar notifikasi
+    description: |
+      List offset (default 10, maks 50), urut created_at desc, id desc; hanya notifikasi belum kedaluwarsa (`expires_at` null/masa depan). `read=unread` → belum dibaca user ini; `read` per user. `q` (di-trim) mencari title & message.
     x-module: notifications
     x-permission: notifications.read
     x-rate-limit: default
@@ -11,7 +13,7 @@
     x-legacy:
       method: GET
       path: /api/v1/admin/notifications
-      changes: Tidak ada perubahan bentuk data selain envelope v1; limit default 10 maks 50.
+      changes: "Tidak ada perubahan bentuk data selain envelope v1."
     security: [{ sessionCookie: [] }]
     parameters:
       - name: page
@@ -29,6 +31,7 @@
       - name: q
         in: query
         required: false
+        description: Di-trim. Catatan legacy — saat `q` dikirim, filter kedaluwarsa ikut tertimpa (objek `OR` ditimpa).
         schema: { type: string }
     responses:
       '200':
@@ -59,6 +62,8 @@
     operationId: getUnreadCount
     tags: [notifications]
     summary: Jumlah notifikasi belum dibaca
+    description: |
+      Jumlah notifikasi aktif (belum kedaluwarsa) yang belum dibaca user sesi.
     x-module: notifications
     x-permission: notifications.read
     x-rate-limit: default
@@ -95,26 +100,44 @@
     tags: [notifications]
     summary: Aliran notifikasi SSE
     description: |
-      text/event-stream; event connected|heartbeat(30 dtk)|notification.created(broadcast)|notification.read(pribadi);
-      format `event:<type>\nid:<n>\ndata:<json>\n\n`; header X-Accel-Buffering:no; registry in-memory (single-instance).
+      Server-Sent Events tanpa envelope; tanpa rate limit. Header respons (NestJS `SseStream`):
+      `Content-Type: text/event-stream`, `Cache-Control: private, no-cache, no-store, must-revalidate,
+      max-age=0, no-transform`, `Connection: keep-alive`, `Pragma: no-cache`, `Expire: 0` (ejaan legacy),
+      `X-Accel-Buffering: no` (+ `X-Request-Id`). Setelah header dikirim satu baris kosong (`\n`), lalu
+      tiap event `event: <type>\nid: <n>\ndata: <json>\n\n` (`id` naik per koneksi mulai 1).
+      
+      Payload `data` (JSON) per `type`:
+      - `connected` (sekali saat terhubung) & `heartbeat` (tiap `NOTIFICATION_STREAM_HEARTBEAT_MS`, 30 dtk):
+        `{"type": "<type>", "timestamp": "<ISO>"}`.
+      - `notification.created` (broadcast ke semua koneksi): `{"type": "notification.created",
+        "notification_id": <int>, "resource_type": <string|null>, "resource_id": <int|null>, "timestamp": "<ISO>"}`.
+      - `notification.read` (hanya koneksi user yang menandai baca / baca semua):
+        `{"type": "notification.read", "timestamp": "<ISO>"}`.
+      
+      Registry in-memory (instans tunggal). Tanpa sesi → 401 JSON berenvelope sebelum stream dibuka.
     x-module: notifications
     x-permission: notifications.read
     x-rate-limit: exempt
-    x-cache-control: no-store
+    x-cache-control: private, no-cache, no-store, must-revalidate, max-age=0, no-transform
     x-legacy:
       method: GET
       path: /api/v1/admin/notifications/stream
-      changes: Sama persis (SSE tanpa envelope).
+      changes: "Sama (SSE tanpa envelope, header & format NestJS SseStream)."
     security: [{ sessionCookie: [] }]
     responses:
       '200':
-        description: Aliran event.
+        description: Aliran event (koneksi tetap terbuka).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+          Cache-Control: { schema: { type: string, const: 'private, no-cache, no-store, must-revalidate, max-age=0, no-transform' } }
+          Connection: { schema: { type: string, const: keep-alive } }
+          Pragma: { schema: { type: string, const: no-cache } }
+          Expire: { description: Ejaan persis legacy (bukan `Expires`)., schema: { type: string, const: '0' } }
+          X-Accel-Buffering: { schema: { type: string, const: 'no' } }
         content:
           text/event-stream:
             schema: { type: string }
-            example: "event:connected\nid:1\ndata:{\"timestamp\":\"2026-05-12T08:30:00.000Z\"}\n\n"
+            example: "\nevent: connected\nid: 1\ndata: {\"type\":\"connected\",\"timestamp\":\"2026-05-12T08:30:00.000Z\"}\n\nevent: notification.created\nid: 2\ndata: {\"type\":\"notification.created\",\"notification_id\":7,\"resource_type\":\"inquiry\",\"resource_id\":12,\"timestamp\":\"2026-05-12T08:30:05.000Z\"}\n\n"
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
 /api/v1/admin/notifications/{id}/read:
@@ -122,6 +145,8 @@
     operationId: readNotification
     tags: [notifications]
     summary: Tandai notifikasi dibaca
+    description: |
+      Tandai dibaca untuk user sesi (idempoten; `read_at` diperbarui). Notifikasi tidak ada/kedaluwarsa → 404 "Notifikasi tidak ditemukan.". Mengirim event SSE `notification.read` ke koneksi user ini; mengembalikan jumlah belum dibaca.
     x-module: notifications
     x-permission: notifications.read
     x-rate-limit: default
@@ -134,8 +159,8 @@
     parameters:
       - $ref: '../components/parameters.yaml#/IdPath'
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Berhasil (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -151,7 +176,7 @@
               success: true
               message: Notifikasi ditandai dibaca.
               data: { unread_count: 2 }
-      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '400': { $ref: '../components/responses.yaml#/ValidationError' }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
       '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '404': { $ref: '../components/responses.yaml#/NotFound' }
@@ -161,7 +186,8 @@
     operationId: readAllNotifications
     tags: [notifications]
     summary: Tandai semua notifikasi dibaca
-    description: Maks 500 ditandai.
+    description: |
+      Tandai dibaca hingga 500 notifikasi aktif yang belum dibaca user sesi; `unread_count` selalu 0 di respons (legacy tidak menghitung ulang). Mengirim event SSE `notification.read`.
     x-module: notifications
     x-permission: notifications.read
     x-rate-limit: default
@@ -172,8 +198,8 @@
       changes: Tidak ada perubahan bentuk data selain envelope v1.
     security: [{ sessionCookie: [], csrfHeader: [] }]
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Berhasil (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:

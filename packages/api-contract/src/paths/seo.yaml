@@ -4,7 +4,8 @@
     operationId: getRobotsTxt
     tags: [site]
     summary: Ambil robots.txt
-    description: text/plain; melarang /admin, /login, /api/, /internal/ + daftar sitemap.
+    description: |
+      `Content-Type: text/plain; charset=utf-8`, tanpa envelope. Isi persis (baris dipisah `\n`, diakhiri `\n`; `<PUBLIC_SITE_URL>` tanpa `/` akhir).
     x-module: site
     x-permission: null
     x-rate-limit: default
@@ -12,24 +13,29 @@
     x-legacy:
       method: GET
       path: /robots.txt
-      changes: Sama persis (text/plain, tanpa envelope).
+      changes: "Sama persis (text/plain, tanpa envelope)."
     security: []
     responses:
       '200':
         description: Berhasil.
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+          Cache-Control: { $ref: '../components/headers.yaml#/CacheControl' }
         content:
           text/plain:
             schema: { type: string }
-            example: "User-agent: *\nDisallow: /admin\nDisallow: /login\nDisallow: /api/\nDisallow: /internal/\nSitemap: https://indobraga.com/sitemap.xml\n"
+            example: "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /login\nDisallow: /api/\nDisallow: /internal/\n\nSitemap: https://indobraga.com/sitemap.xml\n"
       '429': { $ref: '../components/responses.yaml#/RateLimited' }
 /sitemap.xml:
   get:
     operationId: getSitemapXml
     tags: [site]
     summary: Ambil sitemap.xml
-    description: application/xml; 6 halaman statis + /berita/<slug> (lastmod = updatedAt).
+    description: |
+      `Content-Type: application/xml; charset=utf-8`, tanpa envelope. Baris dipisah `\n` dengan indent 2/4
+      spasi, diakhiri `\n`. Urutan: `/` (priority 1.0), `/portfolio`, `/fasilitas` (0.8), `/galeri`,
+      `/berita`, `/kontak` (0.7) — tanpa `lastmod` — lalu setiap berita `published` (published_at desc,
+      id desc) `/berita/<slug>` dengan `lastmod` = `updated_at` ISO dan priority 0.6. `loc` di-escape XML.
     x-module: site
     x-permission: null
     x-rate-limit: default
@@ -44,17 +50,23 @@
         description: Berhasil.
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
+          Cache-Control: { $ref: '../components/headers.yaml#/CacheControl' }
         content:
           application/xml:
             schema: { type: string }
-            example: "<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"><url><loc>https://indobraga.com/</loc></url></urlset>"
+            example: "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n  <url>\n    <loc>https://indobraga.com/</loc>\n    <priority>1.0</priority>\n  </url>\n  <url>\n    <loc>https://indobraga.com/portfolio</loc>\n    <priority>0.8</priority>\n  </url>\n  <url>\n    <loc>https://indobraga.com/fasilitas</loc>\n    <priority>0.8</priority>\n  </url>\n  <url>\n    <loc>https://indobraga.com/galeri</loc>\n    <priority>0.7</priority>\n  </url>\n  <url>\n    <loc>https://indobraga.com/berita</loc>\n    <priority>0.7</priority>\n  </url>\n  <url>\n    <loc>https://indobraga.com/kontak</loc>\n    <priority>0.7</priority>\n  </url>\n  <url>\n    <loc>https://indobraga.com/berita/tips-memilih-kemasan</loc>\n    <lastmod>2026-05-12T08:30:00.000Z</lastmod>\n    <priority>0.6</priority>\n  </url>\n</urlset>\n"
       '429': { $ref: '../components/responses.yaml#/RateLimited' }
 /api/v1/public/seo/{route}:
   get:
     operationId: getPublicSeoByRoute
     tags: [site]
     summary: Ambil SEO legacy per route (alias)
-    description: Alias yang dipertahankan; frontend baru memakai GET /public/seo?path. Route home|portfolio|fasilitas|galeri|berita|kontak|berita:<slug>.
+    description: |
+      Alias legacy; frontend baru memakai `GET /public/seo?path`. `route` di-trim & dibuang `/` di
+      ujung (kosong → `home`): `home|portfolio|fasilitas|galeri|berita|kontak|berita:<slug>`. Route lain →
+      404 "SEO route tidak ditemukan."; berita tidak ada → 404 "Berita tidak ditemukan."; pengaturan
+      situs belum ada → 404 "Pengaturan website belum tersedia.". `home` = seo_title ?? brand /
+      seo_description ?? legal_name; route lain memakai judul/deskripsi tetap berakhiran `- <brand>`.
     x-module: site
     x-permission: null
     x-rate-limit: default
@@ -68,6 +80,7 @@
       - name: route
         in: path
         required: true
+        description: Maks 190 karakter (legacy `SeoRouteParamDto`; lebih → 400 `VALIDATION_ERROR`).
         schema: { type: string, maxLength: 190 }
     responses:
       '200':

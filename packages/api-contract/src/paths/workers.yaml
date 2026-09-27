@@ -4,7 +4,11 @@
     operationId: tickRevalidation
     tags: [site]
     summary: Tick revalidasi cache
-    description: Pindahkan 50 event PENDING→PROCESSING→COMPLETED; mengembalikan cache_keys distinct. Tidak memanggil URL eksternal.
+    description: |
+      Header `x-internal-worker-secret` (salah/tidak ada → 401); tanpa CSRF. v1 (BC-12): tidak ada tabel
+      event revalidation — tick ini menjadi "flush cache" operasional untuk cache in-process payload
+      publik & SEO; `processed` = jumlah kunci cache yang di-invalidasi, `cache_keys` = kunci distinct.
+      Legacy: memindahkan ≤ 50 event PENDING → COMPLETED tanpa efek apa pun.
     x-module: site
     x-permission: null
     x-rate-limit: default
@@ -12,11 +16,11 @@
     x-legacy:
       method: POST
       path: /api/v1/internal/revalidation/tick
-      changes: Tidak ada perubahan bentuk data selain envelope v1.
+      changes: "Bentuk respons sama; semantik berubah (BC-12): mem-flush cache in-process, bukan menandai event revalidation."
     security: [{ workerSecret: [] }]
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Berhasil (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -33,14 +37,19 @@
               message: Data berhasil diambil.
               data: { processed: 3, cache_keys: [public:home, public:portfolio:list] }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
-      '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }
 /api/v1/internal/workers/notifications/tick:
   post:
     operationId: tickNotifications
     tags: [notifications]
     summary: Tick worker notifikasi email
-    description: Klaim ≤20 job PENDING→PROCESSING; backoff linear attempt×60 dtk maks 3; tanpa scheduler in-app (cron tiap menit); tanpa recovery PROCESSING macet.
+    description: |
+      Header `x-internal-worker-secret` (salah/tidak ada → 401); tanpa CSRF. Pemicu manual satu batch
+      worker email notifikasi: klaim ≤ `NOTIFICATION_WORKER_BATCH_SIZE` (20) job pending (PENDING →
+      PROCESSING), maks `NOTIFICATION_WORKER_MAX_ATTEMPTS` (3) percobaan, backoff `attempt × 60 dtk`.
+      v1: worker juga terjadwal in-app (`NOTIFICATION_WORKER_POLL_MS`) dan memulihkan job PROCESSING
+      macet (BC-02); mode mock berlaku (BC-03). Legacy: hanya berjalan lewat tick ini (cron eksternal),
+      tanpa pemulihan job macet.
     x-module: notifications
     x-permission: null
     x-rate-limit: default
@@ -48,11 +57,11 @@
     x-legacy:
       method: POST
       path: /api/v1/internal/workers/notifications/tick
-      changes: Tidak ada perubahan bentuk data selain envelope v1.
+      changes: "Bentuk respons sama. Worker kini juga terjadwal in-app + pemulihan job macet (BC-02) dan mode mock berlaku untuk email notifikasi (BC-03)."
     security: [{ workerSecret: [] }]
     responses:
-      '200':
-        description: Berhasil.
+      '201':
+        description: Berhasil (201, paritas legacy).
         headers:
           X-Request-Id: { $ref: '../components/headers.yaml#/XRequestId' }
         content:
@@ -69,5 +78,4 @@
               message: Data berhasil diambil.
               data: { processed: 5, sent: 4, failed: 1, retried: 0 }
       '401': { $ref: '../components/responses.yaml#/Unauthenticated' }
-      '403': { $ref: '../components/responses.yaml#/Forbidden' }
       '429': { $ref: '../components/responses.yaml#/RateLimited' }

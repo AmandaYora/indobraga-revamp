@@ -11,7 +11,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Daftar kontak marketing */
+        /**
+         * Daftar kontak marketing
+         * @description List offset, urut last_interaction_at desc, created_at desc, id desc. `limit` > 100 TIDAK ditolak — di-clamp ke 100 (`meta.limit` = 100; legacy `ListAudienceQueryDto` tanpa `@Max`).
+         */
         get: operations["listAudienceContacts"];
         put?: never;
         post?: never;
@@ -30,7 +33,12 @@ export interface paths {
         };
         /**
          * Ekspor audiens CSV
-         * @description text/csv attachment indobraga-audience.csv; BOM UTF-8, CRLF, semua sel quoted; maks 10.000 baris.
+         * @description CSV tanpa envelope, maks 10.000 baris (urut last_interaction_at desc, created_at desc, id desc).
+         *     Header respons: `Content-Type: text/csv; charset=utf-8`, `Content-Disposition: attachment;
+         *     filename="indobraga-audience.csv"` (+ `Cache-Control: no-store`). Body: BOM UTF-8 (`\uFEFF`), baris
+         *     dipisah CRLF (`\r\n`) termasuk setelah baris terakhir, setiap sel di-quote (`"` di-escape `""`).
+         *     Kolom: Nama, Email, Telepon, Perusahaan, Sumber, Status, Consent, Interaksi Terakhir, Dibuat
+         *     (nilai enum lowercase; tanggal ISO 8601 UTC lengkap; null → string kosong).
          */
         get: operations["exportAudienceCsv"];
         put?: never;
@@ -48,7 +56,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Pratinjau audiens */
+        /**
+         * Pratinjau audiens
+         * @description Ringkasan audiens untuk draf kampanye. Filter `status` divalidasi tetapi diabaikan (total dihitung dari `q`/`source`; eligible = kontak `active`).
+         */
         get: operations["previewAudience"];
         put?: never;
         post?: never;
@@ -67,7 +78,7 @@ export interface paths {
         };
         /**
          * Ringkasan dashboard admin
-         * @description Total + 5 inquiry, 5 whatsapp-lead, 5 kampanye terbaru.
+         * @description Total + 5 inquiry, 5 prospek WhatsApp (belum diarsip) dan 5 kampanye terbaru dalam bentuk ringkas.
          */
         get: operations["getDashboard"];
         put?: never;
@@ -87,7 +98,7 @@ export interface paths {
         };
         /**
          * Daftar akun email
-         * @description Secret tidak pernah dikembalikan.
+         * @description List offset, urut created_at desc, id desc. `q` (di-trim) mencari email, display_name, smtp_host, smtp_username. Secret tidak pernah dikembalikan.
          */
         get: operations["listEmailAccounts"];
         put?: never;
@@ -109,7 +120,10 @@ export interface paths {
         put?: never;
         /**
          * Buat URL OAuth Google
-         * @description State base64url(JSON{nonce,admin_user_id,exp}).HMAC, disimpan sha256 hex, 10 menit sekali pakai.
+         * @description Body opsional. State = base64url(JSON{nonce, admin_user_id, exp}) + "." + base64url(HMAC-SHA256
+         *     SESSION_SECRET); disimpan sebagai sha256 hex, berlaku 10 menit, sekali pakai. URL: scope `openid
+         *     email https://www.googleapis.com/auth/gmail.send`, `access_type=offline`, `prompt=consent`,
+         *     `login_hint` = `email_hint`.
          */
         post: operations["getGoogleOAuthUrl"];
         delete?: never;
@@ -129,7 +143,8 @@ export interface paths {
         put?: never;
         /**
          * Buat/upsert akun SMTP
-         * @description Verifikasi dulu (422 bila gagal), lalu upsert pada (provider, email).
+         * @description Verifikasi dulu (gagal → 422 dengan pesan "<pesan> (<detail>)"), lalu upsert pada (provider smtp,
+         *     email lowercase) → status `connected`. Akun SMTP dengan email sama diperbarui (bukan 409).
          */
         post: operations["createSmtpAccount"];
         delete?: never;
@@ -149,7 +164,10 @@ export interface paths {
         put?: never;
         /**
          * Uji koneksi SMTP
-         * @description verify() dengan timeout SMTP_TEST_TIMEOUT_MS; security none ditolak di produksi.
+         * @description Verifikasi kredensial SMTP (nodemailer `verify()`, timeout `SMTP_TEST_TIMEOUT_MS`) tanpa menyimpan.
+         *     Gagal TIDAK error — 201 dengan `valid: false`. `smtp_security: none` di produksi selalu gagal
+         *     ("SMTP tanpa enkripsi tidak boleh digunakan di production."). Mode mock: host/username/password
+         *     mengandung "fail" → gagal.
          */
         post: operations["testSmtpAccount"];
         delete?: never;
@@ -170,14 +188,20 @@ export interface paths {
         post?: never;
         /**
          * Hapus akun email
-         * @description Hard-delete; 422 bila masih dirujuk kampanye (FK Restrict).
+         * @description Hard-delete. Masih dipakai kampanye → 422 "Akun ini dipakai oleh N pengiriman email sehingga
+         *     tidak bisa dihapus permanen. Nonaktifkan akun agar riwayat pengiriman tetap tersimpan.".
          */
         delete: operations["deleteEmailAccount"];
         options?: never;
         head?: never;
         /**
          * Ubah akun email
-         * @description Akun Google hanya display_name/status (400 bila lain); perubahan SMTP memicu re-verify → CONNECTED.
+         * @description Akun Google: hanya `display_name`/`status`; field SMTP atau `email_address` → 400 `BAD_REQUEST`
+         *     "Akun Google perlu dihubungkan ulang untuk mengubah aksesnya.". Akun SMTP: perubahan field SMTP /
+         *     `email_address` memicu verifikasi ulang (gagal → 422; password tersimpan dipakai bila
+         *     `smtp_password` tidak dikirim, tidak ada → 422) lalu status `connected` bila `status` tidak
+         *     dikirim. `status: connected` mengisi `connected_at` & menghapus `last_error`. Email bentrok dengan
+         *     akun SMTP lain → 409 `CONFLICT` "Akun pengirim dengan alamat email tersebut sudah ada.".
          */
         patch: operations["updateEmailAccount"];
         trace?: never;
@@ -191,7 +215,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Nonaktifkan akun email */
+        /**
+         * Nonaktifkan akun email
+         * @description Set status `disabled` (tanpa verifikasi). Tidak ada → 404.
+         */
         post: operations["disableEmailAccount"];
         delete?: never;
         options?: never;
@@ -210,7 +237,10 @@ export interface paths {
         put?: never;
         /**
          * Sambung ulang akun email
-         * @description Google → payload oauth-url baru; SMTP → verifikasi ulang kredensial tersimpan (NEEDS_RECONNECT bila gagal).
+         * @description Google → URL OAuth baru (`{authorization_url, state_expires_at}`, sama dengan `oauth-url`).
+         *     SMTP → verifikasi ulang kredensial tersimpan: berhasil → `connected`; gagal → `needs_reconnect`
+         *     + `last_error` (tetap 201, `valid: false`). Konfigurasi SMTP tidak lengkap (host/port/password)
+         *     → 422 "Konfigurasi SMTP belum lengkap. Ubah akun dan lengkapi detail SMTP terlebih dahulu.".
          */
         post: operations["reconnectEmailAccount"];
         delete?: never;
@@ -228,7 +258,7 @@ export interface paths {
         };
         /**
          * Daftar kampanye email
-         * @description Status SENDING legacy diekspos sebagai processing.
+         * @description List offset, urut created_at desc, id desc. `q` (di-trim) mencari title, subject, email akun pengirim.
          */
         get: operations["listEmailCampaigns"];
         put?: never;
@@ -250,7 +280,10 @@ export interface paths {
         put?: never;
         /**
          * Buat draf kampanye manual
-         * @description Penerima 1–1000, dedup email lowercase; akun pengirim wajib CONNECTED (422).
+         * @description Draf manual. Penerima 1–1000 item, lalu di-dedup per email lowercase (hasil > batas → 422).
+         *     Akun pengirim wajib `connected` (422 "Akun pengirim harus sudah terhubung."). `body_html`
+         *     bermakna dipakai apa adanya, selain itu `body_text` dikonversi ke `<p>`; keduanya kosong → 422.
+         *     Variabel penerima dinormalisasi (lihat `RecipientInput.variables`). Batas body 5 MB (BC-06).
          */
         post: operations["createCampaignDraft"];
         delete?: never;
@@ -270,7 +303,9 @@ export interface paths {
         put?: never;
         /**
          * Buat draf dari audiens
-         * @description Hanya kontak ACTIVE.
+         * @description Penerima = kontak audiens `active` yang cocok filter (`q`, `source`; `status` diabaikan), urut
+         *     interaksi terakhir. Tidak ada → 422 "Tidak ada kontak aktif yang cocok dengan filter audience.";
+         *     > batas → 422; akun tidak `connected` atau body kosong → 422.
          */
         post: operations["createCampaignDraftFromAudience"];
         delete?: never;
@@ -288,7 +323,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Buat draf dari inquiry */
+        /**
+         * Buat draf dari inquiry
+         * @description Penerima = hasil filter Pesan Kontak (seperti preview). Tidak ada email valid → 422 "Tidak ada
+         *     Pesan Kontak dengan email valid yang cocok."; melebihi batas → 422; rentang tanggal terbalik,
+         *     akun tidak `connected`, atau body kosong → 422.
+         */
         post: operations["createCampaignDraftFromInquiries"];
         delete?: never;
         options?: never;
@@ -305,7 +345,10 @@ export interface paths {
         };
         /**
          * Pratinjau penerima dari inquiry
-         * @description Batas hari Asia/Jakarta +07:00; limit 1000 (422 bila over).
+         * @description Analisis penerima dari Pesan Kontak (legacy `InquiryRecipientFilterDto`): maks 10.000 inquiry
+         *     terbaru yang belum diarsip; tanpa `status` → semua kecuali `spam`. Email di-trim/lowercase,
+         *     invalid & duplikat dihitung terpisah. Melebihi batas TIDAK error — ditandai `over_limit`.
+         *     `date_from` > `date_to` → 422.
          */
         get: operations["previewInquiryRecipients"];
         put?: never;
@@ -323,7 +366,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Detail kampanye email */
+        /**
+         * Detail kampanye email
+         * @description Tidak ada → 404 `NOT_FOUND` "Email massal tidak ditemukan.".
+         */
         get: operations["getEmailCampaign"];
         put?: never;
         post?: never;
@@ -332,7 +378,11 @@ export interface paths {
         head?: never;
         /**
          * Ubah draf kampanye
-         * @description Hanya draf (422 bila bukan); recipients mengganti semua.
+         * @description Hanya kampanye `draft` (selain itu → 422 "Hanya draf email yang bisa diubah."). `email_account_id`
+         *     wajib akun `connected` (422). `recipients` dikirim → semua penerima diganti (dedup, dinormalisasi
+         *     seperti draf) dan hitungan di-reset; > `EMAIL_CAMPAIGN_RECIPIENT_MAX` → 422. Body HTML dihitung
+         *     ulang bila `body_text`/`body_html` dikirim (keduanya kosong → 422). Field string TIDAK di-trim
+         *     (legacy `UpdateCampaignDto` tanpa Transform). Batas body 5 MB (BC-06).
          */
         patch: operations["updateEmailCampaign"];
         trace?: never;
@@ -346,7 +396,7 @@ export interface paths {
         };
         /**
          * Daftar log kirim kampanye
-         * @description Hanya super_admin (email_campaign_logs.read).
+         * @description Hanya `super_admin` (`email_campaign_logs.read`). List offset, urut created_at desc, id desc. Kampanye tidak ada → 404.
          */
         get: operations["listCampaignLogs"];
         put?: never;
@@ -364,7 +414,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Daftar penerima kampanye */
+        /**
+         * Daftar penerima kampanye
+         * @description List offset, urut created_at asc, id asc. `q` (di-trim) mencari email & name. Kampanye tidak ada → 404.
+         */
         get: operations["listCampaignRecipients"];
         put?: never;
         post?: never;
@@ -383,7 +436,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Kirim ulang penerima gagal */
+        /**
+         * Kirim ulang penerima gagal
+         * @description Antre ulang HANYA penerima `failed` (status apa pun kampanyenya). Akun pengirim tidak `connected`
+         *     → 422; tidak ada penerima gagal → 422 "Tidak ada penerima gagal yang bisa dikirim ulang.". Kampanye
+         *     → `pending` dengan hitungan dihitung ulang.
+         */
         post: operations["resendFailedEmailCampaign"];
         delete?: never;
         options?: never;
@@ -402,7 +460,9 @@ export interface paths {
         put?: never;
         /**
          * Kirim kampanye
-         * @description PENDING + reset penerima ke QUEUED; drain fire-and-forget.
+         * @description Hanya `draft` (422), akun pengirim wajib `connected` (422), minimal satu penerima (422). Status →
+         *     `pending`, semua penerima di-reset ke `queued`; pengiriman dipicu segera (fire-and-forget) bila
+         *     worker in-app aktif (`EMAIL_WORKER_POLL_MS` > 0).
          */
         post: operations["sendEmailCampaign"];
         delete?: never;
@@ -418,12 +478,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Daftar template email */
+        /**
+         * Daftar template email
+         * @description List offset (default 50, maks 100), urut updated_at desc, id desc. `q` (di-trim) mencari name & subject.
+         */
         get: operations["listEmailTemplates"];
         put?: never;
         /**
          * Buat template email
-         * @description Mode html butuh body_html; mode text butuh body_text (422 bila tidak).
+         * @description Mode `html` butuh `body_html` non-kosong (422 "Isi email (HTML) wajib diisi."); mode `text` butuh `body_text` non-kosong (422 "Isi email wajib diisi."). Template tidak dirender server-side.
          */
         post: operations["createEmailTemplate"];
         delete?: never;
@@ -444,12 +507,15 @@ export interface paths {
         post?: never;
         /**
          * Hapus template email
-         * @description Hard-delete; template tidak dirender server-side.
+         * @description Hard-delete (tidak dirujuk kampanye). Tidak ada → 404.
          */
         delete: operations["deleteEmailTemplate"];
         options?: never;
         head?: never;
-        /** Ubah template email */
+        /**
+         * Ubah template email
+         * @description Ubah parsial; body digabung dengan nilai tersimpan lalu divalidasi seperti create (422). Tidak ada → 404 "Template email tidak ditemukan.".
+         */
         patch: operations["updateEmailTemplate"];
         trace?: never;
     };
@@ -462,13 +528,13 @@ export interface paths {
         };
         /**
          * Daftar item galeri
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta.
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut sort_order asc, id asc. Pencarian `q`: caption (+ filter type). Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listGalleryItems"];
         put?: never;
         /**
          * Buat item galeri
-         * @description Buat item galeri baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak).
+         * @description Buat item galeri baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …". Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`.
          */
         post: operations["createGalleryItem"];
         delete?: never;
@@ -492,7 +558,7 @@ export interface paths {
         head?: never;
         /**
          * Urutkan item galeri
-         * @description Urutkan item galeri dalam satu transaksi (items min 1).
+         * @description Set `sort_order` beberapa item galeri dalam satu transaksi (items min 1). Id yang tidak ada → transaksi batal dan legacy mengembalikan 500 `INTERNAL_ERROR` (error Prisma P2025 tidak ditangkap).
          */
         patch: operations["reorderGalleryItems"];
         trace?: never;
@@ -506,21 +572,21 @@ export interface paths {
         };
         /**
          * Detail item galeri
-         * @description Detail item galeri termasuk pratinjau media tersemat.
+         * @description Detail item galeri (termasuk yang diarsip).
          */
         get: operations["getGalleryItem"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen item galeri
-         * @description Hapus permanen item galeri + media tak terpakai (cleanup_failed_media_count).
+         * @description Hapus permanen item galeri, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request).
          */
         delete: operations["deleteGalleryItem"];
         options?: never;
         head?: never;
         /**
          * Ubah item galeri
-         * @description Ubah parsial item galeri; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial item galeri; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Mengembalikan item terbaru.
          */
         patch: operations["updateGalleryItem"];
         trace?: never;
@@ -540,7 +606,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan item galeri
-         * @description Arsipkan item galeri. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan item galeri: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archiveGalleryItem"];
         trace?: never;
@@ -560,7 +626,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status item galeri
-         * @description Ubah status (draft|published|inactive). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`). `published` → `published_at` = now.
          */
         patch: operations["updateGalleryItemStatus"];
         trace?: never;
@@ -580,7 +646,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip item galeri
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchiveGalleryItem"];
         trace?: never;
@@ -594,13 +660,13 @@ export interface paths {
         };
         /**
          * Daftar hero
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta.
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut id desc. Pencarian `q`: title, subtitle. Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listHeroSections"];
         put?: never;
         /**
          * Buat hero
-         * @description Buat hero baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak).
+         * @description Buat hero baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …".
          */
         post: operations["createHero"];
         delete?: never;
@@ -618,13 +684,13 @@ export interface paths {
         };
         /**
          * Daftar slide hero
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta.
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut sort_order asc, id asc. Pencarian `q`: title, label. Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listHeroSlides"];
         put?: never;
         /**
          * Buat slide hero
-         * @description Buat slide hero baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak).
+         * @description Buat slide hero baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …". Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Belum ada hero section → 422.
          */
         post: operations["createHeroSlide"];
         delete?: never;
@@ -648,7 +714,7 @@ export interface paths {
         head?: never;
         /**
          * Urutkan slide hero
-         * @description Urutkan slide hero dalam satu transaksi (items min 1).
+         * @description Set `sort_order` beberapa slide hero dalam satu transaksi (items min 1). Id yang tidak ada → transaksi batal dan legacy mengembalikan 500 `INTERNAL_ERROR` (error Prisma P2025 tidak ditangkap).
          */
         patch: operations["reorderHeroSlides"];
         trace?: never;
@@ -662,21 +728,21 @@ export interface paths {
         };
         /**
          * Detail slide hero
-         * @description Detail slide hero termasuk pratinjau media tersemat.
+         * @description Detail slide hero (termasuk yang diarsip).
          */
         get: operations["getHeroSlide"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen slide hero
-         * @description Hapus permanen slide hero + media tak terpakai (cleanup_failed_media_count).
+         * @description Hapus permanen slide hero, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request).
          */
         delete: operations["deleteHeroSlide"];
         options?: never;
         head?: never;
         /**
          * Ubah slide hero
-         * @description Ubah parsial slide hero; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial slide hero; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Mengembalikan item terbaru.
          */
         patch: operations["updateHeroSlide"];
         trace?: never;
@@ -696,7 +762,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan slide hero
-         * @description Arsipkan slide hero. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan slide hero: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archiveHeroSlide"];
         trace?: never;
@@ -716,7 +782,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status slide hero
-         * @description Ubah status (draft|published|inactive). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`).
          */
         patch: operations["updateHeroSlideStatus"];
         trace?: never;
@@ -736,7 +802,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip slide hero
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchiveHeroSlide"];
         trace?: never;
@@ -750,21 +816,21 @@ export interface paths {
         };
         /**
          * Detail hero
-         * @description Detail hero termasuk pratinjau media tersemat. Termasuk slides[].
+         * @description Detail hero (termasuk yang diarsip). Menyertakan `slides[]` (semua slide hero ini beserta `media_file`).
          */
         get: operations["getHero"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen hero
-         * @description Hapus permanen hero + media tak terpakai (cleanup_failed_media_count).
+         * @description Hapus permanen hero, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request).
          */
         delete: operations["deleteHero"];
         options?: never;
         head?: never;
         /**
          * Ubah hero
-         * @description Ubah parsial hero; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial hero; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Mengembalikan hero tanpa `slides`.
          */
         patch: operations["updateHero"];
         trace?: never;
@@ -784,7 +850,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan hero
-         * @description Arsipkan hero. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan hero: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archiveHero"];
         trace?: never;
@@ -804,7 +870,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status hero
-         * @description Ubah status (draft|published|inactive). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`).
          */
         patch: operations["updateHeroStatus"];
         trace?: never;
@@ -824,7 +890,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip hero
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchiveHero"];
         trace?: never;
@@ -836,7 +902,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Daftar pesan kontak */
+        /**
+         * Daftar pesan kontak
+         * @description Pesan kontak belum diarsip, urut created_at desc, id desc. `q` (di-trim) mencari name, email, phone, company, message.
+         */
         get: operations["listInquiries"];
         put?: never;
         post?: never;
@@ -855,19 +924,22 @@ export interface paths {
         };
         /**
          * Detail pesan kontak
-         * @description 404 bila diarsip.
+         * @description Diarsip atau tidak ada → 404 `NOT_FOUND` "Pesan kontak tidak ditemukan.".
          */
         get: operations["getInquiry"];
         put?: never;
         post?: never;
         /**
          * Arsipkan pesan kontak
-         * @description Soft-archive; tanpa unarchive/hard-delete.
+         * @description Soft-archive (`archived_at` = now); tanpa unarchive/hard-delete. Sudah diarsip atau tidak ada → 404.
          */
         delete: operations["archiveInquiry"];
         options?: never;
         head?: never;
-        /** Ubah pesan kontak */
+        /**
+         * Ubah pesan kontak
+         * @description Ubah `status` dan/atau `internal_note`. Diarsip atau tidak ada → 404.
+         */
         patch: operations["updateInquiry"];
         trace?: never;
     };
@@ -880,13 +952,13 @@ export interface paths {
         };
         /**
          * Daftar mesin
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta.
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut sort_order asc, id asc. Pencarian `q`: name, description. Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listMachines"];
         put?: never;
         /**
          * Buat mesin
-         * @description Buat mesin baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak).
+         * @description Buat mesin baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …". Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Nilai unik bentrok → 409 `CONFLICT`.
          */
         post: operations["createMachine"];
         delete?: never;
@@ -910,7 +982,7 @@ export interface paths {
         head?: never;
         /**
          * Urutkan mesin
-         * @description Urutkan mesin dalam satu transaksi (items min 1).
+         * @description Set `sort_order` beberapa mesin dalam satu transaksi (items min 1). Id yang tidak ada → transaksi batal dan legacy mengembalikan 500 `INTERNAL_ERROR` (error Prisma P2025 tidak ditangkap).
          */
         patch: operations["reorderMachines"];
         trace?: never;
@@ -924,21 +996,21 @@ export interface paths {
         };
         /**
          * Detail mesin
-         * @description Detail mesin termasuk pratinjau media tersemat.
+         * @description Detail mesin (termasuk yang diarsip).
          */
         get: operations["getMachine"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen mesin
-         * @description Hapus permanen mesin + media tak terpakai (cleanup_failed_media_count).
+         * @description Hapus permanen mesin, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request).
          */
         delete: operations["deleteMachine"];
         options?: never;
         head?: never;
         /**
          * Ubah mesin
-         * @description Ubah parsial mesin; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial mesin; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Nilai unik bentrok → 409 `CONFLICT`. Mengembalikan item terbaru.
          */
         patch: operations["updateMachine"];
         trace?: never;
@@ -958,7 +1030,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan mesin
-         * @description Arsipkan mesin. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan mesin: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archiveMachine"];
         trace?: never;
@@ -978,7 +1050,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status mesin
-         * @description Ubah status (draft|published|inactive). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`).
          */
         patch: operations["updateMachineStatus"];
         trace?: never;
@@ -998,7 +1070,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip mesin
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchiveMachine"];
         trace?: never;
@@ -1012,13 +1084,18 @@ export interface paths {
         };
         /**
          * Daftar media
-         * @description Arsip/pending_delete/deleted/cleanup_failed disembunyikan by default.
+         * @description List offset (default 16, maks 100), urut created_at desc, id desc. Tanpa filter `compression_status`, media `archived`/`pending_delete`/`deleted`/`cleanup_failed` disembunyikan.
          */
         get: operations["listMedia"];
         put?: never;
         /**
          * Unggah media
-         * @description multipart file (memori, batas 100MB) + usage hero|partner|portfolio|machine|gallery|news|og|other. Gambar 10MB, video 100MB; sniff magic bytes; varian WebP 480/960/1600 q82.
+         * @description multipart/form-data, field file `file` (disimpan di memori; batas multer 100 MB → 413).
+         *     File tidak dikirim → 400 `VALIDATION_ERROR` "File wajib diunggah."; file di field lain → 400
+         *     `BAD_REQUEST`. Tipe dideteksi dari magic bytes (bukan ekstensi/MIME klien): tidak dikenali → 415.
+         *     Gambar > `UPLOAD_IMAGE_MAX_MB` (10) / video > `UPLOAD_VIDEO_MAX_MB` (100) → 413 "Ukuran
+         *     gambar|video melebihi batas N MB.". Gambar diproses sinkron (rotasi EXIF; varian WebP q82 lebar
+         *     480/960/1600) → `completed`; video disimpan apa adanya → `completed`.
          */
         post: operations["uploadMedia"];
         delete?: never;
@@ -1034,13 +1111,19 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Detail media */
+        /**
+         * Detail media
+         * @description Detail media (status apa pun). Tidak ada → 404 "Media tidak ditemukan.".
+         */
         get: operations["getMedia"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen media
-         * @description Ditolak 409 bila masih dirujuk atau cleanup storage gagal (CLEANUP_FAILED).
+         * @description Hapus permanen. Masih dirujuk konten/pengaturan → 409 `CONFLICT` "Media masih dipakai oleh
+         *     konten website. Lepaskan dari konten terlebih dahulu.". Penghapusan objek storage gagal → status
+         *     `cleanup_failed` dan 409 `MEDIA_CLEANUP_FAILED` "Media belum berhasil dihapus dari penyimpanan.
+         *     Coba lagi atau hubungi administrator.".
          */
         delete: operations["deleteMedia"];
         options?: never;
@@ -1063,7 +1146,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan media
-         * @description Ditolak 409 bila masih dirujuk.
+         * @description Arsipkan (`previous_status` = status saat ini; bila sudah archived dipertahankan, tanpa error). Masih dirujuk → 409 `CONFLICT`. Tidak ada → 404.
          */
         patch: operations["archiveMedia"];
         trace?: never;
@@ -1079,7 +1162,9 @@ export interface paths {
         put?: never;
         /**
          * Coba lagi media gagal
-         * @description Hanya bila FAILED; hanya menulis ulang pesan error (file asli tidak disimpan).
+         * @description Hanya untuk status `failed` (selain itu → 400 `BAD_REQUEST` "Media ini belum perlu diproses
+         *     ulang."). File asli tidak disimpan, sehingga hanya menulis ulang `error` = "File asli sudah tidak
+         *     tersedia. Silakan unggah ulang media ini." (status tetap `failed`).
          */
         post: operations["retryMedia"];
         delete?: never;
@@ -1103,7 +1188,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip media
-         * @description Kembali ke previousStatus atau COMPLETED.
+         * @description Kembalikan ke `previous_status` (fallback `completed`). Tidak sedang diarsip → 400 `BAD_REQUEST` "Media ini tidak berada di arsip.".
          */
         patch: operations["unarchiveMedia"];
         trace?: never;
@@ -1117,13 +1202,13 @@ export interface paths {
         };
         /**
          * Daftar berita
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta. Publish butuh konten non-kosong (422 bila kosong).
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut published_at desc, id desc. Pencarian `q`: title, slug, excerpt (+ filter category). Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listNewsArticles"];
         put?: never;
         /**
          * Buat berita
-         * @description Buat berita baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak). Publish butuh konten non-kosong (422 bila kosong).
+         * @description Buat berita baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …". Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Nilai unik bentrok → 409 `CONFLICT`. `status: published` dengan `content` kosong → 422.
          */
         post: operations["createNews"];
         delete?: never;
@@ -1141,21 +1226,21 @@ export interface paths {
         };
         /**
          * Detail berita
-         * @description Detail berita termasuk pratinjau media tersemat.
+         * @description Detail berita (termasuk yang diarsip).
          */
         get: operations["getNews"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen berita
-         * @description Hapus permanen berita + media tak terpakai (cleanup_failed_media_count).
+         * @description Hapus permanen berita, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request).
          */
         delete: operations["deleteNews"];
         options?: never;
         head?: never;
         /**
          * Ubah berita
-         * @description Ubah parsial berita; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial berita; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Nilai unik bentrok → 409 `CONFLICT`. Status efektif `published` dengan konten (baru atau tersimpan) kosong → 422. Mengembalikan item terbaru.
          */
         patch: operations["updateNews"];
         trace?: never;
@@ -1175,7 +1260,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan berita
-         * @description Arsipkan berita. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan berita: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archiveNews"];
         trace?: never;
@@ -1195,7 +1280,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status berita
-         * @description Ubah status (draft|published|inactive). Publish butuh konten non-kosong (422 bila kosong). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`). `published` → `published_at` = now.
          */
         patch: operations["updateNewsStatus"];
         trace?: never;
@@ -1215,7 +1300,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip berita
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchiveNews"];
         trace?: never;
@@ -1227,7 +1312,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Daftar notifikasi */
+        /**
+         * Daftar notifikasi
+         * @description List offset (default 10, maks 50), urut created_at desc, id desc; hanya notifikasi belum kedaluwarsa (`expires_at` null/masa depan). `read=unread` → belum dibaca user ini; `read` per user. `q` (di-trim) mencari title & message.
+         */
         get: operations["listNotifications"];
         put?: never;
         post?: never;
@@ -1248,7 +1336,7 @@ export interface paths {
         put?: never;
         /**
          * Tandai semua notifikasi dibaca
-         * @description Maks 500 ditandai.
+         * @description Tandai dibaca hingga 500 notifikasi aktif yang belum dibaca user sesi; `unread_count` selalu 0 di respons (legacy tidak menghitung ulang). Mengirim event SSE `notification.read`.
          */
         post: operations["readAllNotifications"];
         delete?: never;
@@ -1266,8 +1354,21 @@ export interface paths {
         };
         /**
          * Aliran notifikasi SSE
-         * @description text/event-stream; event connected|heartbeat(30 dtk)|notification.created(broadcast)|notification.read(pribadi);
-         *     format `event:<type>\nid:<n>\ndata:<json>\n\n`; header X-Accel-Buffering:no; registry in-memory (single-instance).
+         * @description Server-Sent Events tanpa envelope; tanpa rate limit. Header respons (NestJS `SseStream`):
+         *     `Content-Type: text/event-stream`, `Cache-Control: private, no-cache, no-store, must-revalidate,
+         *     max-age=0, no-transform`, `Connection: keep-alive`, `Pragma: no-cache`, `Expire: 0` (ejaan legacy),
+         *     `X-Accel-Buffering: no` (+ `X-Request-Id`). Setelah header dikirim satu baris kosong (`\n`), lalu
+         *     tiap event `event: <type>\nid: <n>\ndata: <json>\n\n` (`id` naik per koneksi mulai 1).
+         *
+         *     Payload `data` (JSON) per `type`:
+         *     - `connected` (sekali saat terhubung) & `heartbeat` (tiap `NOTIFICATION_STREAM_HEARTBEAT_MS`, 30 dtk):
+         *       `{"type": "<type>", "timestamp": "<ISO>"}`.
+         *     - `notification.created` (broadcast ke semua koneksi): `{"type": "notification.created",
+         *       "notification_id": <int>, "resource_type": <string|null>, "resource_id": <int|null>, "timestamp": "<ISO>"}`.
+         *     - `notification.read` (hanya koneksi user yang menandai baca / baca semua):
+         *       `{"type": "notification.read", "timestamp": "<ISO>"}`.
+         *
+         *     Registry in-memory (instans tunggal). Tanpa sesi → 401 JSON berenvelope sebelum stream dibuka.
          */
         get: operations["streamNotifications"];
         put?: never;
@@ -1285,7 +1386,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Jumlah notifikasi belum dibaca */
+        /**
+         * Jumlah notifikasi belum dibaca
+         * @description Jumlah notifikasi aktif (belum kedaluwarsa) yang belum dibaca user sesi.
+         */
         get: operations["getUnreadCount"];
         put?: never;
         post?: never;
@@ -1304,7 +1408,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Tandai notifikasi dibaca */
+        /**
+         * Tandai notifikasi dibaca
+         * @description Tandai dibaca untuk user sesi (idempoten; `read_at` diperbarui). Notifikasi tidak ada/kedaluwarsa → 404 "Notifikasi tidak ditemukan.". Mengirim event SSE `notification.read` ke koneksi user ini; mengembalikan jumlah belum dibaca.
+         */
         post: operations["readNotification"];
         delete?: never;
         options?: never;
@@ -1321,13 +1428,13 @@ export interface paths {
         };
         /**
          * Daftar partner
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta.
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut sort_order asc, id asc. Pencarian `q`: name (+ filter segment). Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listPartners"];
         put?: never;
         /**
          * Buat partner
-         * @description Buat partner baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak).
+         * @description Buat partner baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …". Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`.
          */
         post: operations["createPartner"];
         delete?: never;
@@ -1351,7 +1458,7 @@ export interface paths {
         head?: never;
         /**
          * Urutkan partner
-         * @description Urutkan partner dalam satu transaksi (items min 1).
+         * @description Set `sort_order` beberapa partner dalam satu transaksi (items min 1). Id yang tidak ada → transaksi batal dan legacy mengembalikan 500 `INTERNAL_ERROR` (error Prisma P2025 tidak ditangkap).
          */
         patch: operations["reorderPartners"];
         trace?: never;
@@ -1365,21 +1472,21 @@ export interface paths {
         };
         /**
          * Detail partner
-         * @description Detail partner termasuk pratinjau media tersemat.
+         * @description Detail partner (termasuk yang diarsip).
          */
         get: operations["getPartner"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen partner
-         * @description Hapus permanen partner + media tak terpakai (cleanup_failed_media_count).
+         * @description Hapus permanen partner, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request).
          */
         delete: operations["deletePartner"];
         options?: never;
         head?: never;
         /**
          * Ubah partner
-         * @description Ubah parsial partner; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial partner; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Mengembalikan item terbaru.
          */
         patch: operations["updatePartner"];
         trace?: never;
@@ -1399,7 +1506,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan partner
-         * @description Arsipkan partner. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan partner: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archivePartner"];
         trace?: never;
@@ -1419,7 +1526,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status partner
-         * @description Ubah status (draft|published|inactive). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`).
          */
         patch: operations["updatePartnerStatus"];
         trace?: never;
@@ -1439,7 +1546,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip partner
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchivePartner"];
         trace?: never;
@@ -1453,13 +1560,13 @@ export interface paths {
         };
         /**
          * Daftar kategori portofolio
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta.
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut sort_order asc, id asc. Pencarian `q`: name, slug. Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listPortfolioCategories"];
         put?: never;
         /**
          * Buat kategori portofolio
-         * @description Buat kategori portofolio baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak).
+         * @description Buat kategori portofolio baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …". Nilai unik bentrok → 409 `CONFLICT`.
          */
         post: operations["createPortfolioCategory"];
         delete?: never;
@@ -1483,7 +1590,7 @@ export interface paths {
         head?: never;
         /**
          * Urutkan kategori portofolio
-         * @description Urutkan kategori portofolio dalam satu transaksi (items min 1).
+         * @description Set `sort_order` beberapa kategori portofolio dalam satu transaksi (items min 1). Id yang tidak ada → transaksi batal dan legacy mengembalikan 500 `INTERNAL_ERROR` (error Prisma P2025 tidak ditangkap).
          */
         patch: operations["reorderPortfolioCategories"];
         trace?: never;
@@ -1497,21 +1604,21 @@ export interface paths {
         };
         /**
          * Detail kategori portofolio
-         * @description Detail kategori portofolio termasuk pratinjau media tersemat.
+         * @description Detail kategori portofolio (termasuk yang diarsip).
          */
         get: operations["getPortfolioCategory"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen kategori portofolio
-         * @description Hapus permanen kategori portofolio + media tak terpakai (cleanup_failed_media_count). Hapus kategori yang masih dipakai portofolio → 409.
+         * @description Hapus permanen kategori portofolio, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request). Kategori yang masih dipakai portofolio mana pun → 409 `CONFLICT`.
          */
         delete: operations["deletePortfolioCategory"];
         options?: never;
         head?: never;
         /**
          * Ubah kategori portofolio
-         * @description Ubah parsial kategori portofolio; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial kategori portofolio; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Nilai unik bentrok → 409 `CONFLICT`. Mengembalikan item terbaru.
          */
         patch: operations["updatePortfolioCategory"];
         trace?: never;
@@ -1531,7 +1638,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan kategori portofolio
-         * @description Arsipkan kategori portofolio. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan kategori portofolio: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archivePortfolioCategory"];
         trace?: never;
@@ -1551,7 +1658,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status kategori portofolio
-         * @description Ubah status (draft|published|inactive). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`).
          */
         patch: operations["updatePortfolioCategoryStatus"];
         trace?: never;
@@ -1571,7 +1678,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip kategori portofolio
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchivePortfolioCategory"];
         trace?: never;
@@ -1585,13 +1692,13 @@ export interface paths {
         };
         /**
          * Daftar portofolio
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta. Publish butuh ≥1 gambar dan kategori PUBLISHED (422 bila tidak).
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut sort_order asc, id asc. Pencarian `q`: title, category, nama kategori, description (+ filter category). Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listPortfolios"];
         put?: never;
         /**
          * Buat portofolio
-         * @description Buat portofolio baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak). Publish butuh ≥1 gambar dan kategori PUBLISHED (422 bila tidak).
+         * @description Buat portofolio baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …". Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Nilai unik bentrok → 409 `CONFLICT`. Kategori tidak ada/tidak `published`, atau `status: published` tanpa gambar → 422.
          */
         post: operations["createPortfolio"];
         delete?: never;
@@ -1615,7 +1722,7 @@ export interface paths {
         head?: never;
         /**
          * Urutkan portofolio
-         * @description Urutkan portofolio dalam satu transaksi (items min 1).
+         * @description Set `sort_order` beberapa portofolio dalam satu transaksi (items min 1). Id yang tidak ada → transaksi batal dan legacy mengembalikan 500 `INTERNAL_ERROR` (error Prisma P2025 tidak ditangkap).
          */
         patch: operations["reorderPortfolios"];
         trace?: never;
@@ -1629,21 +1736,21 @@ export interface paths {
         };
         /**
          * Detail portofolio
-         * @description Detail portofolio termasuk pratinjau media tersemat.
+         * @description Detail portofolio (termasuk yang diarsip).
          */
         get: operations["getPortfolio"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen portofolio
-         * @description Hapus permanen portofolio + media tak terpakai (cleanup_failed_media_count).
+         * @description Hapus permanen portofolio, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request).
          */
         delete: operations["deletePortfolio"];
         options?: never;
         head?: never;
         /**
          * Ubah portofolio
-         * @description Ubah parsial portofolio; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial portofolio; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Nilai unik bentrok → 409 `CONFLICT`. Status efektif `published` tanpa gambar atau kategori tidak `published`; `category_id` tidak valid → 422. Mengembalikan item terbaru.
          */
         patch: operations["updatePortfolio"];
         trace?: never;
@@ -1663,7 +1770,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan portofolio
-         * @description Arsipkan portofolio. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan portofolio: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archivePortfolio"];
         trace?: never;
@@ -1683,7 +1790,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status portofolio
-         * @description Ubah status (draft|published|inactive). Publish butuh ≥1 gambar dan kategori PUBLISHED (422 bila tidak). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`). `published` → `published_at` = now. Publish tanpa cover (`media_file_id`) atau kategori tidak `published` → 422.
          */
         patch: operations["updatePortfolioStatus"];
         trace?: never;
@@ -1703,7 +1810,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip portofolio
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchivePortfolio"];
         trace?: never;
@@ -1717,13 +1824,13 @@ export interface paths {
         };
         /**
          * Daftar kapasitas cetak
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta.
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut sort_order asc, id asc. Pencarian `q`: label, description. Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listPrintingCapacities"];
         put?: never;
         /**
          * Buat kapasitas cetak
-         * @description Buat kapasitas cetak baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak).
+         * @description Buat kapasitas cetak baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …". Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`.
          */
         post: operations["createPrintingCapacity"];
         delete?: never;
@@ -1747,7 +1854,7 @@ export interface paths {
         head?: never;
         /**
          * Urutkan kapasitas cetak
-         * @description Urutkan kapasitas cetak dalam satu transaksi (items min 1).
+         * @description Set `sort_order` beberapa kapasitas cetak dalam satu transaksi (items min 1). Id yang tidak ada → transaksi batal dan legacy mengembalikan 500 `INTERNAL_ERROR` (error Prisma P2025 tidak ditangkap).
          */
         patch: operations["reorderPrintingCapacities"];
         trace?: never;
@@ -1761,21 +1868,21 @@ export interface paths {
         };
         /**
          * Detail kapasitas cetak
-         * @description Detail kapasitas cetak termasuk pratinjau media tersemat.
+         * @description Detail kapasitas cetak (termasuk yang diarsip).
          */
         get: operations["getPrintingCapacity"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen kapasitas cetak
-         * @description Hapus permanen kapasitas cetak + media tak terpakai (cleanup_failed_media_count).
+         * @description Hapus permanen kapasitas cetak, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request).
          */
         delete: operations["deletePrintingCapacity"];
         options?: never;
         head?: never;
         /**
          * Ubah kapasitas cetak
-         * @description Ubah parsial kapasitas cetak; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial kapasitas cetak; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Mengembalikan item terbaru.
          */
         patch: operations["updatePrintingCapacity"];
         trace?: never;
@@ -1795,7 +1902,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan kapasitas cetak
-         * @description Arsipkan kapasitas cetak. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan kapasitas cetak: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archivePrintingCapacity"];
         trace?: never;
@@ -1815,7 +1922,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status kapasitas cetak
-         * @description Ubah status (draft|published|inactive). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`).
          */
         patch: operations["updatePrintingCapacityStatus"];
         trace?: never;
@@ -1835,7 +1942,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip kapasitas cetak
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchivePrintingCapacity"];
         trace?: never;
@@ -1849,13 +1956,13 @@ export interface paths {
         };
         /**
          * Daftar kapasitas produksi
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta.
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut sort_order asc, id asc. Pencarian `q`: product. Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listProductionCapacities"];
         put?: never;
         /**
          * Buat kapasitas produksi
-         * @description Buat kapasitas produksi baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak).
+         * @description Buat kapasitas produksi baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …".
          */
         post: operations["createProductionCapacity"];
         delete?: never;
@@ -1879,7 +1986,7 @@ export interface paths {
         head?: never;
         /**
          * Urutkan kapasitas produksi
-         * @description Urutkan kapasitas produksi dalam satu transaksi (items min 1).
+         * @description Set `sort_order` beberapa kapasitas produksi dalam satu transaksi (items min 1). Id yang tidak ada → transaksi batal dan legacy mengembalikan 500 `INTERNAL_ERROR` (error Prisma P2025 tidak ditangkap).
          */
         patch: operations["reorderProductionCapacities"];
         trace?: never;
@@ -1893,21 +2000,21 @@ export interface paths {
         };
         /**
          * Detail kapasitas produksi
-         * @description Detail kapasitas produksi termasuk pratinjau media tersemat.
+         * @description Detail kapasitas produksi (termasuk yang diarsip).
          */
         get: operations["getProductionCapacity"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen kapasitas produksi
-         * @description Hapus permanen kapasitas produksi + media tak terpakai (cleanup_failed_media_count).
+         * @description Hapus permanen kapasitas produksi, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request).
          */
         delete: operations["deleteProductionCapacity"];
         options?: never;
         head?: never;
         /**
          * Ubah kapasitas produksi
-         * @description Ubah parsial kapasitas produksi; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial kapasitas produksi; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Mengembalikan item terbaru.
          */
         patch: operations["updateProductionCapacity"];
         trace?: never;
@@ -1927,7 +2034,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan kapasitas produksi
-         * @description Arsipkan kapasitas produksi. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan kapasitas produksi: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archiveProductionCapacity"];
         trace?: never;
@@ -1947,7 +2054,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status kapasitas produksi
-         * @description Ubah status (draft|published|inactive). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`).
          */
         patch: operations["updateProductionCapacityStatus"];
         trace?: never;
@@ -1967,7 +2074,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip kapasitas produksi
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchiveProductionCapacity"];
         trace?: never;
@@ -1981,13 +2088,13 @@ export interface paths {
         };
         /**
          * Daftar keunggulan produksi
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta.
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut sort_order asc, id asc. Pencarian `q`: label. Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listProductionStrengths"];
         put?: never;
         /**
          * Buat keunggulan produksi
-         * @description Buat keunggulan produksi baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak).
+         * @description Buat keunggulan produksi baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …".
          */
         post: operations["createProductionStrength"];
         delete?: never;
@@ -2011,7 +2118,7 @@ export interface paths {
         head?: never;
         /**
          * Urutkan keunggulan produksi
-         * @description Urutkan keunggulan produksi dalam satu transaksi (items min 1).
+         * @description Set `sort_order` beberapa keunggulan produksi dalam satu transaksi (items min 1). Id yang tidak ada → transaksi batal dan legacy mengembalikan 500 `INTERNAL_ERROR` (error Prisma P2025 tidak ditangkap).
          */
         patch: operations["reorderProductionStrengths"];
         trace?: never;
@@ -2025,21 +2132,21 @@ export interface paths {
         };
         /**
          * Detail keunggulan produksi
-         * @description Detail keunggulan produksi termasuk pratinjau media tersemat.
+         * @description Detail keunggulan produksi (termasuk yang diarsip).
          */
         get: operations["getProductionStrength"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen keunggulan produksi
-         * @description Hapus permanen keunggulan produksi + media tak terpakai (cleanup_failed_media_count).
+         * @description Hapus permanen keunggulan produksi, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request).
          */
         delete: operations["deleteProductionStrength"];
         options?: never;
         head?: never;
         /**
          * Ubah keunggulan produksi
-         * @description Ubah parsial keunggulan produksi; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial keunggulan produksi; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Mengembalikan item terbaru.
          */
         patch: operations["updateProductionStrength"];
         trace?: never;
@@ -2059,7 +2166,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan keunggulan produksi
-         * @description Arsipkan keunggulan produksi. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan keunggulan produksi: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archiveProductionStrength"];
         trace?: never;
@@ -2079,7 +2186,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status keunggulan produksi
-         * @description Ubah status (draft|published|inactive). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`).
          */
         patch: operations["updateProductionStrengthStatus"];
         trace?: never;
@@ -2099,7 +2206,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip keunggulan produksi
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchiveProductionStrength"];
         trace?: never;
@@ -2113,13 +2220,13 @@ export interface paths {
         };
         /**
          * Daftar layanan
-         * @description List offset (page/limit default 10 maks 100, q, status, category, segment, type). Arsip disembunyikan kecuali status diminta.
+         * @description List offset (legacy `AdminListQueryDto`, default 10, maks 100). Urut sort_order asc, id asc. Pencarian `q`: name. Tanpa filter `status`, konten `archived` disembunyikan.
          */
         get: operations["listServices"];
         put?: never;
         /**
          * Buat layanan
-         * @description Buat layanan baru. Status default draft (kategori portofolio default published). Media rujukan wajib COMPLETED (422 bila tidak).
+         * @description Buat layanan baru. Field wajib kosong (setelah trim) → 400 `VALIDATION_ERROR` "Lengkapi bagian wajib: …".
          */
         post: operations["createService"];
         delete?: never;
@@ -2143,7 +2250,7 @@ export interface paths {
         head?: never;
         /**
          * Urutkan layanan
-         * @description Urutkan layanan dalam satu transaksi (items min 1).
+         * @description Set `sort_order` beberapa layanan dalam satu transaksi (items min 1). Id yang tidak ada → transaksi batal dan legacy mengembalikan 500 `INTERNAL_ERROR` (error Prisma P2025 tidak ditangkap).
          */
         patch: operations["reorderServices"];
         trace?: never;
@@ -2157,21 +2264,21 @@ export interface paths {
         };
         /**
          * Detail layanan
-         * @description Detail layanan termasuk pratinjau media tersemat.
+         * @description Detail layanan (termasuk yang diarsip).
          */
         get: operations["getService"];
         put?: never;
         post?: never;
         /**
          * Hapus permanen layanan
-         * @description Hapus permanen layanan + media tak terpakai (cleanup_failed_media_count).
+         * @description Hapus permanen layanan, lalu media yang dirujuknya dihapus bila tidak dipakai konten lain (gagal hapus storage dihitung di `cleanup_failed_media_count`, tidak menggagalkan request).
          */
         delete: operations["deleteService"];
         options?: never;
         head?: never;
         /**
          * Ubah layanan
-         * @description Ubah parsial layanan; galeri portofolio diganti atomik hanya bila dikirim. Mengembalikan item + MediaPreview.
+         * @description Ubah parsial layanan; field tidak dikirim tidak diubah, `null` pada field nullable mengosongkan kolom. Mengembalikan item terbaru.
          */
         patch: operations["updateService"];
         trace?: never;
@@ -2191,7 +2298,7 @@ export interface paths {
         head?: never;
         /**
          * Arsipkan layanan
-         * @description Arsipkan layanan. Gagal 400 bila sudah diarsip.
+         * @description Arsipkan layanan: `previous_status` = status saat ini, `status` = archived, `archived_at` = now. Sudah diarsip → 400 `BAD_REQUEST` "Konten ini sudah berada di arsip.".
          */
         patch: operations["archiveService"];
         trace?: never;
@@ -2211,7 +2318,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status layanan
-         * @description Ubah status (draft|published|inactive). published_at di-clamp ke now bila di masa depan; ditulis now saat publish (portofolio, galeri, berita).
+         * @description Set status `draft|published|inactive` (tanpa mengubah `previous_status`/`archived_at`).
          */
         patch: operations["updateServiceStatus"];
         trace?: never;
@@ -2231,7 +2338,7 @@ export interface paths {
         head?: never;
         /**
          * Batalkan arsip layanan
-         * @description Kembalikan dari arsip ke previous_status atau draft.
+         * @description Kembalikan ke `previous_status` (bila null/archived → `draft`); `previous_status` & `archived_at` dikosongkan. Tidak sedang diarsip → 400 `BAD_REQUEST` "Konten ini tidak berada di arsip.".
          */
         patch: operations["unarchiveService"];
         trace?: never;
@@ -2245,7 +2352,7 @@ export interface paths {
         };
         /**
          * Ambil pengaturan situs
-         * @description Pengaturan tunggal id=1 termasuk logo_url dkk.
+         * @description Pengaturan tunggal id=1. Baris belum ada → 404 `NOT_FOUND` "Pengaturan website tidak ditemukan.".
          */
         get: operations["getSiteSettings"];
         put?: never;
@@ -2255,7 +2362,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah pengaturan situs
-         * @description Ubah parsial pengaturan situs; media rujukan wajib COMPLETED.
+         * @description Ubah parsial (upsert id=1; bila baris belum ada dibuat dengan default legacy). Media rujukan tidak ada / belum `completed` → 400 `UNPROCESSABLE_ENTITY`. Mengembalikan pengaturan terbaru.
          */
         patch: operations["updateSiteSettings"];
         trace?: never;
@@ -2269,13 +2376,13 @@ export interface paths {
         };
         /**
          * Daftar user admin
-         * @description List offset user (content_editor tidak melihat super_admin).
+         * @description List offset, urut created_at desc, id desc. `search` (di-trim) mencari name & email. Viewer `content_editor` tidak melihat user `super_admin`.
          */
         get: operations["listUsers"];
         put?: never;
         /**
          * Buat user admin
-         * @description Email di-lowercase; bcrypt cost 12; 409 bila duplikat.
+         * @description Status awal `active`; bcrypt cost 12. `content_editor` membuat `super_admin` → 403. Email sudah dipakai → 409 `CONFLICT` "Email sudah digunakan.".
          */
         post: operations["createUser"];
         delete?: never;
@@ -2293,21 +2400,21 @@ export interface paths {
         };
         /**
          * Detail user admin
-         * @description Content_editor mendapat 404 untuk super_admin.
+         * @description Tidak ada, atau viewer `content_editor` melihat `super_admin` → 404 `NOT_FOUND` "Pengguna tidak ditemukan.".
          */
         get: operations["getUser"];
         put?: never;
         post?: never;
         /**
          * Nonaktifkan user admin
-         * @description Soft-disable + cabut sesi; tidak bisa menonaktifkan diri sendiri / super admin terakhir.
+         * @description Soft-disable (status `inactive`) + cabut semua sesi. 403 bila akun sendiri atau Super Admin aktif terakhir; `content_editor` → `super_admin` → 404.
          */
         delete: operations["disableUser"];
         options?: never;
         head?: never;
         /**
          * Ubah user admin
-         * @description Ganti nama/role/password; ganti password user lain mencabut sesinya.
+         * @description Ganti nama/role/password. 403 bila: `content_editor` memberi role `super_admin`; menurunkan role akun sendiri; menurunkan Super Admin aktif terakhir. `content_editor` mengubah `super_admin` → 404. Mengganti password user lain mencabut semua sesinya.
          */
         patch: operations["updateUser"];
         trace?: never;
@@ -2327,7 +2434,7 @@ export interface paths {
         head?: never;
         /**
          * Ubah status user admin
-         * @description Aktif/nonaktif; aturan proteksi sama dengan hapus.
+         * @description Aktif/nonaktif. Menonaktifkan: 403 bila akun sendiri atau Super Admin aktif terakhir; sesi user dicabut. `content_editor` → `super_admin` → 404.
          */
         patch: operations["updateUserStatus"];
         trace?: never;
@@ -2339,7 +2446,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Daftar prospek WhatsApp */
+        /**
+         * Daftar prospek WhatsApp
+         * @description Prospek belum diarsip, urut created_at desc, id desc. `q` (di-trim) mencari name, phone, message.
+         */
         get: operations["listWhatsappLeads"];
         put?: never;
         post?: never;
@@ -2356,15 +2466,24 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Detail prospek WhatsApp */
+        /**
+         * Detail prospek WhatsApp
+         * @description Diarsip atau tidak ada → 404 `NOT_FOUND` "Prospek WhatsApp tidak ditemukan.".
+         */
         get: operations["getWhatsappLead"];
         put?: never;
         post?: never;
-        /** Arsipkan prospek WhatsApp */
+        /**
+         * Arsipkan prospek WhatsApp
+         * @description Soft-archive (`archived_at` = now). Sudah diarsip atau tidak ada → 404.
+         */
         delete: operations["archiveWhatsappLead"];
         options?: never;
         head?: never;
-        /** Ubah prospek WhatsApp */
+        /**
+         * Ubah prospek WhatsApp
+         * @description Ubah `status` dan/atau `internal_note`. Diarsip atau tidak ada → 404.
+         */
         patch: operations["updateWhatsappLead"];
         trace?: never;
     };
@@ -2379,8 +2498,10 @@ export interface paths {
         put?: never;
         /**
          * Login admin
-         * @description Login dengan email & password; mengeset cookie sesi (httpOnly) dan cookie CSRF (non-httpOnly).
-         *     Rate limit ketat 5/60 dtk per IP.
+         * @description Login dengan email & password; status 200 (legacy `@HttpCode(200)`). Mengeset cookie sesi
+         *     `indobraga_admin_session` (httpOnly) dan cookie CSRF `indobraga_csrf` (non-httpOnly), masa
+         *     berlaku `ADMIN_SESSION_TTL_DAYS` (7) hari. Tanpa CSRF. User tidak ada / nonaktif / password
+         *     salah → 401 `UNAUTHENTICATED` "Email atau kata sandi belum sesuai.". Rate limit 5/60 dtk per IP.
          */
         post: operations["login"];
         delete?: never;
@@ -2400,7 +2521,8 @@ export interface paths {
         put?: never;
         /**
          * Logout admin
-         * @description Mencabut sesi dan membersihkan kedua cookie.
+         * @description Status 200 (legacy `@HttpCode(200)`). Wajib sesi valid (401) dan CSRF (403). Mencabut sesi
+         *     (`revoked_at`) lalu menghapus kedua cookie lewat dua header `Set-Cookie` kedaluwarsa.
          */
         post: operations["logout"];
         delete?: never;
@@ -2418,7 +2540,7 @@ export interface paths {
         };
         /**
          * Ambil user sesi
-         * @description Mengembalikan user dari sesi aktif.
+         * @description Mengembalikan user dari sesi aktif (sesi tidak ada/dicabut/kedaluwarsa/user nonaktif → 401).
          */
         get: operations["getSessionUser"];
         put?: never;
@@ -2461,7 +2583,10 @@ export interface paths {
         put?: never;
         /**
          * Tick revalidasi cache
-         * @description Pindahkan 50 event PENDING→PROCESSING→COMPLETED; mengembalikan cache_keys distinct. Tidak memanggil URL eksternal.
+         * @description Header `x-internal-worker-secret` (salah/tidak ada → 401); tanpa CSRF. v1 (BC-12): tidak ada tabel
+         *     event revalidation — tick ini menjadi "flush cache" operasional untuk cache in-process payload
+         *     publik & SEO; `processed` = jumlah kunci cache yang di-invalidasi, `cache_keys` = kunci distinct.
+         *     Legacy: memindahkan ≤ 50 event PENDING → COMPLETED tanpa efek apa pun.
          */
         post: operations["tickRevalidation"];
         delete?: never;
@@ -2481,7 +2606,11 @@ export interface paths {
         put?: never;
         /**
          * Tick worker kampanye email
-         * @description Klaim optimistis via updateMany; batch 50; tanpa throttle antar kirim.
+         * @description Pemicu manual worker kampanye (header `x-internal-worker-secret`; salah/tidak ada → 401). Worker
+         *     in-app legacy juga berjalan tiap `EMAIL_WORKER_POLL_MS`. Single-flight: bila drain lain sedang
+         *     berjalan → `status: idle` tanpa memproses. Sebelum klaim, lock kampanye/penerima yang lebih tua
+         *     dari `EMAIL_WORKER_STALE_MS` dilepas. Satu tick = satu batch (`EMAIL_WORKER_BATCH_SIZE`, 50) dari
+         *     satu kampanye; tanpa CSRF.
          */
         post: operations["tickEmailCampaigns"];
         delete?: never;
@@ -2501,7 +2630,12 @@ export interface paths {
         put?: never;
         /**
          * Tick worker notifikasi email
-         * @description Klaim ≤20 job PENDING→PROCESSING; backoff linear attempt×60 dtk maks 3; tanpa scheduler in-app (cron tiap menit); tanpa recovery PROCESSING macet.
+         * @description Header `x-internal-worker-secret` (salah/tidak ada → 401); tanpa CSRF. Pemicu manual satu batch
+         *     worker email notifikasi: klaim ≤ `NOTIFICATION_WORKER_BATCH_SIZE` (20) job pending (PENDING →
+         *     PROCESSING), maks `NOTIFICATION_WORKER_MAX_ATTEMPTS` (3) percobaan, backoff `attempt × 60 dtk`.
+         *     v1: worker juga terjadwal in-app (`NOTIFICATION_WORKER_POLL_MS`) dan memulihkan job PROCESSING
+         *     macet (BC-02); mode mock berlaku (BC-03). Legacy: hanya berjalan lewat tick ini (cron eksternal),
+         *     tanpa pemulihan job macet.
          */
         post: operations["tickNotifications"];
         delete?: never;
@@ -2519,7 +2653,17 @@ export interface paths {
         };
         /**
          * Callback OAuth Google (redirect)
-         * @description 302 ke ${PUBLIC_SITE_URL}/admin/email-accounts?connected=google&status=success|error&reason=oauth_denied|missing_code|invalid_state|provider_failed.
+         * @description Selalu 302 ke `<PUBLIC_SITE_URL>/admin/email-accounts?connected=google&status=success|error`
+         *     (+ `&reason=oauth_denied|missing_code|invalid_state|provider_failed` bila error), tanpa envelope.
+         *     `error` terisi → state dikonsumsi, reason `oauth_denied`; `code` kosong → `missing_code`; state
+         *     tidak valid/kedaluwarsa/terpakai → `invalid_state`; pertukaran token gagal → `provider_failed`.
+         *     Hanya `state` yang wajib (tidak ada → 400 `VALIDATION_ERROR` JSON).
+         *
+         *     **Parameter tak dikenal WAJIB diabaikan** (`x-unknown-query: ignore`): Google selalu menambahkan
+         *     `scope`, dan sering `authuser`, `prompt`, `hd`, `iss`, dst. Legacy memakai `forbidNonWhitelisted`
+         *     pada `GoogleOAuthCallbackQueryDto` sehingga parameter tersebut menghasilkan 400 `VALIDATION_ERROR`
+         *     (`property scope should not exist`) alih-alih redirect — alur Google sungguhan gagal di legacy
+         *     (e2e legacy hanya mengirim `code` & `state`). v1 menoleransinya.
          */
         get: operations["googleOAuthCallback"];
         put?: never;
@@ -2539,7 +2683,7 @@ export interface paths {
         };
         /**
          * Ambil data fasilitas publik
-         * @description Keunggulan, mesin, kapasitas cetak/produksi, layanan.
+         * @description Keunggulan, mesin, kapasitas cetak/produksi, layanan — semua yang `published`, tanpa batas jumlah.
          */
         get: operations["getPublicFacilities"];
         put?: never;
@@ -2559,7 +2703,7 @@ export interface paths {
         };
         /**
          * Daftar galeri publik (cursor)
-         * @description Filter type image|video; limit ≤24 default 8.
+         * @description Item galeri `published` bertipe image/video, keyset (sort_order, id) naik.
          */
         get: operations["listPublicGallery"];
         put?: never;
@@ -2579,7 +2723,9 @@ export interface paths {
         };
         /**
          * Ambil data beranda publik
-         * @description Hero + partner + keunggulan + portofolio unggulan (≤6) + ringkasan fasilitas + berita terbaru (≤3).
+         * @description Hero (`null` bila tidak ada yang published) + partner + keunggulan + portofolio unggulan (≤ 6) +
+         *     ringkasan fasilitas (mesin ≤ 3, kapasitas cetak ≤ 3, kapasitas produksi ≤ 6, layanan ≤ 10) +
+         *     berita terbaru (≤ 3). Hanya item `published`.
          */
         get: operations["getPublicHome"];
         put?: never;
@@ -2601,7 +2747,10 @@ export interface paths {
         put?: never;
         /**
          * Kirim pesan kontak
-         * @description Honeypot website bila terisi mengembalikan id 0 tanpa menyimpan; menyimpan source & meta + upsert audiens + notifikasi.
+         * @description Semua string di-trim sebelum divalidasi. Honeypot `website` terisi → 201 `{id: 0, status: new}`
+         *     tanpa menyimpan. Selain itu disimpan (`notification_status` = pending, `source` = header
+         *     Referer atau "website", `meta` = {user_agent, referrer, ip_hash}), kontak audiens di-upsert,
+         *     notifikasi dibuat (kegagalan keduanya tidak menggagalkan request).
          */
         post: operations["createPublicInquiry"];
         delete?: never;
@@ -2619,7 +2768,7 @@ export interface paths {
         };
         /**
          * Daftar berita publik (offset)
-         * @description Page/limit ≤24 default 6 + filter category.
+         * @description Berita `published`, urut published_at desc, id desc; filter `category` persis.
          */
         get: operations["listPublicNews"];
         put?: never;
@@ -2639,7 +2788,7 @@ export interface paths {
         };
         /**
          * Detail berita publik
-         * @description Slug pola ^[a-z0-9]+(-[a-z0-9]+)*$.
+         * @description Berita `published` dengan slug tersebut; tidak ada → 404 `NOT_FOUND` "Berita tidak ditemukan.".
          */
         get: operations["getPublicNewsBySlug"];
         put?: never;
@@ -2659,7 +2808,8 @@ export interface paths {
         };
         /**
          * Daftar portofolio publik (cursor)
-         * @description Keyset (sort_order, id); cursor base64url JSON; limit ≤24 default 8.
+         * @description Portofolio `published` dengan kategori `published`, keyset (sort_order, id) naik. Filter
+         *     kategori: `category_slug` ?? `category`, dicocokkan ke slug ATAU nama kategori.
          */
         get: operations["listPublicPortfolios"];
         put?: never;
@@ -2679,7 +2829,7 @@ export interface paths {
         };
         /**
          * Daftar kategori portofolio publik
-         * @description Hanya kategori published yang punya portofolio published.
+         * @description Hanya kategori `published` yang punya ≥ 1 portofolio `published`; urut sort_order, id. Tanpa paginasi.
          */
         get: operations["listPublicPortfolioCategories"];
         put?: never;
@@ -2719,7 +2869,11 @@ export interface paths {
         };
         /**
          * Ambil SEO legacy per route (alias)
-         * @description Alias yang dipertahankan; frontend baru memakai GET /public/seo?path. Route home|portfolio|fasilitas|galeri|berita|kontak|berita:<slug>.
+         * @description Alias legacy; frontend baru memakai `GET /public/seo?path`. `route` di-trim & dibuang `/` di
+         *     ujung (kosong → `home`): `home|portfolio|fasilitas|galeri|berita|kontak|berita:<slug>`. Route lain →
+         *     404 "SEO route tidak ditemukan."; berita tidak ada → 404 "Berita tidak ditemukan."; pengaturan
+         *     situs belum ada → 404 "Pengaturan website belum tersedia.". `home` = seo_title ?? brand /
+         *     seo_description ?? legal_name; route lain memakai judul/deskripsi tetap berakhiran `- <brand>`.
          */
         get: operations["getPublicSeoByRoute"];
         put?: never;
@@ -2739,7 +2893,7 @@ export interface paths {
         };
         /**
          * Ambil pengaturan situs publik
-         * @description Brand, kontak, logo, SEO.
+         * @description Brand, kontak, logo, SEO default. Baris pengaturan belum ada → 404 `NOT_FOUND` "Pengaturan website belum tersedia.".
          */
         get: operations["getPublicSiteSettings"];
         put?: never;
@@ -2761,7 +2915,10 @@ export interface paths {
         put?: never;
         /**
          * Buat prospek WhatsApp
-         * @description URL wa.me dibangun dari site_settings.whatsapp.
+         * @description Semua string di-trim. `generated_message` = `message` bila dikirim, selain itu
+         *     "Halo Indobraga, saya <name>. Saya ingin konsultasi kebutuhan produksi. Nomor saya <phone>.";
+         *     `whatsapp_url` = `https://wa.me/<site_settings.whatsapp, fallback 6285158700895>?text=<encodeURIComponent(generated_message)>`.
+         *     Notifikasi dibuat (kegagalan tidak menggagalkan request).
          */
         post: operations["createPublicWhatsappLead"];
         delete?: never;
@@ -2779,7 +2936,7 @@ export interface paths {
         };
         /**
          * Ambil robots.txt
-         * @description text/plain; melarang /admin, /login, /api/, /internal/ + daftar sitemap.
+         * @description `Content-Type: text/plain; charset=utf-8`, tanpa envelope. Isi persis (baris dipisah `\n`, diakhiri `\n`; `<PUBLIC_SITE_URL>` tanpa `/` akhir).
          */
         get: operations["getRobotsTxt"];
         put?: never;
@@ -2799,7 +2956,10 @@ export interface paths {
         };
         /**
          * Ambil sitemap.xml
-         * @description application/xml; 6 halaman statis + /berita/<slug> (lastmod = updatedAt).
+         * @description `Content-Type: application/xml; charset=utf-8`, tanpa envelope. Baris dipisah `\n` dengan indent 2/4
+         *     spasi, diakhiri `\n`. Urutan: `/` (priority 1.0), `/portfolio`, `/fasilitas` (0.8), `/galeri`,
+         *     `/berita`, `/kontak` (0.7) — tanpa `lastmod` — lalu setiap berita `published` (published_at desc,
+         *     id desc) `/berita/<slug>` dengan `lastmod` = `updated_at` ISO dan priority 0.6. `loc` di-escape XML.
          */
         get: operations["getSitemapXml"];
         put?: never;
@@ -2833,21 +2993,22 @@ export interface components {
          * @example 2026-05-12T08:30:00.000Z
          */
         Timestamp: string;
+        /** @description `AudienceService.present` (audience.service.ts:201-216). */
         MarketingContact: {
             id: components["schemas"]["Id"];
-            name?: string | null;
+            name: string | null;
             /** Format: email */
             email: string;
-            phone?: string | null;
-            company?: string | null;
+            phone: string | null;
+            company: string | null;
             /** @enum {string} */
             source: "inquiry" | "whatsapp_lead" | "manual_import" | "manual";
-            source_ref_id?: number | null;
+            source_ref_id: number | null;
             /** @enum {string} */
             status: "active" | "unsubscribed" | "blocked";
             /** @enum {string} */
             consent_status: "implied" | "explicit" | "unknown";
-            last_interaction_at?: components["schemas"]["NullableTimestamp"];
+            last_interaction_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
@@ -2892,118 +3053,120 @@ export interface components {
             /** @example req_4b5d9d6e-7d3a-4d3f-9a55-0c5b4f0c2f31 */
             request_id: string;
         };
+        /** @description Bentuk ringkas contoh penerima (audience.service.ts:112-117). */
+        AudienceSampleRecipient: {
+            id: components["schemas"]["Id"];
+            name: string | null;
+            email: string;
+            company: string | null;
+        };
+        /** @description Filter `status` diabaikan: total & pengecualian dihitung per status dari filter `q`/`source`. */
         AudiencePreview: {
             total_contacts: number;
             eligible_recipients: number;
             excluded_unsubscribed: number;
             excluded_blocked: number;
-            sample_recipients: components["schemas"]["MarketingContact"][];
+            /** @description 5 kontak `active` teratas (urut interaksi terakhir desc, created_at desc, id desc). */
+            sample_recipients: components["schemas"]["AudienceSampleRecipient"][];
         };
         /** @enum {string} */
         LeadStatus: "new" | "contacted" | "in_progress" | "closed" | "spam";
-        Inquiry: {
+        /** @description Bentuk ringkas `presentInquiry` dashboard (:105-115); belum diarsip, terbaru dulu. */
+        DashboardInquiry: {
             id: components["schemas"]["Id"];
             name: string;
-            /** Format: email */
             email: string;
             phone: string;
-            company?: string | null;
-            message: string;
+            company: string | null;
             status: components["schemas"]["LeadStatus"];
-            internal_note?: string | null;
-            /** @example pending */
-            notification_status?: string | null;
-            source?: string | null;
             created_at: components["schemas"]["Timestamp"];
-            updated_at: components["schemas"]["Timestamp"];
         };
-        WhatsAppLead: {
+        /** @description Bentuk ringkas `presentWhatsAppLead` dashboard (:117-125); belum diarsip, terbaru dulu. */
+        DashboardWhatsAppLead: {
             id: components["schemas"]["Id"];
             name: string;
             phone: string;
-            message?: string | null;
-            generated_message?: string | null;
-            /** Format: uri */
-            whatsapp_url?: string | null;
             status: components["schemas"]["LeadStatus"];
-            internal_note?: string | null;
-            source?: string | null;
             created_at: components["schemas"]["Timestamp"];
-            updated_at: components["schemas"]["Timestamp"];
         };
-        /** @enum {string} */
+        /**
+         * @description `processing` = status Prisma legacy `SENDING` (legacy juga mengekspos `processing`).
+         * @enum {string}
+         */
         CampaignStatus: "draft" | "pending" | "processing" | "completed" | "failed" | "cancelled";
-        /** @enum {string} */
-        EmailProvider: "google" | "smtp";
-        /** @enum {string} */
-        EmailAccountStatus: "connected" | "invalid" | "disabled" | "needs_reconnect";
-        SenderAccount: {
-            id: components["schemas"]["Id"];
-            provider: components["schemas"]["EmailProvider"];
-            /** Format: email */
-            email_address: string;
-            display_name?: string | null;
-            status: components["schemas"]["EmailAccountStatus"];
-        };
-        Campaign: {
+        /** @description Bentuk ringkas `presentCampaign` dashboard (:127-138); terbaru dulu. */
+        DashboardCampaign: {
             id: components["schemas"]["Id"];
             title: string;
             subject: string;
-            body_text?: string | null;
-            body_html?: string | null;
             status: components["schemas"]["CampaignStatus"];
             total_recipients: number;
-            queued_count?: number;
-            sent_count?: number;
-            failed_count?: number;
-            started_at?: components["schemas"]["NullableTimestamp"];
-            finished_at?: components["schemas"]["NullableTimestamp"];
-            last_error?: string | null;
-            sender_account?: components["schemas"]["SenderAccount"];
+            sent_count: number;
+            failed_count: number;
             created_at: components["schemas"]["Timestamp"];
-            updated_at: components["schemas"]["Timestamp"];
         };
+        /** @description `DashboardService.summary` (dashboard.service.ts:39-103). `totals.pending_revalidation` legacy dihapus (BC-12). */
         DashboardSummary: {
             totals: {
+                /** @description Pesan kontak belum diarsip. */
                 inquiries: number;
+                /** @description Prospek WhatsApp belum diarsip. */
                 whatsapp_leads: number;
                 published_gallery: number;
                 published_news: number;
+                /** @description Portofolio `published`. */
                 active_portfolios: number;
                 completed_media: number;
                 failed_media: number;
                 connected_email_accounts: number;
                 email_campaigns: number;
+                /** @description Kampanye `pending` + `processing`. */
                 pending_email_campaigns: number;
-                pending_revalidation: number;
             };
-            latest_inquiries: components["schemas"]["Inquiry"][];
-            latest_whatsapp_leads: components["schemas"]["WhatsAppLead"][];
-            latest_email_campaigns: components["schemas"]["Campaign"][];
+            latest_inquiries: components["schemas"]["DashboardInquiry"][];
+            latest_whatsapp_leads: components["schemas"]["DashboardWhatsAppLead"][];
+            latest_email_campaigns: components["schemas"]["DashboardCampaign"][];
         };
+        /** @enum {string} */
+        EmailProvider: "google" | "smtp";
+        /** @enum {string} */
+        EmailAccountStatus: "connected" | "invalid" | "disabled" | "needs_reconnect";
+        /** @enum {string} */
+        SmtpSecurity: "ssl_tls" | "starttls" | "none";
+        /**
+         * @description `EmailAccountsService.present` (email-accounts.service.ts:456-478). Secret tidak pernah dikirim.
+         *     Field `smtp_*` selalu null untuk akun Google.
+         */
         EmailAccount: {
             id: components["schemas"]["Id"];
             provider: components["schemas"]["EmailProvider"];
-            /** @example oauth2 */
-            auth_type?: string | null;
+            /**
+             * @description `oauth` untuk Google, `smtp` untuk SMTP.
+             * @enum {string}
+             */
+            auth_type: "oauth" | "smtp";
             /** Format: email */
             email_address: string;
-            display_name?: string | null;
+            display_name: string;
             status: components["schemas"]["EmailAccountStatus"];
-            smtp_host?: string | null;
-            smtp_port?: number | null;
-            /** @enum {string|null} */
-            smtp_security?: "ssl_tls" | "starttls" | "none" | null;
-            smtp_username?: string | null;
-            last_validated_at?: components["schemas"]["NullableTimestamp"];
-            connected_at?: components["schemas"]["NullableTimestamp"];
-            last_error?: string | null;
+            smtp_host: string | null;
+            smtp_port: number | null;
+            smtp_security: components["schemas"]["SmtpSecurity"] | null;
+            smtp_username: string | null;
+            last_validated_at: components["schemas"]["NullableTimestamp"];
+            connected_at: components["schemas"]["NullableTimestamp"];
+            last_error: string | null;
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /** @description Legacy `GoogleOAuthUrlDto` (string di-trim). */
         OAuthUrlInput: {
-            /** Format: email */
+            /**
+             * Format: email
+             * @description Di-trim; disimpan lowercase; dipakai sebagai `login_hint`.
+             */
             email_hint?: string;
+            /** @description Di-trim; nama tampilan akun setelah terhubung (fallback email). */
             display_name?: string;
         };
         OAuthUrlResult: {
@@ -3014,10 +3177,12 @@ export interface components {
             authorization_url: string;
             state_expires_at: components["schemas"]["Timestamp"];
         };
-        /** @enum {string} */
-        SmtpSecurity: "ssl_tls" | "starttls" | "none";
+        /** @description Legacy `SmtpAccountDto` — string (kecuali password) di-trim; semua wajib. */
         SmtpAccountInput: {
-            /** Format: email */
+            /**
+             * Format: email
+             * @description Disimpan lowercase.
+             */
             email_address: string;
             display_name: string;
             /** @example mail.indobraga.com */
@@ -3028,6 +3193,7 @@ export interface components {
             smtp_username: string;
             smtp_password: string;
         };
+        /** @description Gagal → `valid: false`, `message` = "<pesan> (<detail>)" (mis. "Koneksi SMTP gagal. (Invalid login)"). */
         SmtpTestResult: {
             valid: boolean;
             message: string;
@@ -3037,8 +3203,12 @@ export interface components {
             /** @constant */
             status: "deleted";
         };
+        /** @description Legacy `UpdateEmailAccountDto` — string (kecuali password) di-trim. */
         UpdateEmailAccountInput: {
-            /** Format: email */
+            /**
+             * Format: email
+             * @description Hanya SMTP; disimpan lowercase.
+             */
             email_address?: string;
             display_name?: string;
             status?: components["schemas"]["EmailAccountStatus"];
@@ -3046,95 +3216,189 @@ export interface components {
             smtp_port?: number;
             smtp_security?: components["schemas"]["SmtpSecurity"];
             smtp_username?: string;
+            /** @description Tidak dikirim → password tersimpan dipakai untuk verifikasi ulang. */
             smtp_password?: string;
         };
+        /** @description Hasil reconnect akun SMTP (verifikasi ulang kredensial tersimpan). */
         SmtpReconnectResult: {
             /** @constant */
             provider: "smtp";
             valid: boolean;
             account: components["schemas"]["EmailAccount"];
+            /** @description Berhasil: "Koneksi SMTP berhasil. Akun aktif kembali."; gagal: "<pesan> (<detail>)". */
             message: string;
         };
-        RecipientInput: {
-            name?: string;
+        /**
+         * @description Akun Google → payload URL OAuth baru (sama dengan `POST /google/oauth-url`, `email_hint` =
+         *     email akun, `display_name` = nama akun). Akun SMTP → `SmtpReconnectResult`.
+         */
+        EmailAccountReconnectResult: components["schemas"]["OAuthUrlResult"] | components["schemas"]["SmtpReconnectResult"];
+        SenderAccount: {
+            id: components["schemas"]["Id"];
+            provider: components["schemas"]["EmailProvider"];
             /** Format: email */
+            email_address: string;
+            display_name: string;
+            status: components["schemas"]["EmailAccountStatus"];
+        };
+        /** @description `presentCampaign` (email-campaigns.service.ts:1157-1182). */
+        Campaign: {
+            id: components["schemas"]["Id"];
+            title: string;
+            subject: string;
+            body_text: string | null;
+            /** @description HTML efektif: HTML bermakna yang dikirim, atau `body_text` dikonversi ke `<p>`. */
+            body_html: string | null;
+            status: components["schemas"]["CampaignStatus"];
+            total_recipients: number;
+            queued_count: number;
+            sent_count: number;
+            failed_count: number;
+            started_at: components["schemas"]["NullableTimestamp"];
+            finished_at: components["schemas"]["NullableTimestamp"];
+            last_error: string | null;
+            sender_account: components["schemas"]["SenderAccount"];
+            created_at: components["schemas"]["Timestamp"];
+            updated_at: components["schemas"]["Timestamp"];
+        };
+        /** @description Legacy `EmailRecipientDto` (name & email di-trim). */
+        RecipientInput: {
+            /** @description Di-trim; kosong → tanpa nama. */
+            name?: string;
+            /**
+             * Format: email
+             * @description Di-trim; di-lowercase & di-dedup server.
+             */
             email: string;
+            /**
+             * @description Objek bebas (`IsObject`; array ditolak). Tidak ditolak karena ukuran — server
+             *     MENORMALISASI: key di-trim + lowercase, key tidak cocok `^[a-z0-9_]+$` dibuang, maksimal 50
+             *     key pertama yang valid, nilai `String(v)` (null → "") dipotong 2.000 karakter, lalu `email`
+             *     ditimpa email penerima dan `nama` diisi nama penerima bila tidak ada.
+             */
             variables?: {
-                [key: string]: string;
+                [key: string]: unknown;
             };
         };
+        /** @description Legacy `CampaignDraftDto` (title, subject, body di-trim). */
         CampaignDraftInput: {
             title: string;
+            /** @description Akun wajib ada & `connected` (422). */
             email_account_id: number;
             subject: string;
             body_text?: string;
+            /** @description Dipakai bila berisi teks bermakna; selain itu `body_text` dikonversi ke HTML. Keduanya kosong → 422 "Isi email wajib diisi.". */
             body_html?: string;
+            /** @description Setelah dedup email (lowercase) > `EMAIL_CAMPAIGN_RECIPIENT_MAX` (1000) → 422. */
             recipients: components["schemas"]["RecipientInput"][];
         };
         CampaignDraftResult: {
             id: components["schemas"]["Id"];
-            status: components["schemas"]["CampaignStatus"];
+            /** @constant */
+            status: "draft";
             total_recipients: number;
         };
+        /** @description Legacy `AudienceFilterDto`. */
+        AudienceFilter: {
+            /** @description Di-trim; mencari name, email, phone, company. */
+            q?: string;
+            /** @enum {string} */
+            source?: "inquiry" | "whatsapp_lead" | "manual_import" | "manual";
+            /**
+             * @description Diabaikan untuk draf kampanye: hanya kontak `active` yang menjadi penerima.
+             * @enum {string}
+             */
+            status?: "active" | "unsubscribed" | "blocked";
+        };
+        /** @description Legacy `InquiryRecipientFilterDto`. Tanpa `status` → semua kecuali `spam`; inquiry diarsip tidak ikut. */
+        InquiryRecipientFilter: {
+            /** @description Di-trim; mencari name, email, phone, company, message. */
+            q?: string;
+            status?: components["schemas"]["LeadStatus"];
+            /** @description Di-trim; ISO 8601 (`IsDateString`, tanggal atau tanggal-waktu). Hanya 10 karakter pertama (YYYY-MM-DD) dipakai → 00:00:00.000 Asia/Jakarta (+07:00). */
+            date_from?: string;
+            /** @description Seperti `date_from` → 23:59:59.999 +07:00. `date_from` > `date_to` → 422 "Rentang tanggal Pesan Kontak tidak valid.". */
+            date_to?: string;
+        };
+        /** @description Contoh penerima dari inquiry (`previewInquiryRecipients`, email-campaigns.service.ts:229-236). */
+        InquiryRecipientSample: {
+            id: components["schemas"]["Id"];
+            name: string;
+            /** @description Sudah di-trim & lowercase. */
+            email: string;
+            company: string | null;
+            status: components["schemas"]["LeadStatus"];
+            created_at: components["schemas"]["Timestamp"];
+        };
+        /** @description Maks 10.000 inquiry terbaru dianalisis; email invalid & duplikat tidak dihitung eligible. */
         InquiryRecipientPreview: {
             total_inquiries: number;
             eligible_recipients: number;
             duplicate_emails: number;
             invalid_emails: number;
-            /** @constant */
-            recipient_limit: 1000;
+            /**
+             * @description `EMAIL_CAMPAIGN_RECIPIENT_MAX` (default 1000).
+             * @example 1000
+             */
+            recipient_limit: number;
             over_limit: boolean;
-            sample_recipients: {
-                name?: string | null;
-                /** Format: email */
-                email?: string;
-            }[];
+            sample_recipients: components["schemas"]["InquiryRecipientSample"][];
         };
+        /** @description Log kirim (`logs`, email-campaigns.service.ts:594-606). */
         CampaignLog: {
             id: components["schemas"]["Id"];
             campaign_id: components["schemas"]["Id"];
-            recipient_id?: number | null;
-            /** Format: email */
-            recipient_email: string;
-            provider?: string | null;
+            recipient_id: number | null;
+            /** @description Null bila penerima sudah terhapus (FK SetNull). */
+            recipient_email: string | null;
+            provider: components["schemas"]["EmailProvider"];
+            /**
+             * @description Hasil adapter: `sent`, `temporary_failed`, `failed`.
+             * @example sent
+             */
             status: string;
-            message_id?: string | null;
-            error_code?: string | null;
-            error_message?: string | null;
-            response_meta?: {
-                [key: string]: unknown;
+            message_id: string | null;
+            error_code: string | null;
+            error_message: string | null;
+            response_meta: {
+                [key: string]: string | number | boolean | null;
             } | null;
             created_at: components["schemas"]["Timestamp"];
         };
         /** @enum {string} */
         RecipientStatus: "queued" | "sending" | "sent" | "failed" | "skipped";
+        /** @description `presentRecipient` (email-campaigns.service.ts:1184-1200). */
         CampaignRecipient: {
             id: components["schemas"]["Id"];
             campaign_id: components["schemas"]["Id"];
-            /** Format: email */
             email: string;
-            name?: string | null;
+            name: string | null;
             status: components["schemas"]["RecipientStatus"];
             attempts: number;
-            next_attempt_at?: components["schemas"]["NullableTimestamp"];
-            sent_at?: components["schemas"]["NullableTimestamp"];
-            failed_at?: components["schemas"]["NullableTimestamp"];
-            error_code?: string | null;
-            error_message?: string | null;
+            next_attempt_at: components["schemas"]["NullableTimestamp"];
+            sent_at: components["schemas"]["NullableTimestamp"];
+            failed_at: components["schemas"]["NullableTimestamp"];
+            error_code: string | null;
+            error_message: string | null;
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /** @description `EmailTemplatesService.present` (email-templates.service.ts:152-163). */
         EmailTemplate: {
             id: components["schemas"]["Id"];
             name: string;
             subject: string;
             /** @enum {string} */
             content_mode: "text" | "html";
-            body_text?: string | null;
-            body_html?: string | null;
+            body_text: string | null;
+            body_html: string | null;
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /**
+         * @description Legacy `CreateEmailTemplateDto` (string di-trim). `content_mode: html` wajib `body_html`
+         *     non-kosong, `text` wajib `body_text` non-kosong (422). Body pasangan yang kosong disimpan null.
+         */
         CreateEmailTemplateInput: {
             name: string;
             subject: string;
@@ -3148,6 +3412,7 @@ export interface components {
             /** @constant */
             status: "deleted";
         };
+        /** @description Legacy `UpdateEmailTemplateDto` (string di-trim); body digabung dengan nilai tersimpan lalu divalidasi ulang seperti create. */
         UpdateEmailTemplateInput: {
             name?: string;
             subject?: string;
@@ -3164,15 +3429,18 @@ export interface components {
          */
         MediaStatus: "processing" | "completed" | "failed" | "archived" | "pending_delete" | "deleted" | "cleanup_failed";
         /**
-         * @description Ringkasan media yang disematkan di respons modul lain (admin konten, settings).
-         *     URL bernilai null bila media belum `completed`.
+         * @description Pratinjau media yang disematkan di respons admin konten (paritas legacy
+         *     `AdminContentService.presentMediaPreview`, admin-content.service.ts:1974-1999).
+         *     Semua key selalu dikirim. URL (`file_url`…`video_url`) bernilai null bila media belum
+         *     `completed` (`getPublicMediaUrls`); `file_url` = `public_url` legacy.
          */
         MediaPreview: {
             id: components["schemas"]["Id"];
             media_type: components["schemas"]["MediaKind"];
             /** @example image/webp */
-            mime_type: string | null;
-            original_file_name: string | null;
+            mime_type: string;
+            /** @example hero-1.jpg */
+            original_file_name: string;
             compression_status: components["schemas"]["MediaStatus"];
             /** Format: uri */
             file_url: string | null;
@@ -3192,27 +3460,35 @@ export interface components {
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /** @description `MediaPreview`, atau null bila tidak ada media yang dirujuk (legacy `presentMediaPreview` → null). */
+        NullableMediaPreview: components["schemas"]["MediaPreview"] | null;
         /**
          * @description Status konten admin. `archived` hanya lewat endpoint arsip.
          * @enum {string}
          */
         ContentStatus: "draft" | "published" | "inactive" | "archived";
+        /**
+         * @description Status sebelum diarsipkan (`previous_status`); null bila tidak sedang/pernah diarsip.
+         * @enum {string|null}
+         */
+        NullableContentStatus: "draft" | "published" | "inactive" | "archived" | null;
+        /** @description Presenter `presentGalleryItem` (:2216-2238). `media_type` = `video` bila tipe VIDEO, selain itu `image`. */
         GalleryItem: {
             id: components["schemas"]["Id"];
-            media_file_id: number;
             /** @enum {string} */
             media_type: "image" | "video";
             /** @example Proses cetak offset */
             caption: string;
-            poster_media_id?: number | null;
-            poster?: components["schemas"]["MediaPreview"];
-            media?: components["schemas"]["MediaPreview"];
+            /** @description Null bila media terhapus (FK SetNull). */
+            media_file_id: number | null;
+            media_file: components["schemas"]["NullableMediaPreview"];
+            poster_media_id: number | null;
+            poster_media: components["schemas"]["NullableMediaPreview"];
             sort_order: number;
             status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
-            published_at?: components["schemas"]["NullableTimestamp"];
+            previous_status: components["schemas"]["NullableContentStatus"];
             archived_at: components["schemas"]["NullableTimestamp"];
+            published_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
@@ -3221,16 +3497,20 @@ export interface components {
          * @enum {string}
          */
         WritableContentStatus: "draft" | "published" | "inactive";
+        /** @description Legacy `ReorderDto`: `items` min 1; `id` & `sort_order` hanya wajib bilangan bulat (tanpa batas). */
         ReorderInput: {
             items: {
-                id: components["schemas"]["Id"];
+                id: number;
                 sort_order: number;
             }[];
         };
         ReorderResult: {
             /** @constant */
             status: "updated";
-            /** @example 7 */
+            /**
+             * @description Jumlah item yang dikirim.
+             * @example 7
+             */
             count: number;
         };
         ContentDeleteResult: {
@@ -3243,60 +3523,80 @@ export interface components {
         ContentStatusUpdate: {
             status: components["schemas"]["WritableContentStatus"];
         };
-        HeroSlide: {
-            id: components["schemas"]["Id"];
-            /**
-             * @description 0 = ikut hero pertama (sentinel form); id nyata > 0.
-             * @example 1
-             */
-            hero_section_id?: number;
-            /** @example Terpercaya */
-            label?: string | null;
-            /** @example Cetak Offset Berkualitas */
-            title: string;
-            /** @example 10.000+ pcs/hari */
-            metric?: string | null;
-            alt_text?: string | null;
-            media_file_id?: number | null;
-            /** @description Pratinjau media (URL null bila belum completed). */
-            media?: components["schemas"]["MediaPreview"];
-            /** @example 1 */
-            sort_order: number;
-            status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
-            archived_at: components["schemas"]["NullableTimestamp"];
-            created_at: components["schemas"]["Timestamp"];
-            updated_at: components["schemas"]["Timestamp"];
-        };
+        /** @description Presenter `presentHero` (:2001-2016). List/create/update/status/arsip TIDAK menyertakan `slides`. */
         HeroSection: {
             id: components["schemas"]["Id"];
             /** @example Jasa Cetak Kardus & Packaging */
             title: string;
             /** @example Sejak 2010 melayani seluruh Indonesia. */
-            subtitle?: string | null;
+            subtitle: string | null;
             /** @example Hubungi Kami */
-            cta_label?: string | null;
+            cta_label: string | null;
             /** @example /kontak */
-            cta_href?: string | null;
+            cta_href: string | null;
             status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
+            previous_status: components["schemas"]["NullableContentStatus"];
             archived_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
-            /** @description Diisi pada detail; list tidak menyertakan slides. */
-            slides?: components["schemas"]["HeroSlide"][];
+        };
+        /** @description Presenter `presentHeroSlide` (:2018-2039). */
+        HeroSlide: {
+            id: components["schemas"]["Id"];
+            hero_section_id: components["schemas"]["Id"];
+            /** @example Terpercaya */
+            label: string | null;
+            /** @example Cetak Offset Berkualitas */
+            title: string;
+            /** @example 10.000+ pcs/hari */
+            metric: string | null;
+            alt_text: string | null;
+            media_file_id: number | null;
+            media_file: components["schemas"]["NullableMediaPreview"];
+            /** @example 1 */
+            sort_order: number;
+            status: components["schemas"]["ContentStatus"];
+            previous_status: components["schemas"]["NullableContentStatus"];
+            archived_at: components["schemas"]["NullableTimestamp"];
+            created_at: components["schemas"]["Timestamp"];
+            updated_at: components["schemas"]["Timestamp"];
+        };
+        /** @description Detail hero (`getHero`, :279-293) = `HeroSection` + `slides` (semua slide, tanpa filter status, urutan DB). */
+        HeroSectionDetail: components["schemas"]["HeroSection"] & {
+            slides: components["schemas"]["HeroSlide"][];
+        };
+        /** @description `presentInquiry` (leads.service.ts:303-318). */
+        Inquiry: {
+            id: components["schemas"]["Id"];
+            name: string;
+            email: string;
+            phone: string;
+            company: string | null;
+            message: string;
+            status: components["schemas"]["LeadStatus"];
+            internal_note: string | null;
+            /**
+             * @description `pending` saat dibuat; `sent`/`failed` setelah worker email notifikasi.
+             * @example pending
+             */
+            notification_status: string | null;
+            /** @description Header Referer saat dikirim, atau `website`. */
+            source: string | null;
+            created_at: components["schemas"]["Timestamp"];
+            updated_at: components["schemas"]["Timestamp"];
         };
         ArchiveLeadResult: {
             id: components["schemas"]["Id"];
             /** @constant */
             status: "archived";
         };
+        /** @description Legacy `UpdateLeadDto`. */
         UpdateLeadInput: {
             status?: components["schemas"]["LeadStatus"];
+            /** @description Di-trim. */
             internal_note?: string;
         };
+        /** @description Presenter `presentMachine` (:2138-2158). */
         Machine: {
             id: components["schemas"]["Id"];
             /** @example Heidelberg Speedmaster */
@@ -3304,49 +3604,55 @@ export interface components {
             /** @example heidelberg-speedmaster */
             slug: string;
             /** @example 18.000 lbr/jam */
-            metric?: string | null;
-            description?: string | null;
-            media_file_id?: number | null;
-            image?: components["schemas"]["MediaPreview"];
+            metric: string | null;
+            description: string | null;
+            media_file_id: number | null;
+            media_file: components["schemas"]["NullableMediaPreview"];
             sort_order: number;
             status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
+            previous_status: components["schemas"]["NullableContentStatus"];
             archived_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /**
+         * @description Semua key selalu dikirim. URL diambil apa adanya dari baris media (TIDAK disaring status,
+         *     beda dengan `MediaPreview`). Gambar: `file_url` = `large_url`; video: `file_url` = `video_url`.
+         */
         MediaItem: {
             id: components["schemas"]["Id"];
             media_type: components["schemas"]["MediaKind"];
-            /** @example image/webp */
-            mime_type: string | null;
+            /**
+             * @description MIME hasil sniff magic bytes.
+             * @example image/jpeg
+             */
+            mime_type: string;
             /** @example hero-1.jpg */
-            original_file_name: string | null;
+            original_file_name: string;
             compression_status: components["schemas"]["MediaStatus"];
-            /** @enum {string|null} */
-            previous_status?: "processing" | "completed" | "failed" | "archived" | "pending_delete" | "deleted" | "cleanup_failed" | null;
             /** Format: uri */
-            file_url?: string | null;
+            file_url: string | null;
             /** Format: uri */
-            thumbnail_url?: string | null;
+            thumbnail_url: string | null;
             /** Format: uri */
-            medium_url?: string | null;
+            medium_url: string | null;
             /** Format: uri */
-            large_url?: string | null;
+            large_url: string | null;
             /** Format: uri */
-            poster_url?: string | null;
+            poster_url: string | null;
             /** Format: uri */
-            video_url?: string | null;
-            width?: number | null;
-            height?: number | null;
-            duration_seconds?: number | null;
-            /** @description Byte (BIGINT). */
-            original_size?: number | null;
-            optimized_size?: number | null;
-            error?: string | null;
-            archived_at?: components["schemas"]["NullableTimestamp"];
-            deleted_at?: components["schemas"]["NullableTimestamp"];
+            video_url: string | null;
+            width: number | null;
+            height: number | null;
+            duration_seconds: number | null;
+            /** @description Byte file asli (null bila 0/kosong). */
+            original_size: number | null;
+            /** @description Total byte varian tersimpan (null bila 0/kosong). */
+            optimized_size: number | null;
+            /** @description Pesan error pemrosesan/penghapusan. */
+            error: string | null;
+            archived_at: components["schemas"]["NullableTimestamp"];
+            deleted_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
@@ -3357,6 +3663,7 @@ export interface components {
             /** @constant */
             status: "permanently_deleted";
         };
+        /** @description Presenter `presentNews` (:2240-2266). Berita tidak punya `sort_order` (urut `published_at` desc, `id` desc). */
         NewsArticle: {
             id: components["schemas"]["Id"];
             /** @example Tips Memilih Kemasan */
@@ -3367,20 +3674,18 @@ export interface components {
             category: string;
             /** @example Ringkasan singkat artikel. */
             excerpt: string;
-            /** @description Paragraf (disimpan JSON). */
+            /** @description Paragraf (JSON array string; elemen non-string dibuang). */
             content: string[];
-            thumbnail_media_file_id?: number | null;
-            thumbnail?: components["schemas"]["MediaPreview"];
-            og_image_media_file_id?: number | null;
-            og_image?: components["schemas"]["MediaPreview"];
-            sort_order: number;
+            thumbnail_media_file_id: number | null;
+            thumbnail_media_file: components["schemas"]["NullableMediaPreview"];
+            og_image_media_file_id: number | null;
+            og_image_media_file: components["schemas"]["NullableMediaPreview"];
             status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
-            published_at?: components["schemas"]["NullableTimestamp"];
-            seo_title?: string | null;
-            seo_description?: string | null;
+            previous_status: components["schemas"]["NullableContentStatus"];
             archived_at: components["schemas"]["NullableTimestamp"];
+            published_at: components["schemas"]["NullableTimestamp"];
+            seo_title: string | null;
+            seo_description: string | null;
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
@@ -3388,6 +3693,7 @@ export interface components {
         NotificationType: "inquiry_created" | "whatsapp_lead_created" | "email_campaign_completed" | "email_campaign_failed" | "media_failed" | "smtp_invalid" | "system_warning";
         /** @enum {string} */
         NotificationSeverity: "info" | "success" | "warning" | "error";
+        /** @description `NotificationsService.present` (notifications.service.ts:435-447); `read` = sudah dibaca user sesi. */
         Notification: {
             id: components["schemas"]["Id"];
             type: components["schemas"]["NotificationType"];
@@ -3396,8 +3702,8 @@ export interface components {
             title: string;
             message: string;
             /** @example inquiry */
-            resource_type?: string | null;
-            resource_id?: number | null;
+            resource_type: string | null;
+            resource_id: number | null;
             read: boolean;
             created_at: components["schemas"]["Timestamp"];
         };
@@ -3411,23 +3717,24 @@ export interface components {
             /** @example 3 */
             unread_count: number;
         };
+        /** @description Presenter `presentPartner` (:2041-2059). */
         Partner: {
             id: components["schemas"]["Id"];
             /** @example PT Maju Bersama */
             name: string;
             /** @example FMCG */
-            segment?: string | null;
-            logo_media_id?: number | null;
-            logo?: components["schemas"]["MediaPreview"];
+            segment: string | null;
+            logo_media_id: number | null;
+            logo_media: components["schemas"]["NullableMediaPreview"];
             /** @example 1 */
             sort_order: number;
             status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
+            previous_status: components["schemas"]["NullableContentStatus"];
             archived_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /** @description Presenter `presentPortfolioCategory` (:2078-2092). */
         PortfolioCategory: {
             id: components["schemas"]["Id"];
             /** @example Box & Karton */
@@ -3437,48 +3744,59 @@ export interface components {
             /** @example 1 */
             sort_order: number;
             status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
+            previous_status: components["schemas"]["NullableContentStatus"];
             archived_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /** @description Satu gambar galeri portofolio (`presentPortfolio` → `images[]`, :2103-2108), urut `sort_order` naik. */
+        PortfolioImage: {
+            id: components["schemas"]["Id"];
+            media_file_id: components["schemas"]["Id"];
+            /** @example 0 */
+            sort_order: number;
+            media_file: components["schemas"]["MediaPreview"];
+        };
+        /**
+         * @description Presenter `presentPortfolio` (:2094-2136). `media_file_id`/`media_file` = cover (gambar
+         *     pertama galeri); `media_file_ids`/`media_files`/`images` = galeri berurutan (diturunkan dari
+         *     `images`). Kolom `description` legacy diekspos sebagai `short_description`.
+         */
         Portfolio: {
             id: components["schemas"]["Id"];
             /** @example Kemasan Kopi Premium */
             title: string;
             /** @example kemasan-kopi-premium */
             slug: string;
+            /** @example 2 */
+            category_id: number | null;
             /**
-             * @description Wajib PUBLISHED saat create/publish.
-             * @example 2
-             */
-            category_id?: number | null;
-            /**
-             * @description Teks denormalisasi.
+             * @description Nama kategori relasi, fallback teks denormalisasi.
              * @example Box & Karton
              */
-            category?: string | null;
-            short_description?: string | null;
-            description?: string | null;
-            /** @description Cover (gambar pertama). */
-            image_media_id?: number | null;
-            cover_image?: components["schemas"]["MediaPreview"];
-            /** @description Galeri (maks 10 saat input; diganti atomik hanya bila dikirim). */
-            images?: components["schemas"]["MediaPreview"][];
+            category: string;
+            /** @example box-karton */
+            category_slug: string | null;
+            short_description: string | null;
+            /** @description Cover (= gambar galeri pertama). */
+            media_file_id: number | null;
+            media_file: components["schemas"]["NullableMediaPreview"];
+            media_file_ids: components["schemas"]["Id"][];
+            media_files: components["schemas"]["MediaPreview"][];
+            images: components["schemas"]["PortfolioImage"][];
             /** @example true */
             is_featured: boolean;
             sort_order: number;
             status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
-            published_at?: components["schemas"]["NullableTimestamp"];
-            seo_title?: string | null;
-            seo_description?: string | null;
+            previous_status: components["schemas"]["NullableContentStatus"];
             archived_at: components["schemas"]["NullableTimestamp"];
+            published_at: components["schemas"]["NullableTimestamp"];
+            seo_title: string | null;
+            seo_description: string | null;
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /** @description Presenter `presentPrintingCapacity` (:2160-2182). */
         PrintingCapacity: {
             id: components["schemas"]["Id"];
             /** @example Offset Printing */
@@ -3487,17 +3805,17 @@ export interface components {
             value: string;
             /** @example lembar/hari */
             unit: string;
-            description?: string | null;
-            media_file_id?: number | null;
-            image?: components["schemas"]["MediaPreview"];
+            description: string | null;
+            media_file_id: number | null;
+            media_file: components["schemas"]["NullableMediaPreview"];
             sort_order: number;
             status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
+            previous_status: components["schemas"]["NullableContentStatus"];
             archived_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /** @description Presenter `presentProductionCapacity` (:2184-2199). */
         ProductionCapacity: {
             id: components["schemas"]["Id"];
             /** @example Kardus Box */
@@ -3508,12 +3826,12 @@ export interface components {
             unit: string;
             sort_order: number;
             status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
+            previous_status: components["schemas"]["NullableContentStatus"];
             archived_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /** @description Presenter `presentStrength` (:2061-2076). */
         ProductionStrength: {
             id: components["schemas"]["Id"];
             /** @example Kapasitas Harian */
@@ -3521,68 +3839,65 @@ export interface components {
             /** @example 50.000 */
             value: string;
             /** @example pcs */
-            suffix?: string | null;
+            suffix: string | null;
             /** @example 1 */
             sort_order: number;
             status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
+            previous_status: components["schemas"]["NullableContentStatus"];
             archived_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /** @description Presenter `presentService` (:2201-2214). */
         ServiceItem: {
             id: components["schemas"]["Id"];
             /** @example Desain Kemasan */
             name: string;
             sort_order: number;
             status: components["schemas"]["ContentStatus"];
-            /** @enum {string|null} */
-            previous_status: "draft" | "published" | "inactive" | "archived" | null;
+            previous_status: components["schemas"]["NullableContentStatus"];
             archived_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /**
+         * @description Pengaturan admin (`getSiteSettings`, :133-185). Tanpa objek pratinjau media.
+         *     `logo_url`/`footer_logo_url`/`contact_hero_image_url` = `large_url ?? medium_url ?? public_url`;
+         *     `og_image_url` = `public_url ?? large_url` — TIDAK disaring status media (beda dengan publik).
+         */
         SiteSettings: {
             /** @constant */
             id: 1;
             /** @example Indobraga */
-            brand: string | null;
+            brand: string;
             /** @example PT. Braga Indonesia Perkasa */
-            legal_name?: string | null;
-            /**
-             * Format: email
-             * @example info@indobraga.com
-             */
-            email?: string | null;
+            legal_name: string;
+            /** @example info@indobraga.com */
+            email: string;
             /** @example 022-123456 */
-            phone?: string | null;
+            phone: string;
             /** @example 6281200000001 */
-            whatsapp?: string | null;
-            instagram?: string | null;
-            contact_person?: string | null;
-            contact_role?: string | null;
-            address?: string | null;
-            seo_title?: string | null;
-            seo_description?: string | null;
+            whatsapp: string;
+            instagram: string;
+            contact_person: string;
+            contact_role: string;
+            address: string;
+            seo_title: string | null;
+            seo_description: string | null;
             /** @example false */
             show_brand_text: boolean;
-            logo_media_file_id?: number | null;
-            footer_logo_media_file_id?: number | null;
-            og_media_file_id?: number | null;
-            contact_hero_media_file_id?: number | null;
+            logo_media_file_id: number | null;
             /** Format: uri */
-            logo_url?: string | null;
+            logo_url: string | null;
+            footer_logo_media_file_id: number | null;
             /** Format: uri */
-            footer_logo_url?: string | null;
+            footer_logo_url: string | null;
+            og_media_file_id: number | null;
             /** Format: uri */
-            og_image_url?: string | null;
+            og_image_url: string | null;
+            contact_hero_media_file_id: number | null;
             /** Format: uri */
-            contact_hero_image_url?: string | null;
-            logo?: components["schemas"]["MediaPreview"];
-            footer_logo?: components["schemas"]["MediaPreview"];
-            og_image?: components["schemas"]["MediaPreview"];
-            contact_hero_image?: components["schemas"]["MediaPreview"];
+            contact_hero_image_url: string | null;
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
@@ -3594,6 +3909,7 @@ export interface components {
          * @enum {string}
          */
         Permission: "dashboard.read" | "users.manage" | "site_settings.manage" | "content.read" | "content.manage" | "media.manage" | "leads.read" | "leads.manage" | "audience.read" | "audience.export" | "notifications.read" | "email_accounts.read" | "email_accounts.manage" | "email_campaigns.read" | "email_campaigns.manage" | "email_campaigns.send" | "email_campaign_logs.read" | "seo.manage" | "activity.read";
+        /** @description `toSafeUser` (users.service.ts:207-219). Semua key selalu dikirim. */
         SafeUser: {
             id: components["schemas"]["Id"];
             /** @example Editor Konten */
@@ -3610,21 +3926,28 @@ export interface components {
              */
             status: "active" | "inactive";
             permissions: components["schemas"]["Permission"][];
-            last_login_at?: components["schemas"]["NullableTimestamp"];
+            last_login_at: components["schemas"]["NullableTimestamp"];
             created_at: components["schemas"]["Timestamp"];
             updated_at: components["schemas"]["Timestamp"];
         };
+        /** @description Legacy `CreateUserDto`. */
         CreateUserInput: {
-            /** @example Editor Baru */
+            /**
+             * @description Di-trim; kosong → 400.
+             * @example Editor Baru
+             */
             name: string;
             /**
              * Format: email
-             * @description Di-lowercase oleh server.
+             * @description Di-trim & di-lowercase sebelum divalidasi.
              * @example Editor@Indobraga.com
              */
             email: string;
             role: components["schemas"]["AdminRole"];
-            /** @example sementara123 */
+            /**
+             * @description Tanpa batas maksimum di DTO (bcrypt memakai 72 byte pertama).
+             * @example sementara123
+             */
             temporary_password: string;
         };
         DisableUserResult: {
@@ -3632,25 +3955,47 @@ export interface components {
             /** @constant */
             status: "disabled";
         };
+        /** @description Legacy `UpdateUserDto`. Email tidak bisa diubah. */
         UpdateUserInput: {
+            /** @description Di-trim; string kosong diterima (tanpa `IsNotEmpty`). */
             name?: string;
             role?: components["schemas"]["AdminRole"];
-            /** @description Mengganti password & mencabut sesi user tersebut. */
-            new_password?: string;
+            /**
+             * @description `""` → dianggap tidak dikirim (password tidak diubah). Selain itu minimal 8 karakter, tanpa
+             *     batas maksimum. Mengganti password user LAIN juga mencabut semua sesinya.
+             */
+            new_password?: string | unknown | unknown;
         };
         UpdateUserStatusInput: {
             /** @enum {string} */
             status: "active" | "inactive";
         };
+        /** @description `presentWhatsAppLead` (leads.service.ts:320-333). Pesan disimpan dan diekspos sebagai `generated_message`. */
+        WhatsAppLead: {
+            id: components["schemas"]["Id"];
+            name: string;
+            phone: string;
+            generated_message: string | null;
+            /** Format: uri */
+            whatsapp_url: string | null;
+            status: components["schemas"]["LeadStatus"];
+            internal_note: string | null;
+            source: string | null;
+            created_at: components["schemas"]["Timestamp"];
+            updated_at: components["schemas"]["Timestamp"];
+        };
+        /** @description Legacy `LoginDto` (`IsEmail` + `IsNotEmpty`, `IsString` + `IsNotEmpty`; tanpa batas panjang). */
         LoginInput: {
             /**
              * Format: email
+             * @description Di-trim & di-lowercase saat mencari user (bukan saat validasi).
              * @example admin@indobraga.com
              */
             email: string;
             /** @example rahasia123 */
             password: string;
         };
+        /** @description `toAuthenticatedAdmin` (auth.service.ts). Permission diturunkan dari role. */
         AuthUser: {
             id: components["schemas"]["Id"];
             /** @example Admin Utama */
@@ -3692,6 +4037,7 @@ export interface components {
                 };
             };
         };
+        /** @description `processed` = jumlah entri yang diproses; `cache_keys` = kunci cache distinct. */
         RevalidationTickResult: {
             /** @example 3 */
             processed: number;
@@ -3708,32 +4054,90 @@ export interface components {
             sent: number;
             failed: number;
             remaining: number;
-            status: string | null;
+            /**
+             * @description `idle` bila tidak ada kampanye yang diklaim (atau drain lain sedang berjalan).
+             * @enum {string}
+             */
+            status: "idle" | "processing" | "completed";
         };
+        /** @description `processed` = job yang diklaim (maks `NOTIFICATION_WORKER_BATCH_SIZE`, 20) = sent + failed + retried. */
         NotificationsTickResult: {
             processed: number;
             sent: number;
             failed: number;
             retried: number;
         };
-        PublicFacilities: {
-            strengths: components["schemas"]["ProductionStrength"][];
-            machines: components["schemas"]["Machine"][];
-            printing_capacities: components["schemas"]["PrintingCapacity"][];
-            production_capacities: components["schemas"]["ProductionCapacity"][];
-            services: components["schemas"]["ServiceItem"][];
+        PublicStrength: {
+            id: components["schemas"]["Id"];
+            label: string;
+            value: string;
+            suffix: string | null;
         };
+        /** @description `presentMachine` (:466-476). */
+        PublicMachine: {
+            id: components["schemas"]["Id"];
+            name: string;
+            slug: string;
+            metric: string | null;
+            description: string | null;
+            /**
+             * Format: uri
+             * @description `getMediumUrl`.
+             */
+            image_url: string | null;
+            /** @description = `name`. */
+            alt_text: string;
+        };
+        /** @description `presentPrintingCapacity` (:478-490). */
+        PublicPrintingCapacity: {
+            id: components["schemas"]["Id"];
+            label: string;
+            value: string;
+            unit: string;
+            description: string | null;
+            /**
+             * Format: uri
+             * @description `getMediumUrl`.
+             */
+            image_url: string | null;
+            /** @description = `label`. */
+            alt_text: string;
+        };
+        PublicProductionCapacity: {
+            id: components["schemas"]["Id"];
+            product: string;
+            value: string;
+            unit: string;
+        };
+        PublicService: {
+            id: components["schemas"]["Id"];
+            name: string;
+        };
+        /** @description `getFacilities` (:296-345) — tanpa batas jumlah. */
+        PublicFacilities: {
+            strengths: components["schemas"]["PublicStrength"][];
+            machines: components["schemas"]["PublicMachine"][];
+            printing_capacities: components["schemas"]["PublicPrintingCapacity"][];
+            production_capacities: components["schemas"]["PublicProductionCapacity"][];
+            services: components["schemas"]["PublicService"][];
+        };
+        /**
+         * @description `getGallery` (:347-396). `thumbnail_url` = poster.thumbnail ?? poster.public ?? media.thumbnail
+         *     ?? media.poster ?? media.medium ?? media.public; `media_url` video = video_url ?? public_url,
+         *     gambar = large_url ?? public_url ?? medium_url (semua disaring status completed).
+         */
         PublicGalleryItem: {
             id: components["schemas"]["Id"];
             /** @enum {string} */
             type: "image" | "video";
             /** Format: uri */
-            thumbnail_url?: string | null;
+            thumbnail_url: string | null;
             /** Format: uri */
-            media_url?: string | null;
-            caption?: string | null;
-            alt_text?: string | null;
-            published_at?: components["schemas"]["NullableTimestamp"];
+            media_url: string | null;
+            caption: string;
+            /** @description = `caption`. */
+            alt_text: string;
+            published_at: components["schemas"]["NullableTimestamp"];
         };
         CursorMeta: {
             /** @example 8 */
@@ -3742,27 +4146,99 @@ export interface components {
             next_cursor: string | null;
             has_more: boolean;
         };
-        PublicHome: {
-            hero: {
-                title: string | null;
-                subtitle?: string | null;
-                primary_cta?: {
-                    label?: string;
-                    url?: string;
-                } | null;
-                slides: components["schemas"]["HeroSlide"][];
-            };
-            partners: components["schemas"]["Partner"][];
-            strengths: components["schemas"]["ProductionStrength"][];
-            featured_portfolios: components["schemas"]["Portfolio"][];
-            facilities_summary: {
-                machines: components["schemas"]["Machine"][];
-                printing_capacities: components["schemas"]["PrintingCapacity"][];
-                production_capacities: components["schemas"]["ProductionCapacity"][];
-                services: components["schemas"]["ServiceItem"][];
-            };
-            latest_news: components["schemas"]["NewsArticle"][];
+        /** @description Tombol utama hero; hanya ada bila `cta_label` terisi. */
+        PublicHeroCta: {
+            label: string;
+            /** @description `cta_href` apa adanya (boleh null). */
+            url: string | null;
         };
+        /** @description Slide hero publik (hanya slide `published`, urut sort_order, id). */
+        PublicHeroSlide: {
+            id: components["schemas"]["Id"];
+            label: string | null;
+            title: string;
+            metric: string | null;
+            /**
+             * Format: uri
+             * @description `getBestImageUrl`.
+             */
+            image_url: string | null;
+            /** @description `alt_text` slide, fallback `title`. */
+            alt_text: string;
+        };
+        /** @description Hero `published` pertama (id terkecil). */
+        PublicHero: {
+            title: string;
+            subtitle: string | null;
+            /** @description Null bila `cta_label` kosong/null. */
+            primary_cta: components["schemas"]["PublicHeroCta"] | null;
+            slides: components["schemas"]["PublicHeroSlide"][];
+        };
+        PublicPartner: {
+            id: components["schemas"]["Id"];
+            name: string;
+            segment: string | null;
+            /**
+             * Format: uri
+             * @description `getBestImageUrl`.
+             */
+            logo_url: string | null;
+        };
+        /** @description Kartu portofolio publik (beranda `featured_portfolios`). */
+        PublicPortfolioCard: {
+            id: components["schemas"]["Id"];
+            title: string;
+            slug: string;
+            /** @description Nama kategori relasi, fallback teks denormalisasi. */
+            category: string;
+            category_slug: string | null;
+            /**
+             * Format: uri
+             * @description Cover via `getThumbnailUrl`.
+             */
+            thumbnail_url: string | null;
+            /**
+             * Format: uri
+             * @description Cover via `getMediumUrl`.
+             */
+            medium_url: string | null;
+            /** @description = `title`. */
+            alt_text: string;
+            /** @description Kolom `description` portofolio. */
+            short_description: string | null;
+        };
+        /** @description `presentNewsListItem` (:492-504). */
+        PublicNewsItem: {
+            id: components["schemas"]["Id"];
+            title: string;
+            slug: string;
+            category: string;
+            /**
+             * Format: uri
+             * @description `getThumbnailUrl`.
+             */
+            thumbnail_url: string | null;
+            excerpt: string;
+            published_at: components["schemas"]["NullableTimestamp"];
+        };
+        /** @description `getHome` (:79-213). Semua bagian hanya memuat item `published`, urut sort_order, id. */
+        PublicHome: {
+            /** @description Null bila tidak ada hero `published`. */
+            hero: components["schemas"]["PublicHero"] | null;
+            partners: components["schemas"]["PublicPartner"][];
+            strengths: components["schemas"]["PublicStrength"][];
+            /** @description Portofolio `published` + `featured` dengan kategori `published`. */
+            featured_portfolios: components["schemas"]["PublicPortfolioCard"][];
+            facilities_summary: {
+                machines: components["schemas"]["PublicMachine"][];
+                printing_capacities: components["schemas"]["PublicPrintingCapacity"][];
+                production_capacities: components["schemas"]["PublicProductionCapacity"][];
+                services: components["schemas"]["PublicService"][];
+            };
+            /** @description Urut `published_at` desc, `id` desc. */
+            latest_news: components["schemas"]["PublicNewsItem"][];
+        };
+        /** @description Legacy `CreateInquiryDto` — semua string di-trim sebelum divalidasi. */
         CreateInquiryInput: {
             /** @example Budi Santoso */
             name: string;
@@ -3776,61 +4252,78 @@ export interface components {
             company?: string;
             /** @example Halo, saya butuh kemasan box untuk kopi 250gr sebanyak 5000 pcs. */
             message: string;
-            /** @description Honeypot — biarkan kosong; bila terisi API mengembalikan id 0 tanpa menyimpan. */
+            /** @description Honeypot — biarkan kosong; bila terisi (setelah trim) API mengembalikan id 0 tanpa menyimpan. */
             website?: string;
         };
         CreateInquiryResult: {
-            /** @example 12 */
+            /**
+             * @description 0 bila honeypot terisi.
+             * @example 12
+             */
             id: number;
             status: components["schemas"]["LeadStatus"];
         };
-        PublicNewsItem: {
-            id: components["schemas"]["Id"];
-            title: string;
-            slug: string;
-            category?: string | null;
-            /** Format: uri */
-            thumbnail_url?: string | null;
-            excerpt?: string | null;
-            published_at?: components["schemas"]["NullableTimestamp"];
-        };
+        /** @description `getNewsDetail` (:426-464). */
         PublicNewsDetail: {
             id: components["schemas"]["Id"];
             title: string;
             slug: string;
-            category?: string | null;
-            /** Format: uri */
-            thumbnail_url?: string | null;
-            excerpt?: string | null;
+            category: string;
+            /**
+             * Format: uri
+             * @description Thumbnail via `getBestImageUrl` (ukuran besar, beda dengan list).
+             */
+            thumbnail_url: string | null;
+            excerpt: string;
+            /** @description Array string; blok objek `{text}` diratakan ke teksnya; nilai lain dibuang. */
             content: string[];
-            seo?: {
-                title?: string | null;
-                description?: string | null;
-                /** Format: uri */
-                canonical_url?: string | null;
-                /** Format: uri */
-                og_image_url?: string | null;
+            seo: {
+                /** @description `seo_title` ?? `title`. */
+                title: string;
+                /** @description `seo_description` ?? `excerpt`. */
+                description: string;
+                /**
+                 * Format: uri
+                 * @description `<PUBLIC_SITE_URL>/berita/<slug>`.
+                 */
+                canonical_url: string;
+                /**
+                 * Format: uri
+                 * @description OG media via `getBestImageUrl`, fallback thumbnail.
+                 */
+                og_image_url: string | null;
             };
-            published_at?: components["schemas"]["NullableTimestamp"];
+            published_at: components["schemas"]["NullableTimestamp"];
         };
-        PublicPortfolioItem: {
-            id: components["schemas"]["Id"];
-            title: string;
-            slug: string;
-            category?: string | null;
-            category_slug?: string | null;
-            /** Format: uri */
-            thumbnail_url?: string | null;
-            /** Format: uri */
-            medium_url?: string | null;
-            alt_text?: string | null;
-            short_description?: string | null;
-            images?: string[];
+        /** @description Gambar galeri portofolio publik (urut sort_order); gambar tanpa URL sama sekali (media belum completed) dibuang. */
+        PublicPortfolioImage: {
+            /**
+             * Format: uri
+             * @description `getThumbnailUrl`.
+             */
+            thumbnail_url: string | null;
+            /**
+             * Format: uri
+             * @description `getMediumUrl`.
+             */
+            medium_url: string | null;
+            /**
+             * Format: uri
+             * @description `getBestImageUrl`.
+             */
+            large_url: string | null;
+            /** @description = `title` portofolio. */
+            alt_text: string;
+        };
+        /** @description Item list portofolio publik (`getPortfolio`, :215-268) = kartu + `images`. */
+        PublicPortfolioItem: components["schemas"]["PublicPortfolioCard"] & {
+            images: components["schemas"]["PublicPortfolioImage"][];
         };
         PublicPortfolioCategory: {
             id: components["schemas"]["Id"];
             name: string;
             slug: string;
+            /** @description Jumlah portofolio `published` (kategori tanpa portofolio published tidak ditampilkan). */
             count: number;
         };
         SeoByPath: {
@@ -3862,42 +4355,48 @@ export interface components {
              */
             status: 200 | 404;
         };
+        /** @description `SeoAssetsService.seo` (seo-assets.service.ts:66-155). */
         SeoLegacy: {
             title: string;
             description: string;
             /** Format: uri */
             canonical_url: string;
             /** Format: uri */
-            og_image_url?: string | null;
+            og_image_url: string | null;
             /** @constant */
             noindex: false;
         };
+        /** @description `getSiteSettings` (:39-77). Gambar via `getBestImageUrl`. */
         PublicSiteSettings: {
             /** @example Indobraga */
-            brand: string | null;
-            legal_name?: string | null;
-            /** Format: email */
-            email?: string | null;
-            phone?: string | null;
-            whatsapp?: string | null;
-            instagram?: string | null;
-            contact_person?: string | null;
-            contact_role?: string | null;
-            address?: string | null;
+            brand: string;
+            /** @example PT. Braga Indonesia Perkasa */
+            legal_name: string;
+            /** @example info@indobraga.com */
+            email: string;
+            phone: string;
+            whatsapp: string;
+            instagram: string;
+            contact_person: string;
+            contact_role: string;
+            address: string;
             show_brand_text: boolean;
             /** Format: uri */
-            logo_url?: string | null;
+            logo_url: string | null;
             /** Format: uri */
-            footer_logo_url?: string | null;
+            footer_logo_url: string | null;
             /** Format: uri */
-            contact_hero_image_url?: string | null;
-            seo?: {
+            contact_hero_image_url: string | null;
+            seo: {
+                /** @description `site_settings.seo_title` apa adanya. */
                 title: string | null;
+                /** @description `site_settings.seo_description` apa adanya. */
                 description: string | null;
                 /** Format: uri */
-                og_image_url?: string | null;
+                og_image_url: string | null;
             };
         };
+        /** @description Legacy `CreateWhatsAppLeadDto` — semua string di-trim sebelum divalidasi. */
         CreateWhatsAppLeadInput: {
             /** @example Siti */
             name: string;
@@ -3917,7 +4416,10 @@ export interface components {
         };
     };
     responses: {
-        /** @description Validasi gagal (`VALIDATION_ERROR`) — `errors[]` berisi field & pesan; field asing ditolak. */
+        /**
+         * @description Validasi gagal (`VALIDATION_ERROR`) — `errors[]` berisi field & pesan; field body/query asing
+         *     ditolak (pesan legacy `property <nama> should not exist`).
+         */
         ValidationError: {
             headers: {
                 "X-Request-Id": components["headers"]["XRequestId"];
@@ -3985,8 +4487,8 @@ export interface components {
                 "application/json": components["schemas"]["ErrorEnvelope"];
             };
         };
-        /** @description Request tidak valid (`BAD_REQUEST`). */
-        BadRequest: {
+        /** @description Data tidak ditemukan (`NOT_FOUND`). */
+        NotFound: {
             headers: {
                 "X-Request-Id": components["headers"]["XRequestId"];
                 [name: string]: unknown;
@@ -3995,8 +4497,11 @@ export interface components {
                 "application/json": components["schemas"]["ErrorEnvelope"];
             };
         };
-        /** @description Data tidak ditemukan (`NOT_FOUND`). */
-        NotFound: {
+        /**
+         * @description Request tidak valid. `code` = `VALIDATION_ERROR` (path/query/body gagal validasi DTO, termasuk
+         *     parameter query tak dikenal) atau `BAD_REQUEST` (aturan status/bisnis — lihat deskripsi operasi).
+         */
+        InvalidRequest: {
             headers: {
                 "X-Request-Id": components["headers"]["XRequestId"];
                 [name: string]: unknown;
@@ -4015,8 +4520,47 @@ export interface components {
                 "application/json": components["schemas"]["ErrorEnvelope"];
             };
         };
-        /** @description Ukuran request/file melebihi batas (`PAYLOAD_TOO_LARGE`). */
+        /**
+         * @description Ukuran request/file melebihi batas (`PAYLOAD_TOO_LARGE`) — body JSON di atas `x-body-limit-bytes`
+         *     operasi (default 1 MB) atau file upload di atas batas media.
+         */
         PayloadTooLarge: {
+            headers: {
+                "X-Request-Id": components["headers"]["XRequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /**
+         * @description Request tidak valid (HTTP 400). `code` = `VALIDATION_ERROR` (validasi DTO atau bagian wajib
+         *     kosong — "Lengkapi bagian wajib: …") atau `UNPROCESSABLE_ENTITY` bila media yang dirujuk tidak
+         *     ada / belum `completed` ("Media belum siap dipakai. Tunggu proses selesai atau unggah media
+         *     lain."). Status 400 untuk media belum siap adalah paritas legacy (`assertCompletedMedia`,
+         *     admin-content.service.ts:1784-1796 melempar `BadRequestException` ber-code `UNPROCESSABLE_ENTITY`).
+         */
+        ValidationOrMediaNotReady: {
+            headers: {
+                "X-Request-Id": components["headers"]["XRequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /** @description Kesalahan server (`INTERNAL_ERROR`). */
+        InternalError: {
+            headers: {
+                "X-Request-Id": components["headers"]["XRequestId"];
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ErrorEnvelope"];
+            };
+        };
+        /** @description Request tidak valid (`BAD_REQUEST`). */
+        BadRequest: {
             headers: {
                 "X-Request-Id": components["headers"]["XRequestId"];
                 [name: string]: unknown;
@@ -4047,7 +4591,23 @@ export interface components {
         };
     };
     parameters: {
+        /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
         IdPath: number;
+        /**
+         * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+         *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+         *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+         */
+        ArchiveIdPath: number;
+        /**
+         * @description Cursor opaque dari `meta.next_cursor` respons sebelumnya (base64url JSON `{sort_order, id}`).
+         *     Tidak bisa di-decode atau bukan `{sort_order: number, id: number}` → 400 `BAD_REQUEST`
+         *     ("Cursor tidak valid."). Tanpa batas panjang (legacy `IsString`).
+         */
+        Cursor: string;
+        /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`; tidak dikirim → 1. */
+        Page: number;
+        /** @description Tidak cocok pola → 400 `VALIDATION_ERROR` (legacy `SlugParamDto`, tanpa batas panjang). */
         SlugPath: string;
     };
     requestBodies: never;
@@ -4062,8 +4622,21 @@ export interface components {
         XRateLimitRemaining: number;
         /** @description Detik sampai jendela rate limit direset. */
         XRateLimitReset: number;
-        /** @description Cookie sesi (httpOnly) dan/atau cookie CSRF (non-httpOnly). */
+        /**
+         * @description Dua header `Set-Cookie` (paritas legacy auth/cookie.utils.ts): cookie sesi
+         *     `indobraga_admin_session` (`SESSION_COOKIE_NAME`; httpOnly, `SameSite=Lax`, `Path=/`,
+         *     `Max-Age` = `ADMIN_SESSION_TTL_DAYS` hari, `Secure` hanya di produksi) dan cookie CSRF
+         *     `indobraga_csrf` (`CSRF_COOKIE_NAME`; atribut sama tetapi TANPA httpOnly).
+         */
         SetCookie: string;
+        /**
+         * @description Dua header `Set-Cookie` yang menghapus cookie sesi dan cookie CSRF (legacy `res.clearCookie`):
+         *     nilai kosong, `Path=/`, `Expires=Thu, 01 Jan 1970 00:00:00 GMT`, `HttpOnly`, `SameSite=Lax`
+         *     (+ `Secure` di produksi) — atribut yang sama dipakai untuk kedua cookie.
+         */
+        ClearCookie: string;
+        /** @description Nilai persis sama dengan ekstensi `x-cache-control` operasi. */
+        CacheControl: string;
     };
     pathItems: never;
 }
@@ -4073,7 +4646,9 @@ export interface operations {
         parameters: {
             query?: {
                 page?: number;
+                /** @description Bilangan bulat ≥ 1; nilai > 100 di-clamp menjadi 100. */
                 limit?: number;
+                /** @description Di-trim (maks 120 setelah trim); mencari name, email, phone, company. */
                 q?: string;
                 source?: "inquiry" | "whatsapp_lead" | "manual_import" | "manual";
                 status?: "active" | "unsubscribed" | "blocked";
@@ -4134,6 +4709,7 @@ export interface operations {
     exportAudienceCsv: {
         parameters: {
             query?: {
+                /** @description Di-trim (maks 120 setelah trim); mencari name, email, phone, company. */
                 q?: string;
                 source?: "inquiry" | "whatsapp_lead" | "manual_import" | "manual";
                 status?: "active" | "unsubscribed" | "blocked";
@@ -4148,12 +4724,14 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Content-Type"?: "text/csv; charset=utf-8";
+                    "Content-Disposition"?: "attachment; filename=\"indobraga-audience.csv\"";
                     [name: string]: unknown;
                 };
                 content: {
                     /**
                      * @example "Nama","Email","Telepon","Perusahaan","Sumber","Status","Consent","Interaksi Terakhir","Dibuat"
-                     *     "Budi","budi@contoh.com","08123456789","","inquiry","active","implied","2026-05-12","2026-05-12"
+                     *     "Budi","budi@contoh.com","08123456789","","inquiry","active","implied","2026-05-12T08:30:00.000Z","2026-05-12T08:30:00.000Z"
                      */
                     "text/csv": string;
                 };
@@ -4167,6 +4745,7 @@ export interface operations {
     previewAudience: {
         parameters: {
             query?: {
+                /** @description Di-trim (maks 120 setelah trim); mencari name, email, phone, company. */
                 q?: string;
                 source?: "inquiry" | "whatsapp_lead" | "manual_import" | "manual";
                 status?: "active" | "unsubscribed" | "blocked";
@@ -4193,7 +4772,14 @@ export interface operations {
                      *         "eligible_recipients": 8,
                      *         "excluded_unsubscribed": 1,
                      *         "excluded_blocked": 1,
-                     *         "sample_recipients": []
+                     *         "sample_recipients": [
+                     *           {
+                     *             "id": 1,
+                     *             "name": "Budi",
+                     *             "email": "budi@contoh.com",
+                     *             "company": null
+                     *           }
+                     *         ]
                      *       }
                      *     }
                      */
@@ -4239,12 +4825,40 @@ export interface operations {
                      *           "failed_media": 0,
                      *           "connected_email_accounts": 1,
                      *           "email_campaigns": 2,
-                     *           "pending_email_campaigns": 0,
-                     *           "pending_revalidation": 0
+                     *           "pending_email_campaigns": 0
                      *         },
-                     *         "latest_inquiries": [],
-                     *         "latest_whatsapp_leads": [],
-                     *         "latest_email_campaigns": []
+                     *         "latest_inquiries": [
+                     *           {
+                     *             "id": 12,
+                     *             "name": "Budi Santoso",
+                     *             "email": "budi@contoh.com",
+                     *             "phone": "0812-3456-789",
+                     *             "company": null,
+                     *             "status": "new",
+                     *             "created_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ],
+                     *         "latest_whatsapp_leads": [
+                     *           {
+                     *             "id": 3,
+                     *             "name": "Siti",
+                     *             "phone": "08123456789",
+                     *             "status": "new",
+                     *             "created_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ],
+                     *         "latest_email_campaigns": [
+                     *           {
+                     *             "id": 1,
+                     *             "title": "Promo Lebaran",
+                     *             "subject": "Diskon Kemasan",
+                     *             "status": "completed",
+                     *             "total_recipients": 10,
+                     *             "sent_count": 9,
+                     *             "failed_count": 1,
+                     *             "created_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ]
                      *       }
                      *     }
                      */
@@ -4263,6 +4877,7 @@ export interface operations {
             query?: {
                 page?: number;
                 limit?: number;
+                /** @description Di-trim. */
                 q?: string;
                 provider?: "google" | "smtp";
                 status?: "connected" | "invalid" | "disabled" | "needs_reconnect";
@@ -4288,6 +4903,7 @@ export interface operations {
                      *         {
                      *           "id": 1,
                      *           "provider": "smtp",
+                     *           "auth_type": "smtp",
                      *           "email_address": "marketing@indobraga.com",
                      *           "display_name": "Marketing",
                      *           "status": "connected",
@@ -4340,8 +4956,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -4392,8 +5008,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat/diperbarui (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -4406,6 +5022,7 @@ export interface operations {
                      *       "data": {
                      *         "id": 1,
                      *         "provider": "smtp",
+                     *         "auth_type": "smtp",
                      *         "email_address": "marketing@indobraga.com",
                      *         "display_name": "Marketing",
                      *         "status": "connected",
@@ -4457,8 +5074,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Berhasil (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -4482,7 +5099,6 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -4491,6 +5107,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -4519,7 +5136,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -4532,6 +5149,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -4561,9 +5179,66 @@ export interface operations {
                      *       "data": {
                      *         "id": 1,
                      *         "provider": "smtp",
+                     *         "auth_type": "smtp",
                      *         "email_address": "marketing@indobraga.com",
                      *         "display_name": "Marketing Baru",
                      *         "status": "connected",
+                     *         "smtp_host": "mail.indobraga.com",
+                     *         "smtp_port": 465,
+                     *         "smtp_security": "ssl_tls",
+                     *         "smtp_username": "marketing@indobraga.com",
+                     *         "last_validated_at": "2026-05-12T08:30:00.000Z",
+                     *         "connected_at": "2026-05-12T08:30:00.000Z",
+                     *         "last_error": null,
+                     *         "created_at": "2026-05-12T08:30:00.000Z",
+                     *         "updated_at": "2026-05-12T08:30:00.000Z"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessBase"] & {
+                        data: components["schemas"]["EmailAccount"];
+                    };
+                };
+            };
+            400: components["responses"]["InvalidRequest"];
+            401: components["responses"]["Unauthenticated"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["Unprocessable"];
+            429: components["responses"]["RateLimited"];
+        };
+    };
+    disableEmailAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
+                id: components["parameters"]["IdPath"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Berhasil (201, paritas legacy). */
+            201: {
+                headers: {
+                    "X-Request-Id": components["headers"]["XRequestId"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "success": true,
+                     *       "message": "Data berhasil diubah.",
+                     *       "data": {
+                     *         "id": 1,
+                     *         "provider": "smtp",
+                     *         "auth_type": "smtp",
+                     *         "email_address": "marketing@indobraga.com",
+                     *         "display_name": "Marketing",
+                     *         "status": "disabled",
                      *         "smtp_host": "mail.indobraga.com",
                      *         "smtp_port": 465,
                      *         "smtp_security": "ssl_tls",
@@ -4585,52 +5260,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
-            429: components["responses"]["RateLimited"];
-        };
-    };
-    disableEmailAccount: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: components["parameters"]["IdPath"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Berhasil. */
-            200: {
-                headers: {
-                    "X-Request-Id": components["headers"]["XRequestId"];
-                    [name: string]: unknown;
-                };
-                content: {
-                    /**
-                     * @example {
-                     *       "success": true,
-                     *       "message": "Data berhasil diubah.",
-                     *       "data": {
-                     *         "id": 1,
-                     *         "provider": "smtp",
-                     *         "email_address": "marketing@indobraga.com",
-                     *         "display_name": "Marketing",
-                     *         "status": "disabled",
-                     *         "created_at": "2026-05-12T08:30:00.000Z",
-                     *         "updated_at": "2026-05-12T08:30:00.000Z"
-                     *       }
-                     *     }
-                     */
-                    "application/json": components["schemas"]["SuccessBase"] & {
-                        data: components["schemas"]["EmailAccount"];
-                    };
-                };
-            };
-            400: components["responses"]["BadRequest"];
-            401: components["responses"]["Unauthenticated"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -4639,48 +5268,30 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Berhasil (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "success": true,
-                     *       "message": "Data berhasil diambil.",
-                     *       "data": {
-                     *         "provider": "smtp",
-                     *         "valid": true,
-                     *         "account": {
-                     *           "id": 1,
-                     *           "provider": "smtp",
-                     *           "email_address": "marketing@indobraga.com",
-                     *           "display_name": "Marketing",
-                     *           "status": "connected",
-                     *           "created_at": "2026-05-12T08:30:00.000Z",
-                     *           "updated_at": "2026-05-12T08:30:00.000Z"
-                     *         },
-                     *         "message": "Koneksi SMTP berhasil."
-                     *       }
-                     *     }
-                     */
                     "application/json": components["schemas"]["SuccessBase"] & {
-                        data: components["schemas"]["SmtpReconnectResult"];
+                        data: components["schemas"]["EmailAccountReconnectResult"];
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -4689,6 +5300,7 @@ export interface operations {
             query?: {
                 page?: number;
                 limit?: number;
+                /** @description Di-trim. */
                 q?: string;
                 status?: "draft" | "pending" | "processing" | "completed" | "failed" | "cancelled";
                 email_account_id?: number;
@@ -4714,12 +5326,17 @@ export interface operations {
                      *         {
                      *           "id": 1,
                      *           "title": "Promo Lebaran",
-                     *           "subject": "Diskon",
+                     *           "subject": "Diskon Kemasan",
+                     *           "body_text": "Halo {{ nama }}",
+                     *           "body_html": "<p>Halo {{ nama }}</p>",
                      *           "status": "draft",
                      *           "total_recipients": 10,
                      *           "queued_count": 10,
                      *           "sent_count": 0,
                      *           "failed_count": 0,
+                     *           "started_at": null,
+                     *           "finished_at": null,
+                     *           "last_error": null,
                      *           "sender_account": {
                      *             "id": 1,
                      *             "provider": "smtp",
@@ -4778,8 +5395,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -4804,6 +5421,7 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
+            413: components["responses"]["PayloadTooLarge"];
             422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
@@ -4828,24 +5446,19 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
+                    /** @description Di-trim. */
                     title: string;
                     email_account_id: number;
                     subject: string;
                     body_text?: string;
                     body_html?: string;
-                    audience_filter: {
-                        q?: string;
-                        /** @enum {string} */
-                        source?: "inquiry" | "whatsapp_lead" | "manual_import" | "manual";
-                        /** @enum {string} */
-                        status?: "active" | "unsubscribed" | "blocked";
-                    };
+                    audience_filter: components["schemas"]["AudienceFilter"];
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -4894,26 +5507,19 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
+                    /** @description Di-trim. */
                     title: string;
                     email_account_id: number;
                     subject: string;
                     body_text?: string;
                     body_html?: string;
-                    inquiry_filter: {
-                        q?: string;
-                        /** @enum {string} */
-                        status?: "new" | "contacted" | "in_progress" | "closed" | "spam";
-                        /** Format: date */
-                        date_from?: string;
-                        /** Format: date */
-                        date_to?: string;
-                    };
+                    inquiry_filter: components["schemas"]["InquiryRecipientFilter"];
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -4945,9 +5551,12 @@ export interface operations {
     previewInquiryRecipients: {
         parameters: {
             query?: {
+                /** @description Di-trim; mencari name, email, phone, company, message. */
                 q?: string;
                 status?: "new" | "contacted" | "in_progress" | "closed" | "spam";
+                /** @description Di-trim; ISO 8601 (`IsDateString`, tanggal atau tanggal-waktu). Hanya YYYY-MM-DD (10 karakter pertama) dipakai → awal hari Asia/Jakarta (+07:00). */
                 date_from?: string;
+                /** @description Seperti `date_from` → akhir hari (23:59:59.999 +07:00). */
                 date_to?: string;
             };
             header?: never;
@@ -4974,7 +5583,16 @@ export interface operations {
                      *         "invalid_emails": 1,
                      *         "recipient_limit": 1000,
                      *         "over_limit": false,
-                     *         "sample_recipients": []
+                     *         "sample_recipients": [
+                     *           {
+                     *             "id": 12,
+                     *             "name": "Budi Santoso",
+                     *             "email": "budi@contoh.com",
+                     *             "company": "PT Contoh",
+                     *             "status": "new",
+                     *             "created_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ]
                      *       }
                      *     }
                      */
@@ -4986,6 +5604,7 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
+            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -4994,6 +5613,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -5014,12 +5634,24 @@ export interface operations {
                      *       "data": {
                      *         "id": 1,
                      *         "title": "Promo Lebaran",
-                     *         "subject": "Diskon",
+                     *         "subject": "Diskon Kemasan",
+                     *         "body_text": "Halo {{ nama }}",
+                     *         "body_html": "<p>Halo {{ nama }}</p>",
                      *         "status": "draft",
                      *         "total_recipients": 10,
                      *         "queued_count": 10,
                      *         "sent_count": 0,
                      *         "failed_count": 0,
+                     *         "started_at": null,
+                     *         "finished_at": null,
+                     *         "last_error": null,
+                     *         "sender_account": {
+                     *           "id": 1,
+                     *           "provider": "smtp",
+                     *           "email_address": "marketing@indobraga.com",
+                     *           "display_name": "Marketing",
+                     *           "status": "connected"
+                     *         },
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -5030,7 +5662,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -5042,6 +5674,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -5078,9 +5711,24 @@ export interface operations {
                      *       "data": {
                      *         "id": 1,
                      *         "title": "Promo Lebaran",
-                     *         "subject": "Diskon Terbaru",
+                     *         "subject": "Diskon Kemasan Terbaru",
+                     *         "body_text": "Halo {{ nama }}",
+                     *         "body_html": "<p>Halo {{ nama }}</p>",
                      *         "status": "draft",
                      *         "total_recipients": 10,
+                     *         "queued_count": 10,
+                     *         "sent_count": 0,
+                     *         "failed_count": 0,
+                     *         "started_at": null,
+                     *         "finished_at": null,
+                     *         "last_error": null,
+                     *         "sender_account": {
+                     *           "id": 1,
+                     *           "provider": "smtp",
+                     *           "email_address": "marketing@indobraga.com",
+                     *           "display_name": "Marketing",
+                     *           "status": "connected"
+                     *         },
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -5095,6 +5743,7 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            413: components["responses"]["PayloadTooLarge"];
             422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
@@ -5104,11 +5753,12 @@ export interface operations {
             query?: {
                 page?: number;
                 limit?: number;
-                /** @description Teks bebas. */
+                /** @description Di-trim; dicocokkan persis (mis. `sent`, `temporary_failed`, `failed`). */
                 status?: string;
             };
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -5167,11 +5817,13 @@ export interface operations {
             query?: {
                 page?: number;
                 limit?: number;
+                /** @description Di-trim. */
                 q?: string;
                 status?: "queued" | "sending" | "sent" | "failed" | "skipped";
             };
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -5232,14 +5884,15 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Berhasil (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -5251,10 +5904,25 @@ export interface operations {
                      *       "message": "Penerima gagal diantre ulang.",
                      *       "data": {
                      *         "id": 1,
-                     *         "title": "Promo",
-                     *         "subject": "Diskon",
+                     *         "title": "Promo Lebaran",
+                     *         "subject": "Diskon Kemasan",
+                     *         "body_text": "Halo {{ nama }}",
+                     *         "body_html": "<p>Halo {{ nama }}</p>",
                      *         "status": "pending",
                      *         "total_recipients": 10,
+                     *         "queued_count": 2,
+                     *         "sent_count": 8,
+                     *         "failed_count": 0,
+                     *         "started_at": null,
+                     *         "finished_at": null,
+                     *         "last_error": null,
+                     *         "sender_account": {
+                     *           "id": 1,
+                     *           "provider": "smtp",
+                     *           "email_address": "marketing@indobraga.com",
+                     *           "display_name": "Marketing",
+                     *           "status": "connected"
+                     *         },
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -5265,10 +5933,11 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -5277,14 +5946,15 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Berhasil (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -5296,10 +5966,25 @@ export interface operations {
                      *       "message": "Kampanye mulai dikirim.",
                      *       "data": {
                      *         "id": 1,
-                     *         "title": "Promo",
-                     *         "subject": "Diskon",
+                     *         "title": "Promo Lebaran",
+                     *         "subject": "Diskon Kemasan",
+                     *         "body_text": "Halo {{ nama }}",
+                     *         "body_html": "<p>Halo {{ nama }}</p>",
                      *         "status": "pending",
                      *         "total_recipients": 10,
+                     *         "queued_count": 10,
+                     *         "sent_count": 0,
+                     *         "failed_count": 0,
+                     *         "started_at": null,
+                     *         "finished_at": null,
+                     *         "last_error": null,
+                     *         "sender_account": {
+                     *           "id": 1,
+                     *           "provider": "smtp",
+                     *           "email_address": "marketing@indobraga.com",
+                     *           "display_name": "Marketing",
+                     *           "status": "connected"
+                     *         },
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -5310,7 +5995,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -5323,6 +6008,7 @@ export interface operations {
             query?: {
                 page?: number;
                 limit?: number;
+                /** @description Di-trim. */
                 q?: string;
             };
             header?: never;
@@ -5395,8 +6081,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -5435,6 +6121,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -5463,7 +6150,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -5475,6 +6162,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -5529,17 +6217,19 @@ export interface operations {
     listGalleryItems: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -5562,14 +6252,34 @@ export interface operations {
                      *       "data": [
                      *         {
                      *           "id": 1,
-                     *           "media_file_id": 10,
                      *           "media_type": "image",
                      *           "caption": "Proses cetak offset",
+                     *           "media_file_id": 10,
+                     *           "media_file": {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
+                     *           "poster_media_id": null,
+                     *           "poster_media": null,
                      *           "sort_order": 1,
                      *           "status": "published",
                      *           "previous_status": null,
-                     *           "published_at": "2026-05-12T08:30:00.000Z",
                      *           "archived_at": null,
+                     *           "published_at": "2026-05-12T08:30:00.000Z",
                      *           "created_at": "2026-05-12T08:30:00.000Z",
                      *           "updated_at": "2026-05-12T08:30:00.000Z"
                      *         }
@@ -5611,30 +6321,166 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example 10 */
+                    /** @description Create: wajib. Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
                     media_file_id: number;
-                    /**
-                     * @example image
-                     * @enum {string}
-                     */
+                    /** @enum {string} */
                     media_type: "image" | "video";
-                    /** @example Keterangan contoh */
+                    /** @description Di-trim. */
                     caption: string;
-                    poster_media_id?: number;
-                    /** @example 1 */
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    poster_media_id?: number | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
-                    /**
-                     * Format: date-time
-                     * @example 2026-05-12T08:30:00.000Z
-                     */
+                    /** @description ISO 8601 (`IsISO8601`: tanggal atau tanggal-waktu). Masa depan di-clamp ke now; tanpa nilai & status `published` → now. Pada PATCH hanya dipakai bila `status: published` ikut dikirim. */
                     published_at?: string;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -5646,14 +6492,34 @@ export interface operations {
                      *       "message": "Data berhasil dibuat.",
                      *       "data": {
                      *         "id": 1,
-                     *         "media_file_id": 10,
                      *         "media_type": "image",
                      *         "caption": "Proses cetak offset",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "poster_media_id": null,
+                     *         "poster_media": null,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -5664,11 +6530,9 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -5724,8 +6588,8 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
         };
     };
     getGalleryItem: {
@@ -5733,6 +6597,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -5752,14 +6617,34 @@ export interface operations {
                      *       "message": "Data berhasil diambil.",
                      *       "data": {
                      *         "id": 1,
-                     *         "media_file_id": 10,
                      *         "media_type": "image",
                      *         "caption": "Proses cetak offset",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "poster_media_id": null,
+                     *         "poster_media": null,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -5770,7 +6655,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -5782,6 +6667,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -5811,11 +6697,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -5824,6 +6709,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -5838,24 +6724,160 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example 10 */
-                    media_file_id?: number;
-                    /**
-                     * @example image
-                     * @enum {string}
-                     */
+                    /** @description Create: wajib. Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    media_file_id?: number | null;
+                    /** @enum {string} */
                     media_type?: "image" | "video";
-                    /** @example Keterangan contoh */
+                    /** @description Di-trim. */
                     caption?: string;
-                    poster_media_id?: number;
-                    /** @example 1 */
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    poster_media_id?: number | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
-                    /**
-                     * Format: date-time
-                     * @example 2026-05-12T08:30:00.000Z
-                     */
+                    /** @description ISO 8601 (`IsISO8601`: tanggal atau tanggal-waktu). Masa depan di-clamp ke now; tanpa nilai & status `published` → now. Pada PATCH hanya dipakai bila `status: published` ikut dikirim. */
                     published_at?: string;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
@@ -5873,14 +6895,34 @@ export interface operations {
                      *       "message": "Data berhasil diubah.",
                      *       "data": {
                      *         "id": 1,
-                     *         "media_file_id": 10,
                      *         "media_type": "image",
                      *         "caption": "Proses cetak offset",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "poster_media_id": null,
+                     *         "poster_media": null,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -5891,12 +6933,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -5905,7 +6945,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -5924,14 +6969,34 @@ export interface operations {
                      *       "message": "Data berhasil diarsipkan.",
                      *       "data": {
                      *         "id": 1,
-                     *         "media_file_id": 10,
                      *         "media_type": "image",
                      *         "caption": "Proses cetak offset",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "poster_media_id": null,
+                     *         "poster_media": null,
                      *         "sort_order": 1,
-                     *         "status": "published",
-                     *         "previous_status": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "published_at": "2026-05-12T08:30:00.000Z",
-                     *         "archived_at": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -5954,6 +7019,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -5982,14 +7048,34 @@ export interface operations {
                      *       "message": "Status berhasil diubah.",
                      *       "data": {
                      *         "id": 1,
-                     *         "media_file_id": 10,
                      *         "media_type": "image",
                      *         "caption": "Proses cetak offset",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "poster_media_id": null,
+                     *         "poster_media": null,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -6004,7 +7090,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -6013,7 +7098,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -6032,14 +7122,34 @@ export interface operations {
                      *       "message": "Arsip berhasil dibatalkan.",
                      *       "data": {
                      *         "id": 1,
-                     *         "media_file_id": 10,
                      *         "media_type": "image",
                      *         "caption": "Proses cetak offset",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "poster_media_id": null,
+                     *         "poster_media": null,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -6060,17 +7170,19 @@ export interface operations {
     listHeroSections: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -6136,25 +7248,179 @@ export interface operations {
                 /**
                  * @example {
                  *       "title": "Jasa Cetak Kardus & Packaging",
-                 *       "subtitle": "Sejak 2010."
+                 *       "subtitle": "Sejak 2010.",
+                 *       "cta_label": "Hubungi Kami",
+                 *       "cta_href": "/kontak"
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Judul */
+                    /** @description Di-trim. */
                     title: string;
-                    /** @example Subjudul contoh */
-                    subtitle?: string;
-                    /** @example Hubungi Kami */
-                    cta_label?: string;
-                    /** @example /kontak */
-                    cta_href?: string;
+                    /** @description Di-trim. */
+                    subtitle?: string | null;
+                    /** @description Kosong/null → `primary_cta` publik null. Di-trim. */
+                    cta_label?: string | null;
+                    /** @description Di-trim. */
+                    cta_href?: string | null;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    sort_order?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -6186,25 +7452,25 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
     listHeroSlides: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -6233,6 +7499,24 @@ export interface operations {
                      *           "metric": "10.000+ pcs/hari",
                      *           "alt_text": "Mesin cetak",
                      *           "media_file_id": 10,
+                     *           "media_file": {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
                      *           "sort_order": 1,
                      *           "status": "published",
                      *           "previous_status": null,
@@ -6274,35 +7558,170 @@ export interface operations {
                  * @example {
                  *       "title": "Cetak Offset Berkualitas",
                  *       "label": "Terpercaya",
-                 *       "hero_section_id": 1,
+                 *       "hero_section_id": 0,
                  *       "media_file_id": 10,
                  *       "sort_order": 1
                  *     }
                  */
                 "application/json": {
-                    /**
-                     * @description 0 = ikut hero pertama.
-                     * @example 1
-                     */
-                    hero_section_id?: number;
-                    /** @example Label Contoh */
-                    label?: string;
-                    /** @example Contoh Judul */
+                    /** @description Create: 0/null/tidak dikirim → hero pertama (id terkecil; tidak ada hero → 422). PATCH: hanya dipakai bila > 0. Id tidak ada tidak dicek (legacy: error DB). */
+                    hero_section_id?: number | null;
+                    /** @description Di-trim. */
+                    label?: string | null;
+                    /** @description Di-trim. */
                     title: string;
-                    /** @example 10.000+ pcs/hari */
-                    metric?: string;
-                    alt_text?: string;
-                    /** @example 10 */
-                    media_file_id?: number;
-                    /** @example 1 */
+                    /** @description Di-trim. */
+                    metric?: string | null;
+                    /** @description Di-trim. */
+                    alt_text?: string | null;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    media_file_id?: number | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -6320,6 +7739,24 @@ export interface operations {
                      *         "metric": "10.000+ pcs/hari",
                      *         "alt_text": "Mesin cetak",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -6334,10 +7771,9 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
             422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
@@ -6394,8 +7830,8 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
         };
     };
     getHeroSlide: {
@@ -6403,6 +7839,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -6428,6 +7865,24 @@ export interface operations {
                      *         "metric": "10.000+ pcs/hari",
                      *         "alt_text": "Mesin cetak",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -6442,7 +7897,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -6454,6 +7909,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -6483,11 +7939,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -6496,6 +7951,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -6506,29 +7962,164 @@ export interface operations {
                  * @example {
                  *       "title": "Cetak Offset Berkualitas",
                  *       "label": "Terpercaya",
-                 *       "hero_section_id": 1,
+                 *       "hero_section_id": 0,
                  *       "media_file_id": 10,
                  *       "sort_order": 1
                  *     }
                  */
                 "application/json": {
-                    /**
-                     * @description 0 = ikut hero pertama.
-                     * @example 1
-                     */
-                    hero_section_id?: number;
-                    /** @example Label Contoh */
-                    label?: string;
-                    /** @example Contoh Judul */
+                    /** @description Create: 0/null/tidak dikirim → hero pertama (id terkecil; tidak ada hero → 422). PATCH: hanya dipakai bila > 0. Id tidak ada tidak dicek (legacy: error DB). */
+                    hero_section_id?: number | null;
+                    /** @description Di-trim. */
+                    label?: string | null;
+                    /** @description Di-trim. */
                     title?: string;
-                    /** @example 10.000+ pcs/hari */
-                    metric?: string;
-                    alt_text?: string;
-                    /** @example 10 */
-                    media_file_id?: number;
-                    /** @example 1 */
+                    /** @description Di-trim. */
+                    metric?: string | null;
+                    /** @description Di-trim. */
+                    alt_text?: string | null;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    media_file_id?: number | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
@@ -6552,6 +8143,24 @@ export interface operations {
                      *         "metric": "10.000+ pcs/hari",
                      *         "alt_text": "Mesin cetak",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -6566,12 +8175,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -6580,7 +8187,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -6605,10 +8217,28 @@ export interface operations {
                      *         "metric": "10.000+ pcs/hari",
                      *         "alt_text": "Mesin cetak",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
-                     *         "status": "published",
-                     *         "previous_status": null,
-                     *         "archived_at": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -6631,6 +8261,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -6665,6 +8296,24 @@ export interface operations {
                      *         "metric": "10.000+ pcs/hari",
                      *         "alt_text": "Mesin cetak",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -6683,7 +8332,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -6692,7 +8340,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -6717,6 +8370,24 @@ export interface operations {
                      *         "metric": "10.000+ pcs/hari",
                      *         "alt_text": "Mesin cetak",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -6743,6 +8414,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -6770,16 +8442,51 @@ export interface operations {
                      *         "previous_status": null,
                      *         "archived_at": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
-                     *         "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         "updated_at": "2026-05-12T08:30:00.000Z",
+                     *         "slides": [
+                     *           {
+                     *             "id": 1,
+                     *             "hero_section_id": 1,
+                     *             "label": "Terpercaya",
+                     *             "title": "Cetak Offset Berkualitas",
+                     *             "metric": "10.000+ pcs/hari",
+                     *             "alt_text": "Mesin cetak",
+                     *             "media_file_id": 10,
+                     *             "media_file": {
+                     *               "id": 10,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-10.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             },
+                     *             "sort_order": 1,
+                     *             "status": "published",
+                     *             "previous_status": null,
+                     *             "archived_at": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ]
                      *       }
                      *     }
                      */
                     "application/json": components["schemas"]["SuccessBase"] & {
-                        data: components["schemas"]["HeroSection"];
+                        data: components["schemas"]["HeroSectionDetail"];
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -6791,6 +8498,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -6820,11 +8528,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -6833,6 +8540,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -6842,19 +8550,173 @@ export interface operations {
                 /**
                  * @example {
                  *       "title": "Jasa Cetak Kardus & Packaging",
-                 *       "subtitle": "Sejak 2010."
+                 *       "subtitle": "Sejak 2010.",
+                 *       "cta_label": "Hubungi Kami",
+                 *       "cta_href": "/kontak"
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Judul */
+                    /** @description Di-trim. */
                     title?: string;
-                    /** @example Subjudul contoh */
-                    subtitle?: string;
-                    /** @example Hubungi Kami */
-                    cta_label?: string;
-                    /** @example /kontak */
-                    cta_href?: string;
+                    /** @description Di-trim. */
+                    subtitle?: string | null;
+                    /** @description Kosong/null → `primary_cta` publik null. Di-trim. */
+                    cta_label?: string | null;
+                    /** @description Di-trim. */
+                    cta_href?: string | null;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    sort_order?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
@@ -6893,8 +8755,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -6903,7 +8763,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -6926,9 +8791,9 @@ export interface operations {
                      *         "subtitle": "Sejak 2010.",
                      *         "cta_label": "Hubungi Kami",
                      *         "cta_href": "/kontak",
-                     *         "status": "published",
-                     *         "previous_status": null,
-                     *         "archived_at": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -6951,6 +8816,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -7000,7 +8866,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -7009,7 +8874,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -7118,6 +8988,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -7156,7 +9027,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -7168,6 +9039,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -7196,7 +9068,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -7208,6 +9080,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -7266,17 +9139,19 @@ export interface operations {
     listMachines: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -7304,6 +9179,24 @@ export interface operations {
                      *           "metric": "18.000 lbr/jam",
                      *           "description": "Mesin offset 4 warna.",
                      *           "media_file_id": 10,
+                     *           "media_file": {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
                      *           "sort_order": 1,
                      *           "status": "published",
                      *           "previous_status": null,
@@ -7349,25 +9242,167 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Nama */
+                    /** @description Di-trim. */
                     name: string;
-                    /** @example contoh-slug */
+                    /** @description Unik. Tanpa slug saat create → dibentuk dari judul/nama (huruf kecil, non-alfanumerik → `-`; kosong → `konten-<ms>`). Pola saja, tanpa batas panjang di DTO (kolom DB VARCHAR). */
                     slug?: string;
-                    /** @example 10.000+ pcs/hari */
-                    metric?: string;
-                    /** @example Deskripsi lengkap. */
-                    description?: string;
-                    /** @example 10 */
-                    media_file_id?: number;
-                    /** @example 1 */
+                    /** @description Di-trim. */
+                    metric?: string | null;
+                    /** @description Di-trim. */
+                    description?: string | null;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    media_file_id?: number | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -7384,6 +9419,24 @@ export interface operations {
                      *         "metric": "18.000 lbr/jam",
                      *         "description": "Mesin offset 4 warna.",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -7398,11 +9451,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -7458,8 +9510,8 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
         };
     };
     getMachine: {
@@ -7467,6 +9519,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -7491,6 +9544,24 @@ export interface operations {
                      *         "metric": "18.000 lbr/jam",
                      *         "description": "Mesin offset 4 warna.",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -7505,7 +9576,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -7517,6 +9588,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -7546,11 +9618,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -7559,6 +9630,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -7573,19 +9645,161 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Nama */
+                    /** @description Di-trim. */
                     name?: string;
-                    /** @example contoh-slug */
+                    /** @description Unik. Tanpa slug saat create → dibentuk dari judul/nama (huruf kecil, non-alfanumerik → `-`; kosong → `konten-<ms>`). Pola saja, tanpa batas panjang di DTO (kolom DB VARCHAR). */
                     slug?: string;
-                    /** @example 10.000+ pcs/hari */
-                    metric?: string;
-                    /** @example Deskripsi lengkap. */
-                    description?: string;
-                    /** @example 10 */
-                    media_file_id?: number;
-                    /** @example 1 */
+                    /** @description Di-trim. */
+                    metric?: string | null;
+                    /** @description Di-trim. */
+                    description?: string | null;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    media_file_id?: number | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
@@ -7608,6 +9822,24 @@ export interface operations {
                      *         "metric": "18.000 lbr/jam",
                      *         "description": "Mesin offset 4 warna.",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -7622,12 +9854,11 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -7636,7 +9867,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -7660,10 +9896,28 @@ export interface operations {
                      *         "metric": "18.000 lbr/jam",
                      *         "description": "Mesin offset 4 warna.",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
-                     *         "status": "published",
-                     *         "previous_status": null,
-                     *         "archived_at": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -7686,6 +9940,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -7719,6 +9974,24 @@ export interface operations {
                      *         "metric": "18.000 lbr/jam",
                      *         "description": "Mesin offset 4 warna.",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -7737,7 +10010,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -7746,7 +10018,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -7770,6 +10047,24 @@ export interface operations {
                      *         "metric": "18.000 lbr/jam",
                      *         "description": "Mesin offset 4 warna.",
                      *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -7796,10 +10091,11 @@ export interface operations {
             query?: {
                 page?: number;
                 limit?: number;
-                /** @description Cari nama file/mime. */
+                /** @description Di-trim; mencari nama file asli & MIME. */
                 q?: string;
                 media_type?: "image" | "video" | "document";
                 compression_status?: "processing" | "completed" | "failed" | "archived" | "pending_delete" | "deleted" | "cleanup_failed";
+                /** @description Di-trim; dicocokkan persis ke `usage` saat upload (teks bebas, tidak divalidasi enum). */
                 usage?: string;
             };
             header?: never;
@@ -7880,14 +10176,16 @@ export interface operations {
                      */
                     file: string;
                     usage: components["schemas"]["MediaUsage"];
+                    /** @description Di-trim; hanya disimpan di metadata varian (tidak diekspos). */
                     alt_text?: string;
+                    /** @description Di-trim; hanya disimpan di metadata varian (tidak diekspos). */
                     caption?: string;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -7927,7 +10225,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["InvalidRequest"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             413: components["responses"]["PayloadTooLarge"];
@@ -7940,6 +10238,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -7987,7 +10286,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -7999,6 +10298,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -8027,7 +10327,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -8040,6 +10340,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -8087,7 +10388,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -8100,14 +10401,15 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Berhasil (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -8147,11 +10449,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["InvalidRequest"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -8160,6 +10461,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -8207,7 +10509,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["InvalidRequest"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -8217,17 +10519,19 @@ export interface operations {
     listNewsArticles: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -8258,11 +10562,33 @@ export interface operations {
                      *             "Paragraf 1.",
                      *             "Paragraf 2."
                      *           ],
-                     *           "sort_order": 0,
+                     *           "thumbnail_media_file_id": 10,
+                     *           "thumbnail_media_file": {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
+                     *           "og_image_media_file_id": null,
+                     *           "og_image_media_file": null,
                      *           "status": "published",
                      *           "previous_status": null,
-                     *           "published_at": "2026-05-12T08:30:00.000Z",
                      *           "archived_at": null,
+                     *           "published_at": "2026-05-12T08:30:00.000Z",
+                     *           "seo_title": null,
+                     *           "seo_description": null,
                      *           "created_at": "2026-05-12T08:30:00.000Z",
                      *           "updated_at": "2026-05-12T08:30:00.000Z"
                      *         }
@@ -8307,34 +10633,155 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Judul */
+                    /** @description Di-trim. */
                     title: string;
-                    /** @example contoh-slug */
+                    /** @description Unik. Tanpa slug saat create → dibentuk dari judul/nama (huruf kecil, non-alfanumerik → `-`; kosong → `konten-<ms>`). Pola saja, tanpa batas panjang di DTO (kolom DB VARCHAR). */
                     slug?: string;
-                    /** @example Tips */
+                    /** @description Di-trim. */
                     category: string;
-                    /** @example Ringkasan singkat. */
+                    /** @description Di-trim. */
                     excerpt: string;
+                    /** @description Paragraf. `status: published` butuh ≥ 1 paragraf (422). */
                     content?: string[];
-                    /** @example 10 */
-                    thumbnail_media_file_id?: number;
-                    og_image_media_file_id?: number;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    thumbnail_media_file_id?: number | null;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    og_image_media_file_id?: number | null;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
-                    /**
-                     * Format: date-time
-                     * @example 2026-05-12T08:30:00.000Z
-                     */
+                    /** @description ISO 8601 (`IsISO8601`: tanggal atau tanggal-waktu). Masa depan di-clamp ke now; tanpa nilai & status `published` → now. Pada PATCH hanya dipakai bila `status: published` ikut dikirim. */
                     published_at?: string;
-                    seo_title?: string;
-                    seo_description?: string;
-                    /** @example 1 */
-                    sort_order?: number;
+                    /** @description Di-trim. */
+                    seo_title?: string | null;
+                    /** @description Di-trim. */
+                    seo_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    sort_order?: number | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -8354,11 +10801,33 @@ export interface operations {
                      *           "Paragraf 1.",
                      *           "Paragraf 2."
                      *         ],
-                     *         "sort_order": 0,
+                     *         "thumbnail_media_file_id": 10,
+                     *         "thumbnail_media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "og_image_media_file_id": null,
+                     *         "og_image_media_file": null,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -8369,7 +10838,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
@@ -8382,6 +10851,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -8409,11 +10879,33 @@ export interface operations {
                      *           "Paragraf 1.",
                      *           "Paragraf 2."
                      *         ],
-                     *         "sort_order": 0,
+                     *         "thumbnail_media_file_id": 10,
+                     *         "thumbnail_media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "og_image_media_file_id": null,
+                     *         "og_image_media_file": null,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -8424,7 +10916,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -8436,6 +10928,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -8465,11 +10958,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -8478,6 +10970,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -8495,28 +10988,149 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Judul */
+                    /** @description Di-trim. */
                     title?: string;
-                    /** @example contoh-slug */
+                    /** @description Unik. Tanpa slug saat create → dibentuk dari judul/nama (huruf kecil, non-alfanumerik → `-`; kosong → `konten-<ms>`). Pola saja, tanpa batas panjang di DTO (kolom DB VARCHAR). */
                     slug?: string;
-                    /** @example Tips */
+                    /** @description Di-trim. */
                     category?: string;
-                    /** @example Ringkasan singkat. */
+                    /** @description Di-trim. */
                     excerpt?: string;
+                    /** @description Paragraf. `status: published` butuh ≥ 1 paragraf (422). */
                     content?: string[];
-                    /** @example 10 */
-                    thumbnail_media_file_id?: number;
-                    og_image_media_file_id?: number;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    thumbnail_media_file_id?: number | null;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    og_image_media_file_id?: number | null;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
-                    /**
-                     * Format: date-time
-                     * @example 2026-05-12T08:30:00.000Z
-                     */
+                    /** @description ISO 8601 (`IsISO8601`: tanggal atau tanggal-waktu). Masa depan di-clamp ke now; tanpa nilai & status `published` → now. Pada PATCH hanya dipakai bila `status: published` ikut dikirim. */
                     published_at?: string;
-                    seo_title?: string;
-                    seo_description?: string;
-                    /** @example 1 */
-                    sort_order?: number;
+                    /** @description Di-trim. */
+                    seo_title?: string | null;
+                    /** @description Di-trim. */
+                    seo_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    sort_order?: number | null;
                 };
             };
         };
@@ -8542,11 +11156,33 @@ export interface operations {
                      *           "Paragraf 1.",
                      *           "Paragraf 2."
                      *         ],
-                     *         "sort_order": 0,
+                     *         "thumbnail_media_file_id": 10,
+                     *         "thumbnail_media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "og_image_media_file_id": null,
+                     *         "og_image_media_file": null,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -8557,7 +11193,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -8571,7 +11207,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -8598,11 +11239,33 @@ export interface operations {
                      *           "Paragraf 1.",
                      *           "Paragraf 2."
                      *         ],
-                     *         "sort_order": 0,
-                     *         "status": "published",
-                     *         "previous_status": null,
+                     *         "thumbnail_media_file_id": 10,
+                     *         "thumbnail_media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "og_image_media_file_id": null,
+                     *         "og_image_media_file": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "published_at": "2026-05-12T08:30:00.000Z",
-                     *         "archived_at": null,
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -8625,6 +11288,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -8661,11 +11325,33 @@ export interface operations {
                      *           "Paragraf 1.",
                      *           "Paragraf 2."
                      *         ],
-                     *         "sort_order": 0,
+                     *         "thumbnail_media_file_id": 10,
+                     *         "thumbnail_media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "og_image_media_file_id": null,
+                     *         "og_image_media_file": null,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -8680,7 +11366,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -8689,7 +11374,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -8716,11 +11406,33 @@ export interface operations {
                      *           "Paragraf 1.",
                      *           "Paragraf 2."
                      *         ],
-                     *         "sort_order": 0,
+                     *         "thumbnail_media_file_id": 10,
+                     *         "thumbnail_media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "og_image_media_file_id": null,
+                     *         "og_image_media_file": null,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -8744,6 +11456,7 @@ export interface operations {
                 page?: number;
                 limit?: number;
                 read?: "all" | "unread";
+                /** @description Di-trim. Catatan legacy — saat `q` dikirim, filter kedaluwarsa ikut tertimpa (objek `OR` ditimpa). */
                 q?: string;
             };
             header?: never;
@@ -8805,8 +11518,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Berhasil (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -8841,17 +11554,27 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Aliran event. */
+            /** @description Aliran event (koneksi tetap terbuka). */
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Cache-Control"?: "private, no-cache, no-store, must-revalidate, max-age=0, no-transform";
+                    Connection?: "keep-alive";
+                    Pragma?: "no-cache";
+                    /** @description Ejaan persis legacy (bukan `Expires`). */
+                    Expire?: "0";
+                    "X-Accel-Buffering"?: "no";
                     [name: string]: unknown;
                 };
                 content: {
                     /**
-                     * @example event:connected
-                     *     id:1
-                     *     data:{"timestamp":"2026-05-12T08:30:00.000Z"}
+                     * @example event: connected
+                     *     id: 1
+                     *     data: {"type":"connected","timestamp":"2026-05-12T08:30:00.000Z"}
+                     *
+                     *     event: notification.created
+                     *     id: 2
+                     *     data: {"type":"notification.created","notification_id":7,"resource_type":"inquiry","resource_id":12,"timestamp":"2026-05-12T08:30:05.000Z"}
                      */
                     "text/event-stream": string;
                 };
@@ -8900,14 +11623,15 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Berhasil (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -8927,7 +11651,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -8937,17 +11661,19 @@ export interface operations {
     listPartners: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -8973,6 +11699,24 @@ export interface operations {
                      *           "name": "PT Maju Bersama",
                      *           "segment": "FMCG",
                      *           "logo_media_id": 10,
+                     *           "logo_media": {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
                      *           "sort_order": 1,
                      *           "status": "published",
                      *           "previous_status": null,
@@ -9018,21 +11762,173 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Nama */
+                    /** @description Di-trim. */
                     name: string;
-                    /** @example FMCG */
-                    segment?: string;
-                    /** @example 10 */
-                    logo_media_id?: number;
-                    /** @example 1 */
+                    /** @description Di-trim. */
+                    segment?: string | null;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    logo_media_id?: number | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -9047,6 +11943,24 @@ export interface operations {
                      *         "name": "PT Maju Bersama",
                      *         "segment": "FMCG",
                      *         "logo_media_id": 10,
+                     *         "logo_media": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -9061,11 +11975,9 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -9121,8 +12033,8 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
         };
     };
     getPartner: {
@@ -9130,6 +12042,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -9152,6 +12065,24 @@ export interface operations {
                      *         "name": "PT Maju Bersama",
                      *         "segment": "FMCG",
                      *         "logo_media_id": 10,
+                     *         "logo_media": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -9166,7 +12097,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -9178,6 +12109,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -9207,11 +12139,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -9220,6 +12151,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -9234,15 +12166,167 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Nama */
+                    /** @description Di-trim. */
                     name?: string;
-                    /** @example FMCG */
-                    segment?: string;
-                    /** @example 10 */
-                    logo_media_id?: number;
-                    /** @example 1 */
+                    /** @description Di-trim. */
+                    segment?: string | null;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    logo_media_id?: number | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
@@ -9263,6 +12347,24 @@ export interface operations {
                      *         "name": "PT Maju Bersama",
                      *         "segment": "FMCG",
                      *         "logo_media_id": 10,
+                     *         "logo_media": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -9277,12 +12379,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -9291,7 +12391,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -9313,10 +12418,28 @@ export interface operations {
                      *         "name": "PT Maju Bersama",
                      *         "segment": "FMCG",
                      *         "logo_media_id": 10,
+                     *         "logo_media": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
-                     *         "status": "published",
-                     *         "previous_status": null,
-                     *         "archived_at": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -9339,6 +12462,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -9370,6 +12494,24 @@ export interface operations {
                      *         "name": "PT Maju Bersama",
                      *         "segment": "FMCG",
                      *         "logo_media_id": 10,
+                     *         "logo_media": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -9388,7 +12530,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -9397,7 +12538,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -9419,6 +12565,24 @@ export interface operations {
                      *         "name": "PT Maju Bersama",
                      *         "segment": "FMCG",
                      *         "logo_media_id": 10,
+                     *         "logo_media": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -9443,17 +12607,19 @@ export interface operations {
     listPortfolioCategories: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -9521,19 +12687,176 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Nama */
+                    /** @description Unik. Di-trim. */
                     name: string;
-                    /** @example contoh-slug */
+                    /** @description Unik. Tanpa slug saat create → dibentuk dari judul/nama (huruf kecil, non-alfanumerik → `-`; kosong → `konten-<ms>`). Pola saja, tanpa batas panjang di DTO (kolom DB VARCHAR). */
                     slug?: string;
-                    /** @example 1 */
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -9565,7 +12888,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -9621,8 +12943,8 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
         };
     };
     getPortfolioCategory: {
@@ -9630,6 +12952,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -9665,7 +12988,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -9677,6 +13000,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -9706,7 +13030,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -9719,6 +13043,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -9731,13 +13056,170 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Nama */
+                    /** @description Unik. Di-trim. */
                     name?: string;
-                    /** @example contoh-slug */
+                    /** @description Unik. Tanpa slug saat create → dibentuk dari judul/nama (huruf kecil, non-alfanumerik → `-`; kosong → `konten-<ms>`). Pola saja, tanpa batas panjang di DTO (kolom DB VARCHAR). */
                     slug?: string;
-                    /** @example 1 */
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
@@ -9776,7 +13258,6 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -9785,7 +13266,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -9807,9 +13293,9 @@ export interface operations {
                      *         "name": "Box & Karton",
                      *         "slug": "box-karton",
                      *         "sort_order": 1,
-                     *         "status": "published",
-                     *         "previous_status": null,
-                     *         "archived_at": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -9832,6 +13318,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -9880,7 +13367,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -9889,7 +13375,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -9934,17 +13425,19 @@ export interface operations {
     listPortfolios: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -9971,13 +13464,125 @@ export interface operations {
                      *           "slug": "kemasan-kopi-premium",
                      *           "category_id": 2,
                      *           "category": "Box & Karton",
+                     *           "category_slug": "box-karton",
                      *           "short_description": "Kemasan kopi 250gr.",
+                     *           "media_file_id": 10,
+                     *           "media_file": {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
+                     *           "media_file_ids": [
+                     *             10,
+                     *             11
+                     *           ],
+                     *           "media_files": [
+                     *             {
+                     *               "id": 10,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-10.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             },
+                     *             {
+                     *               "id": 11,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-11.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           ],
+                     *           "images": [
+                     *             {
+                     *               "id": 1,
+                     *               "media_file_id": 10,
+                     *               "sort_order": 0,
+                     *               "media_file": {
+                     *                 "id": 10,
+                     *                 "media_type": "image",
+                     *                 "mime_type": "image/webp",
+                     *                 "original_file_name": "media-10.jpg",
+                     *                 "compression_status": "completed",
+                     *                 "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *                 "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *                 "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *                 "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *                 "poster_url": null,
+                     *                 "video_url": null,
+                     *                 "width": 1600,
+                     *                 "height": 900,
+                     *                 "duration_seconds": null,
+                     *                 "created_at": "2026-05-12T08:30:00.000Z",
+                     *                 "updated_at": "2026-05-12T08:30:00.000Z"
+                     *               }
+                     *             },
+                     *             {
+                     *               "id": 2,
+                     *               "media_file_id": 11,
+                     *               "sort_order": 1,
+                     *               "media_file": {
+                     *                 "id": 11,
+                     *                 "media_type": "image",
+                     *                 "mime_type": "image/webp",
+                     *                 "original_file_name": "media-11.jpg",
+                     *                 "compression_status": "completed",
+                     *                 "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *                 "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *                 "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *                 "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *                 "poster_url": null,
+                     *                 "video_url": null,
+                     *                 "width": 1600,
+                     *                 "height": 900,
+                     *                 "duration_seconds": null,
+                     *                 "created_at": "2026-05-12T08:30:00.000Z",
+                     *                 "updated_at": "2026-05-12T08:30:00.000Z"
+                     *               }
+                     *             }
+                     *           ],
                      *           "is_featured": true,
                      *           "sort_order": 1,
                      *           "status": "published",
                      *           "previous_status": null,
-                     *           "published_at": "2026-05-12T08:30:00.000Z",
                      *           "archived_at": null,
+                     *           "published_at": "2026-05-12T08:30:00.000Z",
+                     *           "seo_title": null,
+                     *           "seo_description": null,
                      *           "created_at": "2026-05-12T08:30:00.000Z",
                      *           "updated_at": "2026-05-12T08:30:00.000Z"
                      *         }
@@ -10024,43 +13629,146 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Judul */
+                    /** @description Di-trim. */
                     title: string;
-                    /** @example contoh-slug */
+                    /** @description Unik. Tanpa slug saat create → dibentuk dari judul/nama (huruf kecil, non-alfanumerik → `-`; kosong → `konten-<ms>`). Pola saja, tanpa batas panjang di DTO (kolom DB VARCHAR). */
                     slug?: string;
-                    /** @example 2 */
+                    /** @description Kategori wajib ada & `published` (bila tidak → 422). Create: wajib. PATCH: bila dikirim, `category` teks ikut disinkronkan ke nama kategori. */
                     category_id: number;
-                    /** @example Deskripsi singkat. */
-                    short_description?: string;
-                    /** @example Deskripsi lengkap. */
-                    description?: string;
-                    /**
-                     * @example [
-                     *       10,
-                     *       11
-                     *     ]
-                     */
-                    media_file_ids?: number[];
-                    /** @example 10 */
-                    media_file_id?: number;
-                    /** @example false */
+                    /** @description Hanya dipakai PATCH tanpa `category_id` (menimpa teks kategori denormalisasi); create mengabaikan. Di-trim. */
+                    category?: string;
+                    /** @description Disimpan ke kolom `description`. Di-trim. */
+                    short_description?: string | null;
+                    /** @description Fallback bila `short_description` tidak dikirim (kolom yang sama). Di-trim. */
+                    description?: string | null;
+                    /** @description Galeri berurutan (maks 10; duplikat dibuang dengan urutan dipertahankan; pertama = cover). Tiap media wajib `completed` (bila tidak → 400 `UNPROCESSABLE_ENTITY`). PATCH: dikirim (termasuk `null`/`[]`) → galeri diganti atomik; tidak dikirim → tidak diubah. */
+                    media_file_ids?: number[] | null;
+                    /** @description Bentuk lama satu gambar; dipakai hanya bila `media_file_ids` bukan array. PATCH: dikirim (termasuk `null`) → galeri diganti. */
+                    media_file_id?: number | null;
+                    /** @description Legacy `@Transform(v => v === true || v === "true")`: nilai selain `true`/`"true"` (termasuk `null`) menjadi false. Default create false. */
                     is_featured?: boolean;
-                    /** @example 1 */
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. `published` butuh ≥ 1 gambar & kategori `published` (422). */
                     status?: components["schemas"]["WritableContentStatus"];
-                    /**
-                     * Format: date-time
-                     * @example 2026-05-12T08:30:00.000Z
-                     */
+                    /** @description ISO 8601 (`IsISO8601`: tanggal atau tanggal-waktu). Masa depan di-clamp ke now; tanpa nilai & status `published` → now. Pada PATCH hanya dipakai bila `status: published` ikut dikirim. */
                     published_at?: string;
-                    seo_title?: string;
-                    seo_description?: string;
+                    /** @description Di-trim. */
+                    seo_title?: string | null;
+                    /** @description Di-trim. */
+                    seo_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -10076,13 +13784,125 @@ export interface operations {
                      *         "slug": "kemasan-kopi-premium",
                      *         "category_id": 2,
                      *         "category": "Box & Karton",
+                     *         "category_slug": "box-karton",
                      *         "short_description": "Kemasan kopi 250gr.",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "media_file_ids": [
+                     *           10,
+                     *           11
+                     *         ],
+                     *         "media_files": [
+                     *           {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
+                     *           {
+                     *             "id": 11,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-11.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ],
+                     *         "images": [
+                     *           {
+                     *             "id": 1,
+                     *             "media_file_id": 10,
+                     *             "sort_order": 0,
+                     *             "media_file": {
+                     *               "id": 10,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-10.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           },
+                     *           {
+                     *             "id": 2,
+                     *             "media_file_id": 11,
+                     *             "sort_order": 1,
+                     *             "media_file": {
+                     *               "id": 11,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-11.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           }
+                     *         ],
                      *         "is_featured": true,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -10093,7 +13913,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
@@ -10153,8 +13973,8 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
         };
     };
     getPortfolio: {
@@ -10162,6 +13982,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -10185,13 +14006,125 @@ export interface operations {
                      *         "slug": "kemasan-kopi-premium",
                      *         "category_id": 2,
                      *         "category": "Box & Karton",
+                     *         "category_slug": "box-karton",
                      *         "short_description": "Kemasan kopi 250gr.",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "media_file_ids": [
+                     *           10,
+                     *           11
+                     *         ],
+                     *         "media_files": [
+                     *           {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
+                     *           {
+                     *             "id": 11,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-11.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ],
+                     *         "images": [
+                     *           {
+                     *             "id": 1,
+                     *             "media_file_id": 10,
+                     *             "sort_order": 0,
+                     *             "media_file": {
+                     *               "id": 10,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-10.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           },
+                     *           {
+                     *             "id": 2,
+                     *             "media_file_id": 11,
+                     *             "sort_order": 1,
+                     *             "media_file": {
+                     *               "id": 11,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-11.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           }
+                     *         ],
                      *         "is_featured": true,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -10202,7 +14135,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -10214,6 +14147,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -10243,11 +14177,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -10256,6 +14189,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -10275,37 +14209,140 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Judul */
+                    /** @description Di-trim. */
                     title?: string;
-                    /** @example contoh-slug */
+                    /** @description Unik. Tanpa slug saat create → dibentuk dari judul/nama (huruf kecil, non-alfanumerik → `-`; kosong → `konten-<ms>`). Pola saja, tanpa batas panjang di DTO (kolom DB VARCHAR). */
                     slug?: string;
-                    /** @example 2 */
+                    /** @description Kategori wajib ada & `published` (bila tidak → 422). Create: wajib. PATCH: bila dikirim, `category` teks ikut disinkronkan ke nama kategori. */
                     category_id?: number;
-                    /** @example Deskripsi singkat. */
-                    short_description?: string;
-                    /** @example Deskripsi lengkap. */
-                    description?: string;
-                    /**
-                     * @example [
-                     *       10,
-                     *       11
-                     *     ]
-                     */
-                    media_file_ids?: number[];
-                    /** @example 10 */
-                    media_file_id?: number;
-                    /** @example false */
+                    /** @description Hanya dipakai PATCH tanpa `category_id` (menimpa teks kategori denormalisasi); create mengabaikan. Di-trim. */
+                    category?: string;
+                    /** @description Disimpan ke kolom `description`. Di-trim. */
+                    short_description?: string | null;
+                    /** @description Fallback bila `short_description` tidak dikirim (kolom yang sama). Di-trim. */
+                    description?: string | null;
+                    /** @description Galeri berurutan (maks 10; duplikat dibuang dengan urutan dipertahankan; pertama = cover). Tiap media wajib `completed` (bila tidak → 400 `UNPROCESSABLE_ENTITY`). PATCH: dikirim (termasuk `null`/`[]`) → galeri diganti atomik; tidak dikirim → tidak diubah. */
+                    media_file_ids?: number[] | null;
+                    /** @description Bentuk lama satu gambar; dipakai hanya bila `media_file_ids` bukan array. PATCH: dikirim (termasuk `null`) → galeri diganti. */
+                    media_file_id?: number | null;
+                    /** @description Legacy `@Transform(v => v === true || v === "true")`: nilai selain `true`/`"true"` (termasuk `null`) menjadi false. Default create false. */
                     is_featured?: boolean;
-                    /** @example 1 */
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. `published` butuh ≥ 1 gambar & kategori `published` (422). */
                     status?: components["schemas"]["WritableContentStatus"];
-                    /**
-                     * Format: date-time
-                     * @example 2026-05-12T08:30:00.000Z
-                     */
+                    /** @description ISO 8601 (`IsISO8601`: tanggal atau tanggal-waktu). Masa depan di-clamp ke now; tanpa nilai & status `published` → now. Pada PATCH hanya dipakai bila `status: published` ikut dikirim. */
                     published_at?: string;
-                    seo_title?: string;
-                    seo_description?: string;
+                    /** @description Di-trim. */
+                    seo_title?: string | null;
+                    /** @description Di-trim. */
+                    seo_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
                 };
             };
         };
@@ -10327,13 +14364,125 @@ export interface operations {
                      *         "slug": "kemasan-kopi-premium",
                      *         "category_id": 2,
                      *         "category": "Box & Karton",
+                     *         "category_slug": "box-karton",
                      *         "short_description": "Kemasan kopi 250gr.",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "media_file_ids": [
+                     *           10,
+                     *           11
+                     *         ],
+                     *         "media_files": [
+                     *           {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
+                     *           {
+                     *             "id": 11,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-11.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ],
+                     *         "images": [
+                     *           {
+                     *             "id": 1,
+                     *             "media_file_id": 10,
+                     *             "sort_order": 0,
+                     *             "media_file": {
+                     *               "id": 10,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-10.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           },
+                     *           {
+                     *             "id": 2,
+                     *             "media_file_id": 11,
+                     *             "sort_order": 1,
+                     *             "media_file": {
+                     *               "id": 11,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-11.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           }
+                     *         ],
                      *         "is_featured": true,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -10344,7 +14493,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -10358,7 +14507,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -10381,13 +14535,125 @@ export interface operations {
                      *         "slug": "kemasan-kopi-premium",
                      *         "category_id": 2,
                      *         "category": "Box & Karton",
+                     *         "category_slug": "box-karton",
                      *         "short_description": "Kemasan kopi 250gr.",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "media_file_ids": [
+                     *           10,
+                     *           11
+                     *         ],
+                     *         "media_files": [
+                     *           {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
+                     *           {
+                     *             "id": 11,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-11.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ],
+                     *         "images": [
+                     *           {
+                     *             "id": 1,
+                     *             "media_file_id": 10,
+                     *             "sort_order": 0,
+                     *             "media_file": {
+                     *               "id": 10,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-10.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           },
+                     *           {
+                     *             "id": 2,
+                     *             "media_file_id": 11,
+                     *             "sort_order": 1,
+                     *             "media_file": {
+                     *               "id": 11,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-11.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           }
+                     *         ],
                      *         "is_featured": true,
                      *         "sort_order": 1,
-                     *         "status": "published",
-                     *         "previous_status": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "published_at": "2026-05-12T08:30:00.000Z",
-                     *         "archived_at": null,
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -10410,6 +14676,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -10442,13 +14709,125 @@ export interface operations {
                      *         "slug": "kemasan-kopi-premium",
                      *         "category_id": 2,
                      *         "category": "Box & Karton",
+                     *         "category_slug": "box-karton",
                      *         "short_description": "Kemasan kopi 250gr.",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "media_file_ids": [
+                     *           10,
+                     *           11
+                     *         ],
+                     *         "media_files": [
+                     *           {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
+                     *           {
+                     *             "id": 11,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-11.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ],
+                     *         "images": [
+                     *           {
+                     *             "id": 1,
+                     *             "media_file_id": 10,
+                     *             "sort_order": 0,
+                     *             "media_file": {
+                     *               "id": 10,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-10.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           },
+                     *           {
+                     *             "id": 2,
+                     *             "media_file_id": 11,
+                     *             "sort_order": 1,
+                     *             "media_file": {
+                     *               "id": 11,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-11.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           }
+                     *         ],
                      *         "is_featured": true,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -10472,7 +14851,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -10495,13 +14879,125 @@ export interface operations {
                      *         "slug": "kemasan-kopi-premium",
                      *         "category_id": 2,
                      *         "category": "Box & Karton",
+                     *         "category_slug": "box-karton",
                      *         "short_description": "Kemasan kopi 250gr.",
+                     *         "media_file_id": 10,
+                     *         "media_file": {
+                     *           "id": 10,
+                     *           "media_type": "image",
+                     *           "mime_type": "image/webp",
+                     *           "original_file_name": "media-10.jpg",
+                     *           "compression_status": "completed",
+                     *           "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *           "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *           "poster_url": null,
+                     *           "video_url": null,
+                     *           "width": 1600,
+                     *           "height": 900,
+                     *           "duration_seconds": null,
+                     *           "created_at": "2026-05-12T08:30:00.000Z",
+                     *           "updated_at": "2026-05-12T08:30:00.000Z"
+                     *         },
+                     *         "media_file_ids": [
+                     *           10,
+                     *           11
+                     *         ],
+                     *         "media_files": [
+                     *           {
+                     *             "id": 10,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-10.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           },
+                     *           {
+                     *             "id": 11,
+                     *             "media_type": "image",
+                     *             "mime_type": "image/webp",
+                     *             "original_file_name": "media-11.jpg",
+                     *             "compression_status": "completed",
+                     *             "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *             "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *             "poster_url": null,
+                     *             "video_url": null,
+                     *             "width": 1600,
+                     *             "height": 900,
+                     *             "duration_seconds": null,
+                     *             "created_at": "2026-05-12T08:30:00.000Z",
+                     *             "updated_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ],
+                     *         "images": [
+                     *           {
+                     *             "id": 1,
+                     *             "media_file_id": 10,
+                     *             "sort_order": 0,
+                     *             "media_file": {
+                     *               "id": 10,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-10.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           },
+                     *           {
+                     *             "id": 2,
+                     *             "media_file_id": 11,
+                     *             "sort_order": 1,
+                     *             "media_file": {
+                     *               "id": 11,
+                     *               "media_type": "image",
+                     *               "mime_type": "image/webp",
+                     *               "original_file_name": "media-11.jpg",
+                     *               "compression_status": "completed",
+                     *               "file_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m11-large.webp",
+                     *               "poster_url": null,
+                     *               "video_url": null,
+                     *               "width": 1600,
+                     *               "height": 900,
+                     *               "duration_seconds": null,
+                     *               "created_at": "2026-05-12T08:30:00.000Z",
+                     *               "updated_at": "2026-05-12T08:30:00.000Z"
+                     *             }
+                     *           }
+                     *         ],
                      *         "is_featured": true,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
-                     *         "published_at": "2026-05-12T08:30:00.000Z",
                      *         "archived_at": null,
+                     *         "published_at": "2026-05-12T08:30:00.000Z",
+                     *         "seo_title": null,
+                     *         "seo_description": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -10522,17 +15018,19 @@ export interface operations {
     listPrintingCapacities: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -10559,7 +15057,8 @@ export interface operations {
                      *           "value": "50.000",
                      *           "unit": "lembar/hari",
                      *           "description": "Cetak offset hingga B1.",
-                     *           "media_file_id": 10,
+                     *           "media_file_id": null,
+                     *           "media_file": null,
                      *           "sort_order": 1,
                      *           "status": "published",
                      *           "previous_status": null,
@@ -10605,25 +15104,167 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Label Contoh */
+                    /** @description Di-trim. */
                     label: string;
-                    /** @example 50.000 */
+                    /** @description Di-trim. */
                     value: string;
-                    /** @example pcs/bulan */
+                    /** @description Di-trim. */
                     unit: string;
-                    /** @example Deskripsi lengkap. */
-                    description?: string;
-                    /** @example 10 */
-                    media_file_id?: number;
-                    /** @example 1 */
+                    /** @description Di-trim. */
+                    description?: string | null;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    media_file_id?: number | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -10639,7 +15280,8 @@ export interface operations {
                      *         "value": "50.000",
                      *         "unit": "lembar/hari",
                      *         "description": "Cetak offset hingga B1.",
-                     *         "media_file_id": 10,
+                     *         "media_file_id": null,
+                     *         "media_file": null,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -10654,11 +15296,9 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -10714,8 +15354,8 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
         };
     };
     getPrintingCapacity: {
@@ -10723,6 +15363,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -10746,7 +15387,8 @@ export interface operations {
                      *         "value": "50.000",
                      *         "unit": "lembar/hari",
                      *         "description": "Cetak offset hingga B1.",
-                     *         "media_file_id": 10,
+                     *         "media_file_id": null,
+                     *         "media_file": null,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -10761,7 +15403,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -10773,6 +15415,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -10802,11 +15445,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -10815,6 +15457,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -10829,19 +15472,161 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Label Contoh */
+                    /** @description Di-trim. */
                     label?: string;
-                    /** @example 50.000 */
+                    /** @description Di-trim. */
                     value?: string;
-                    /** @example pcs/bulan */
+                    /** @description Di-trim. */
                     unit?: string;
-                    /** @example Deskripsi lengkap. */
-                    description?: string;
-                    /** @example 10 */
-                    media_file_id?: number;
-                    /** @example 1 */
+                    /** @description Di-trim. */
+                    description?: string | null;
+                    /** @description Wajib media `completed` (ada) — bila tidak → 400 `UNPROCESSABLE_ENTITY`. `null` mengosongkan rujukan. */
+                    media_file_id?: number | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
@@ -10863,7 +15648,8 @@ export interface operations {
                      *         "value": "50.000",
                      *         "unit": "lembar/hari",
                      *         "description": "Cetak offset hingga B1.",
-                     *         "media_file_id": 10,
+                     *         "media_file_id": null,
+                     *         "media_file": null,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -10878,12 +15664,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -10892,7 +15676,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -10915,11 +15704,12 @@ export interface operations {
                      *         "value": "50.000",
                      *         "unit": "lembar/hari",
                      *         "description": "Cetak offset hingga B1.",
-                     *         "media_file_id": 10,
+                     *         "media_file_id": null,
+                     *         "media_file": null,
                      *         "sort_order": 1,
-                     *         "status": "published",
-                     *         "previous_status": null,
-                     *         "archived_at": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -10942,6 +15732,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -10974,7 +15765,8 @@ export interface operations {
                      *         "value": "50.000",
                      *         "unit": "lembar/hari",
                      *         "description": "Cetak offset hingga B1.",
-                     *         "media_file_id": 10,
+                     *         "media_file_id": null,
+                     *         "media_file": null,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -10993,7 +15785,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -11002,7 +15793,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -11025,7 +15821,8 @@ export interface operations {
                      *         "value": "50.000",
                      *         "unit": "lembar/hari",
                      *         "description": "Cetak offset hingga B1.",
-                     *         "media_file_id": 10,
+                     *         "media_file_id": null,
+                     *         "media_file": null,
                      *         "sort_order": 1,
                      *         "status": "published",
                      *         "previous_status": null,
@@ -11050,17 +15847,19 @@ export interface operations {
     listProductionCapacities: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -11131,21 +15930,173 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Kardus Box */
+                    /** @description Di-trim. */
                     product: string;
-                    /** @example 50.000 */
+                    /** @description Di-trim. */
                     value: string;
-                    /** @example pcs/bulan */
+                    /** @description Di-trim. */
                     unit: string;
-                    /** @example 1 */
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -11177,8 +16128,6 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -11234,8 +16183,8 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
         };
     };
     getProductionCapacity: {
@@ -11243,6 +16192,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -11279,7 +16229,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -11291,6 +16241,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -11320,11 +16271,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -11333,6 +16283,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -11347,15 +16298,167 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Kardus Box */
+                    /** @description Di-trim. */
                     product?: string;
-                    /** @example 50.000 */
+                    /** @description Di-trim. */
                     value?: string;
-                    /** @example pcs/bulan */
+                    /** @description Di-trim. */
                     unit?: string;
-                    /** @example 1 */
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
@@ -11394,8 +16497,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -11404,7 +16505,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -11427,9 +16533,9 @@ export interface operations {
                      *         "value": "100.000",
                      *         "unit": "pcs/bulan",
                      *         "sort_order": 1,
-                     *         "status": "published",
-                     *         "previous_status": null,
-                     *         "archived_at": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -11452,6 +16558,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -11501,7 +16608,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -11510,7 +16616,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -11556,17 +16667,19 @@ export interface operations {
     listProductionStrengths: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -11637,21 +16750,173 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Label Contoh */
+                    /** @description Di-trim. */
                     label: string;
-                    /** @example 50.000 */
+                    /** @description Di-trim. */
                     value: string;
-                    /** @example pcs */
-                    suffix?: string;
-                    /** @example 1 */
+                    /** @description Di-trim. */
+                    suffix?: string | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -11683,8 +16948,6 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -11740,8 +17003,8 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
         };
     };
     getProductionStrength: {
@@ -11749,6 +17012,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -11785,7 +17049,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -11797,6 +17061,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -11826,11 +17091,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -11839,6 +17103,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -11853,15 +17118,167 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Label Contoh */
+                    /** @description Di-trim. */
                     label?: string;
-                    /** @example 50.000 */
+                    /** @description Di-trim. */
                     value?: string;
-                    /** @example pcs */
-                    suffix?: string;
-                    /** @example 1 */
+                    /** @description Di-trim. */
+                    suffix?: string | null;
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    name?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
@@ -11900,8 +17317,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -11910,7 +17325,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -11933,9 +17353,9 @@ export interface operations {
                      *         "value": "50.000",
                      *         "suffix": "pcs",
                      *         "sort_order": 1,
-                     *         "status": "published",
-                     *         "previous_status": null,
-                     *         "archived_at": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -11958,6 +17378,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -12007,7 +17428,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -12016,7 +17436,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -12062,17 +17487,19 @@ export interface operations {
     listServices: {
         parameters: {
             query?: {
-                /** @description Halaman (mulai 1). Nilai tidak valid → 1. */
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`. */
                 page?: number;
-                /** @description Batas per halaman. */
+                /** @description Batas per halaman; > 100 → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Kata kunci pencarian. */
+                /** @description Kata kunci (di-trim; `contains`). Kolom yang dicari berbeda per resource. */
                 q?: string;
-                /** @description Filter status (arsip disembunyikan kecuali diminta). */
+                /** @description Filter status. Tanpa filter, konten `archived` disembunyikan. */
                 status?: "draft" | "published" | "inactive" | "archived";
+                /** @description Di-trim. Hanya berpengaruh pada portofolio (teks/nama/slug kategori) dan berita (kategori persis); resource lain mengabaikan. */
                 category?: string;
+                /** @description Di-trim. Hanya berpengaruh pada partner (segment persis); resource lain mengabaikan. */
                 segment?: string;
-                /** @description Filter tipe media (galeri). */
+                /** @description Hanya berpengaruh pada item galeri; resource lain mengabaikan. */
                 type?: "image" | "video";
             };
             header?: never;
@@ -12139,17 +17566,179 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Nama */
+                    /** @description Di-trim. */
                     name: string;
-                    /** @example 1 */
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -12179,8 +17768,6 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -12236,8 +17823,8 @@ export interface operations {
             400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
+            500: components["responses"]["InternalError"];
         };
     };
     getService: {
@@ -12245,6 +17832,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -12279,7 +17867,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -12291,6 +17879,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -12320,11 +17909,10 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -12333,6 +17921,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -12345,11 +17934,173 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
-                    /** @example Contoh Nama */
+                    /** @description Di-trim. */
                     name?: string;
-                    /** @example 1 */
+                    /** @description 0–1.000.000; default create 0. */
                     sort_order?: number;
+                    /** @description Default create `draft` (kategori portofolio: `published`). `archived` hanya lewat endpoint arsip. */
                     status?: components["schemas"]["WritableContentStatus"];
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    slug?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    subtitle?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    cta_href?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    label?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    metric?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    value?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    suffix?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    segment?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    category_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    short_description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    description?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    alt_text?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    caption?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    excerpt?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    content?: string[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    product?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    unit?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    hero_section_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    media_file_ids?: number[] | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    logo_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    poster_media_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    thumbnail_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    og_image_media_file_id?: number | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     * @enum {string|null}
+                     */
+                    media_type?: "image" | "video" | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    is_featured?: boolean | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    published_at?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_title?: string | null;
+                    /**
+                     * @deprecated
+                     * @description Diabaikan untuk resource ini — diterima (dan divalidasi tipenya) demi paritas DTO bersama legacy `AdminContentDto`.
+                     */
+                    seo_description?: string | null;
                 };
             };
         };
@@ -12386,8 +18137,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -12396,7 +18145,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -12417,9 +18171,9 @@ export interface operations {
                      *         "id": 1,
                      *         "name": "Desain Kemasan",
                      *         "sort_order": 1,
-                     *         "status": "published",
-                     *         "previous_status": null,
-                     *         "archived_at": null,
+                     *         "status": "archived",
+                     *         "previous_status": "published",
+                     *         "archived_at": "2026-05-12T08:30:00.000Z",
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
                      *       }
@@ -12442,6 +18196,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -12489,7 +18244,6 @@ export interface operations {
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -12498,7 +18252,12 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                id: components["parameters"]["IdPath"];
+                /**
+                 * @description ID numerik untuk route arsip/batal-arsip konten. Legacy memakai `ParseIntPipe`
+                 *     (admin-content.controller.ts:549-565): bukan bilangan bulat → 400 `BAD_REQUEST`
+                 *     (pesan default "Permintaan belum bisa diproses."); 0/negatif lolos lalu → 404 `NOT_FOUND`.
+                 */
+                id: components["parameters"]["ArchiveIdPath"];
             };
             cookie?: never;
         };
@@ -12566,16 +18325,20 @@ export interface operations {
                      *         "email": "info@indobraga.com",
                      *         "phone": "022-123456",
                      *         "whatsapp": "6281200000001",
-                     *         "instagram": "@indobraga",
+                     *         "instagram": "indobraga",
                      *         "contact_person": "Admin",
                      *         "contact_role": "Marketing",
                      *         "address": "Jl. Contoh No. 1, Bandung",
                      *         "seo_title": "Indobraga — Cetak Kemasan",
                      *         "seo_description": "Jasa cetak kemasan.",
                      *         "show_brand_text": false,
-                     *         "logo_url": "https://media.indobraga.com/upload/prod/logo/large.webp",
+                     *         "logo_media_file_id": 10,
+                     *         "logo_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *         "footer_logo_media_file_id": null,
                      *         "footer_logo_url": null,
+                     *         "og_media_file_id": null,
                      *         "og_image_url": null,
+                     *         "contact_hero_media_file_id": null,
                      *         "contact_hero_image_url": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
@@ -12589,6 +18352,7 @@ export interface operations {
             };
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -12609,23 +18373,40 @@ export interface operations {
                  *     }
                  */
                 "application/json": {
+                    /** @description Di-trim. */
                     brand?: string;
+                    /** @description Di-trim. */
                     legal_name?: string;
-                    /** Format: email */
+                    /**
+                     * Format: email
+                     * @description Di-trim; `IsEmail`.
+                     */
                     email?: string;
+                    /** @description Di-trim. */
                     phone?: string;
+                    /** @description Di-trim. */
                     whatsapp?: string;
+                    /** @description Di-trim. */
                     instagram?: string;
+                    /** @description Di-trim. */
                     contact_person?: string;
+                    /** @description Di-trim. */
                     contact_role?: string;
+                    /** @description Di-trim. */
                     address?: string;
-                    seo_title?: string;
-                    seo_description?: string;
+                    /** @description Di-trim; `null` mengosongkan. */
+                    seo_title?: string | null;
+                    /** @description Di-trim; `null` mengosongkan. */
+                    seo_description?: string | null;
                     show_brand_text?: boolean;
-                    logo_media_file_id?: number;
-                    footer_logo_media_file_id?: number;
-                    og_media_file_id?: number;
-                    contact_hero_media_file_id?: number;
+                    /** @description Logo navbar. Wajib media `completed` (bila tidak → 400 `UNPROCESSABLE_ENTITY`); `null` mengosongkan. */
+                    logo_media_file_id?: number | null;
+                    /** @description Logo footer. Wajib media `completed` (bila tidak → 400 `UNPROCESSABLE_ENTITY`); `null` mengosongkan. */
+                    footer_logo_media_file_id?: number | null;
+                    /** @description Gambar saat dibagikan (OG). Wajib media `completed` (bila tidak → 400 `UNPROCESSABLE_ENTITY`); `null` mengosongkan. */
+                    og_media_file_id?: number | null;
+                    /** @description Gambar hero halaman kontak. Wajib media `completed` (bila tidak → 400 `UNPROCESSABLE_ENTITY`); `null` mengosongkan. */
+                    contact_hero_media_file_id?: number | null;
                 };
             };
         };
@@ -12648,16 +18429,20 @@ export interface operations {
                      *         "email": "info@indobraga.com",
                      *         "phone": "022-123456",
                      *         "whatsapp": "6281200000001",
-                     *         "instagram": "@indobraga",
+                     *         "instagram": "indobraga",
                      *         "contact_person": "Admin",
                      *         "contact_role": "Marketing",
                      *         "address": "Jl. Contoh No. 1, Bandung",
                      *         "seo_title": "Indobraga — Cetak Kemasan",
                      *         "seo_description": "Jasa cetak kemasan.",
                      *         "show_brand_text": false,
-                     *         "logo_url": "https://media.indobraga.com/upload/prod/logo/large.webp",
+                     *         "logo_media_file_id": 10,
+                     *         "logo_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/m10-large.webp",
+                     *         "footer_logo_media_file_id": null,
                      *         "footer_logo_url": null,
+                     *         "og_media_file_id": null,
                      *         "og_image_url": null,
+                     *         "contact_hero_media_file_id": null,
                      *         "contact_hero_image_url": null,
                      *         "created_at": "2026-05-12T08:30:00.000Z",
                      *         "updated_at": "2026-05-12T08:30:00.000Z"
@@ -12669,10 +18454,9 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["ValidationOrMediaNotReady"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
-            422: components["responses"]["Unprocessable"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -12681,6 +18465,7 @@ export interface operations {
             query?: {
                 page?: number;
                 limit?: number;
+                /** @description Di-trim; mencari name & email. */
                 search?: string;
                 role?: "super_admin" | "content_editor";
                 status?: "active" | "inactive";
@@ -12758,8 +18543,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description User dibuat. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -12801,6 +18586,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -12838,7 +18624,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -12850,6 +18636,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -12878,7 +18665,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -12890,6 +18677,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -12948,6 +18736,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -13031,7 +18820,6 @@ export interface operations {
                      *           "id": 1,
                      *           "name": "Siti",
                      *           "phone": "08123456789",
-                     *           "message": null,
                      *           "generated_message": "Halo Indobraga, saya Siti.",
                      *           "whatsapp_url": "https://wa.me/6281200000001?text=Halo",
                      *           "status": "new",
@@ -13066,6 +18854,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -13087,7 +18876,6 @@ export interface operations {
                      *         "id": 1,
                      *         "name": "Siti",
                      *         "phone": "08123456789",
-                     *         "message": null,
                      *         "generated_message": "Halo Indobraga, saya Siti.",
                      *         "whatsapp_url": "https://wa.me/6281200000001?text=Halo",
                      *         "status": "new",
@@ -13103,7 +18891,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -13115,6 +18903,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -13143,7 +18932,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["BadRequest"];
+            400: components["responses"]["ValidationError"];
             401: components["responses"]["Unauthenticated"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
@@ -13155,6 +18944,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description ID numerik. Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR` (legacy `IdParamDto`). */
                 id: components["parameters"]["IdPath"];
             };
             cookie?: never;
@@ -13185,7 +18975,6 @@ export interface operations {
                      *         "id": 1,
                      *         "name": "Siti",
                      *         "phone": "08123456789",
-                     *         "message": null,
                      *         "generated_message": "Halo Indobraga, saya Siti.",
                      *         "whatsapp_url": "https://wa.me/6281200000001?text=Halo",
                      *         "status": "contacted",
@@ -13276,6 +19065,7 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Set-Cookie": components["headers"]["ClearCookie"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -13396,8 +19186,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Berhasil (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -13422,7 +19212,6 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
-            403: components["responses"]["Forbidden"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -13435,8 +19224,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Berhasil (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -13462,7 +19251,6 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
-            403: components["responses"]["Forbidden"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -13475,8 +19263,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Berhasil (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -13500,16 +19288,27 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthenticated"];
-            403: components["responses"]["Forbidden"];
             429: components["responses"]["RateLimited"];
         };
     };
     googleOAuthCallback: {
         parameters: {
             query: {
+                /** @description Kode otorisasi Google. */
                 code?: string;
                 state: string;
+                /** @description Dikirim Google bila user menolak (mis. `access_denied`). */
                 error?: string;
+                /** @description Dikirim Google; diabaikan. */
+                scope?: string;
+                /** @description Dikirim Google; diabaikan. */
+                authuser?: string;
+                /** @description Dikirim Google; diabaikan. */
+                prompt?: string;
+                /** @description Domain Google Workspace; diabaikan. */
+                hd?: string;
+                /** @description Issuer (RFC 9207); diabaikan. */
+                iss?: string;
             };
             header?: never;
             path?: never;
@@ -13517,7 +19316,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Redirect OAuth (didokumentasikan sebagai 302; 200 dicantumkan agar memenuhi lint 2xx). */
+            /** @description TIDAK PERNAH dikirim — hanya pemenuh aturan lint `operation-2xx-response`; respons nyata selalu 302. */
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
@@ -13554,6 +19353,7 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -13562,11 +19362,50 @@ export interface operations {
                      *       "success": true,
                      *       "message": "Data berhasil diambil.",
                      *       "data": {
-                     *         "strengths": [],
-                     *         "machines": [],
-                     *         "printing_capacities": [],
-                     *         "production_capacities": [],
-                     *         "services": []
+                     *         "strengths": [
+                     *           {
+                     *             "id": 1,
+                     *             "label": "Kapasitas Harian",
+                     *             "value": "50.000",
+                     *             "suffix": "pcs"
+                     *           }
+                     *         ],
+                     *         "machines": [
+                     *           {
+                     *             "id": 1,
+                     *             "name": "Heidelberg Speedmaster",
+                     *             "slug": "heidelberg-speedmaster",
+                     *             "metric": "18.000 lbr/jam",
+                     *             "description": "Mesin offset 4 warna.",
+                     *             "image_url": "https://media.indobraga.com/upload/prod/mesin/2026-05-12/m1-medium.webp",
+                     *             "alt_text": "Heidelberg Speedmaster"
+                     *           }
+                     *         ],
+                     *         "printing_capacities": [
+                     *           {
+                     *             "id": 1,
+                     *             "label": "Offset Printing",
+                     *             "value": "50.000",
+                     *             "unit": "lembar/hari",
+                     *             "description": null,
+                     *             "image_url": null,
+                     *             "alt_text": "Offset Printing"
+                     *           }
+                     *         ],
+                     *         "production_capacities": [
+                     *           {
+                     *             "id": 1,
+                     *             "product": "Kardus Box",
+                     *             "value": "100.000",
+                     *             "unit": "pcs/bulan"
+                     *           }
+                     *         ],
+                     *         "services": [
+                     *           {
+                     *             "id": 1,
+                     *             "name": "Desain Kemasan"
+                     *           }
+                     *         ]
                      *       }
                      *     }
                      */
@@ -13582,8 +19421,14 @@ export interface operations {
         parameters: {
             query?: {
                 type?: "image" | "video";
+                /** @description 1–24; di luar rentang → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                cursor?: string;
+                /**
+                 * @description Cursor opaque dari `meta.next_cursor` respons sebelumnya (base64url JSON `{sort_order, id}`).
+                 *     Tidak bisa di-decode atau bukan `{sort_order: number, id: number}` → 400 `BAD_REQUEST`
+                 *     ("Cursor tidak valid."). Tanpa batas panjang (legacy `IsString`).
+                 */
+                cursor?: components["parameters"]["Cursor"];
             };
             header?: never;
             path?: never;
@@ -13595,6 +19440,7 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -13606,10 +19452,10 @@ export interface operations {
                      *         {
                      *           "id": 1,
                      *           "type": "image",
-                     *           "thumbnail_url": "https://media.indobraga.com/t.webp",
-                     *           "media_url": "https://media.indobraga.com/l.webp",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/galeri/2026-05-12/g1-thumbnail.webp",
+                     *           "media_url": "https://media.indobraga.com/upload/prod/galeri/2026-05-12/g1-large.webp",
                      *           "caption": "Proses cetak",
-                     *           "alt_text": null,
+                     *           "alt_text": "Proses cetak",
                      *           "published_at": "2026-05-12T08:30:00.000Z"
                      *         }
                      *       ],
@@ -13626,7 +19472,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["InvalidRequest"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -13643,6 +19489,7 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -13658,18 +19505,95 @@ export interface operations {
                      *             "label": "Hubungi Kami",
                      *             "url": "/kontak"
                      *           },
-                     *           "slides": []
+                     *           "slides": [
+                     *             {
+                     *               "id": 1,
+                     *               "label": "Terpercaya",
+                     *               "title": "Cetak Offset Berkualitas",
+                     *               "metric": "10.000+ pcs/hari",
+                     *               "image_url": "https://media.indobraga.com/upload/prod/hero/2026-05-12/s1-large.webp",
+                     *               "alt_text": "Cetak Offset Berkualitas"
+                     *             }
+                     *           ]
                      *         },
-                     *         "partners": [],
-                     *         "strengths": [],
-                     *         "featured_portfolios": [],
+                     *         "partners": [
+                     *           {
+                     *             "id": 1,
+                     *             "name": "PT Maju Bersama",
+                     *             "segment": "FMCG",
+                     *             "logo_url": null
+                     *           }
+                     *         ],
+                     *         "strengths": [
+                     *           {
+                     *             "id": 1,
+                     *             "label": "Kapasitas Harian",
+                     *             "value": "50.000",
+                     *             "suffix": "pcs"
+                     *           }
+                     *         ],
+                     *         "featured_portfolios": [
+                     *           {
+                     *             "id": 1,
+                     *             "title": "Kemasan Kopi Premium",
+                     *             "slug": "kemasan-kopi-premium",
+                     *             "category": "Box & Karton",
+                     *             "category_slug": "box-karton",
+                     *             "thumbnail_url": "https://media.indobraga.com/upload/prod/portofolio/2026-05-12/p1-thumbnail.webp",
+                     *             "medium_url": "https://media.indobraga.com/upload/prod/portofolio/2026-05-12/p1-medium.webp",
+                     *             "alt_text": "Kemasan Kopi Premium",
+                     *             "short_description": "Kemasan kopi 250gr."
+                     *           }
+                     *         ],
                      *         "facilities_summary": {
-                     *           "machines": [],
-                     *           "printing_capacities": [],
-                     *           "production_capacities": [],
-                     *           "services": []
+                     *           "machines": [
+                     *             {
+                     *               "id": 1,
+                     *               "name": "Heidelberg Speedmaster",
+                     *               "slug": "heidelberg-speedmaster",
+                     *               "metric": "18.000 lbr/jam",
+                     *               "description": null,
+                     *               "image_url": null,
+                     *               "alt_text": "Heidelberg Speedmaster"
+                     *             }
+                     *           ],
+                     *           "printing_capacities": [
+                     *             {
+                     *               "id": 1,
+                     *               "label": "Offset Printing",
+                     *               "value": "50.000",
+                     *               "unit": "lembar/hari",
+                     *               "description": null,
+                     *               "image_url": null,
+                     *               "alt_text": "Offset Printing"
+                     *             }
+                     *           ],
+                     *           "production_capacities": [
+                     *             {
+                     *               "id": 1,
+                     *               "product": "Kardus Box",
+                     *               "value": "100.000",
+                     *               "unit": "pcs/bulan"
+                     *             }
+                     *           ],
+                     *           "services": [
+                     *             {
+                     *               "id": 1,
+                     *               "name": "Desain Kemasan"
+                     *             }
+                     *           ]
                      *         },
-                     *         "latest_news": []
+                     *         "latest_news": [
+                     *           {
+                     *             "id": 1,
+                     *             "title": "Tips Memilih Kemasan",
+                     *             "slug": "tips-memilih-kemasan",
+                     *             "category": "Tips",
+                     *             "thumbnail_url": null,
+                     *             "excerpt": "Ringkasan.",
+                     *             "published_at": "2026-05-12T08:30:00.000Z"
+                     *           }
+                     *         ]
                      *       }
                      *     }
                      */
@@ -13703,8 +19627,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -13732,8 +19656,11 @@ export interface operations {
     listPublicNews: {
         parameters: {
             query?: {
-                page?: number;
+                /** @description Halaman (mulai 1). Bukan bilangan bulat ≥ 1 → 400 `VALIDATION_ERROR`; tidak dikirim → 1. */
+                page?: components["parameters"]["Page"];
+                /** @description 1–24; di luar rentang → 400 `VALIDATION_ERROR`. */
                 limit?: number;
+                /** @description Di-trim; dicocokkan persis. */
                 category?: string;
             };
             header?: never;
@@ -13746,6 +19673,7 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -13787,6 +19715,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description Tidak cocok pola → 400 `VALIDATION_ERROR` (legacy `SlugParamDto`, tanpa batas panjang). */
                 slug: components["parameters"]["SlugPath"];
             };
             cookie?: never;
@@ -13797,6 +19726,7 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -13837,11 +19767,18 @@ export interface operations {
     listPublicPortfolios: {
         parameters: {
             query?: {
+                /** @description Di-trim. Slug atau nama kategori (dipakai bila `category_slug` tidak dikirim). */
                 category?: string;
+                /** @description Di-trim. Slug atau nama kategori. */
                 category_slug?: string;
+                /** @description 1–24; di luar rentang → 400 `VALIDATION_ERROR`. */
                 limit?: number;
-                /** @description Cursor dari meta.next_cursor sebelumnya. */
-                cursor?: string;
+                /**
+                 * @description Cursor opaque dari `meta.next_cursor` respons sebelumnya (base64url JSON `{sort_order, id}`).
+                 *     Tidak bisa di-decode atau bukan `{sort_order: number, id: number}` → 400 `BAD_REQUEST`
+                 *     ("Cursor tidak valid."). Tanpa batas panjang (legacy `IsString`).
+                 */
+                cursor?: components["parameters"]["Cursor"];
             };
             header?: never;
             path?: never;
@@ -13853,6 +19790,7 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -13867,11 +19805,18 @@ export interface operations {
                      *           "slug": "kemasan-kopi-premium",
                      *           "category": "Box & Karton",
                      *           "category_slug": "box-karton",
-                     *           "thumbnail_url": "https://media.indobraga.com/a.webp",
-                     *           "medium_url": null,
-                     *           "alt_text": "Kemasan kopi",
+                     *           "thumbnail_url": "https://media.indobraga.com/upload/prod/portofolio/2026-05-12/p1-thumbnail.webp",
+                     *           "medium_url": "https://media.indobraga.com/upload/prod/portofolio/2026-05-12/p1-medium.webp",
+                     *           "alt_text": "Kemasan Kopi Premium",
                      *           "short_description": "Kemasan 250gr",
-                     *           "images": []
+                     *           "images": [
+                     *             {
+                     *               "thumbnail_url": "https://media.indobraga.com/upload/prod/portofolio/2026-05-12/p1-thumbnail.webp",
+                     *               "medium_url": "https://media.indobraga.com/upload/prod/portofolio/2026-05-12/p1-medium.webp",
+                     *               "large_url": "https://media.indobraga.com/upload/prod/portofolio/2026-05-12/p1-large.webp",
+                     *               "alt_text": "Kemasan Kopi Premium"
+                     *             }
+                     *           ]
                      *         }
                      *       ],
                      *       "meta": {
@@ -13887,7 +19832,7 @@ export interface operations {
                     };
                 };
             };
-            400: components["responses"]["ValidationError"];
+            400: components["responses"]["InvalidRequest"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -13904,6 +19849,7 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -13992,6 +19938,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
+                /** @description Maks 190 karakter (legacy `SeoRouteParamDto`; lebih → 400 `VALIDATION_ERROR`). */
                 route: string;
             };
             cookie?: never;
@@ -14041,7 +19988,7 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
-                    "Cache-Control"?: string;
+                    "Cache-Control": components["headers"]["CacheControl"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -14055,12 +20002,12 @@ export interface operations {
                      *         "email": "info@indobraga.com",
                      *         "phone": "022-123456",
                      *         "whatsapp": "6281200000001",
-                     *         "instagram": "@indobraga",
+                     *         "instagram": "indobraga",
                      *         "contact_person": "Admin",
                      *         "contact_role": "Marketing",
                      *         "address": "Jl. Contoh No. 1, Bandung",
                      *         "show_brand_text": false,
-                     *         "logo_url": "https://media.indobraga.com/logo.webp",
+                     *         "logo_url": "https://media.indobraga.com/upload/prod/lainnya/2026-05-12/logo-large.webp",
                      *         "footer_logo_url": null,
                      *         "contact_hero_image_url": null,
                      *         "seo": {
@@ -14076,6 +20023,7 @@ export interface operations {
                     };
                 };
             };
+            404: components["responses"]["NotFound"];
             429: components["responses"]["RateLimited"];
         };
     };
@@ -14099,8 +20047,8 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Berhasil. */
-            200: {
+            /** @description Dibuat (201, paritas legacy). */
+            201: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
                     [name: string]: unknown;
@@ -14113,8 +20061,8 @@ export interface operations {
                      *       "data": {
                      *         "id": 3,
                      *         "status": "new",
-                     *         "whatsapp_url": "https://wa.me/6281200000001?text=Halo%20Indobraga",
-                     *         "generated_message": "Halo Indobraga, saya Siti."
+                     *         "whatsapp_url": "https://wa.me/6281200000001?text=Saya%20ingin%20konsultasi%20kemasan.",
+                     *         "generated_message": "Saya ingin konsultasi kemasan."
                      *       }
                      *     }
                      */
@@ -14140,15 +20088,18 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
                     [name: string]: unknown;
                 };
                 content: {
                     /**
                      * @example User-agent: *
+                     *     Allow: /
                      *     Disallow: /admin
                      *     Disallow: /login
                      *     Disallow: /api/
                      *     Disallow: /internal/
+                     *
                      *     Sitemap: https://indobraga.com/sitemap.xml
                      */
                     "text/plain": string;
@@ -14170,10 +20121,44 @@ export interface operations {
             200: {
                 headers: {
                     "X-Request-Id": components["headers"]["XRequestId"];
+                    "Cache-Control": components["headers"]["CacheControl"];
                     [name: string]: unknown;
                 };
                 content: {
-                    /** @example <?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://indobraga.com/</loc></url></urlset> */
+                    /**
+                     * @example <?xml version="1.0" encoding="UTF-8"?>
+                     *     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+                     *       <url>
+                     *         <loc>https://indobraga.com/</loc>
+                     *         <priority>1.0</priority>
+                     *       </url>
+                     *       <url>
+                     *         <loc>https://indobraga.com/portfolio</loc>
+                     *         <priority>0.8</priority>
+                     *       </url>
+                     *       <url>
+                     *         <loc>https://indobraga.com/fasilitas</loc>
+                     *         <priority>0.8</priority>
+                     *       </url>
+                     *       <url>
+                     *         <loc>https://indobraga.com/galeri</loc>
+                     *         <priority>0.7</priority>
+                     *       </url>
+                     *       <url>
+                     *         <loc>https://indobraga.com/berita</loc>
+                     *         <priority>0.7</priority>
+                     *       </url>
+                     *       <url>
+                     *         <loc>https://indobraga.com/kontak</loc>
+                     *         <priority>0.7</priority>
+                     *       </url>
+                     *       <url>
+                     *         <loc>https://indobraga.com/berita/tips-memilih-kemasan</loc>
+                     *         <lastmod>2026-05-12T08:30:00.000Z</lastmod>
+                     *         <priority>0.6</priority>
+                     *       </url>
+                     *     </urlset>
+                     */
                     "application/xml": string;
                 };
             };
