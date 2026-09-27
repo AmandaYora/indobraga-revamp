@@ -9,7 +9,8 @@ yang tidak ideal. Setiap penyimpangan dari legacy harus disengaja, tercatat, dan
 perubahan perilaku diam-diam.
 
 ## Decision
-Perubahan berikut disetujui. Kolom "Bukti" diisi nama test saat diimplementasikan.
+Perubahan berikut disetujui. Kolom "Bukti" diisi nama test saat diimplementasikan — selama testing
+ditangguhkan (ADR-0011), kolom ini diisi lokasi implementasi (`file:baris`).
 
 | ID | Perubahan | Alasan | Bukti (test) |
 |---|---|---|---|

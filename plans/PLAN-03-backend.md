@@ -1,5 +1,13 @@
 # PLAN-03 — Revamp Backend (`apps/api`, Go Modular Monolith)
 
+> **PENUNDAAN TESTING — keputusan owner 2026-09-27.** Seluruh pekerjaan pengujian ditunda di
+> semua plan: menulis/menjalankan test unit, komponen, page, kontrak (validasi mock), E2E,
+> visual regression, aksesibilitas otomatis, coverage gate, load/performance test, security scan
+> dinamis, skenario INT, dan verifikasi berbasis test. Butir checklist/DoD yang mensyaratkan test
+> **bukan syarat selesai** sampai owner mengaktifkannya kembali. Pemeriksaan statis tetap wajib
+> karena bukan pengujian: typecheck, lint, format, build, lint & mapping kontrak, `go vet`,
+> `golangci-lint`, `govulncheck`. Test yang sudah ada dibiarkan di repo, tidak dijalankan di CI.
+
 ## Tujuan
 
 Menulis ulang seluruh backend NestJS legacy dalam Go sesuai Dimas Monorepo Standard (Air,

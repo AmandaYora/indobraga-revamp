@@ -11,3 +11,6 @@
 *.woff binary
 *.woff2 binary
 *.xlsx binary
+
+# Fixture CSV export audience wajib CRLF + BOM persis seperti legacy — simpan byte apa adanya.
+apps/web/src/mocks/**/*.csv -text

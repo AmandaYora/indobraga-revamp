@@ -1,5 +1,17 @@
 # PLAN-05 — Migrasi Data & Cutover ke VPS Baru
 
+> **PENUNDAAN TESTING — keputusan owner 2026-09-27.** Seluruh pekerjaan pengujian ditunda di
+> semua plan: menulis/menjalankan test unit, komponen, page, kontrak (validasi mock), E2E,
+> visual regression, aksesibilitas otomatis, coverage gate, load/performance test, security scan
+> dinamis, skenario INT, dan verifikasi berbasis test. Butir checklist/DoD yang mensyaratkan test
+> **bukan syarat selesai** sampai owner mengaktifkannya kembali. Pemeriksaan statis tetap wajib
+> karena bukan pengujian: typecheck, lint, format, build, lint & mapping kontrak, `go vet`,
+> `golangci-lint`, `govulncheck`. Test yang sudah ada dibiarkan di repo, tidak dijalankan di CI.
+>
+> ⚠️ Khusus PLAN-05: menunda verifikasi L1–L6 dan rehearsal berarti cutover produksi tidak
+> terbukti aman. Rekomendasi: aktifkan kembali minimal L1 (jumlah baris) dan L2 (checksum isi)
+> sebelum cutover sungguhan.
+
 ## Tujuan
 
 Memindahkan **seluruh data produksi** dari database legacy (skema Prisma) ke skema baru

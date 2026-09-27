@@ -14,7 +14,7 @@ yang tercatat sebagai BC di `knowledge/decisions/ADR-0012-legacy-behavior-change
 npm run dev:web          # frontend (Vite :5173, proxy /api)
 npm run dev:api          # backend (Air :8080) — terpisah, jangan digabung
 npm run build:web && npm run build:api
-npm run test:web && npm run test:api
+npm run test:web && npm run test:api   # DITANGGUHKAN — testing ditunda (ADR-0011)
 npm run lint:web && npm run lint:api
 npm run migrate:up       # golang-migrate (DB_DSN dari .env)
 npm run sqlc:generate

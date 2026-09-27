@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   web:
-    name: Web (lint, typecheck, test, build)
+    name: Web (lint, typecheck, format, build)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -26,7 +26,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run lint:web
       - run: npm run typecheck:web
-      - run: npm run test:web
+      - run: npm run format -w @indobraga/web
+      # Testing ditangguhkan (ADR-0011, keputusan owner 2026-09-27): npm run test:web
       - run: npm run build:web
 
   contract:
@@ -46,7 +47,7 @@ jobs:
         run: git diff --exit-code -- packages/api-contract
 
   api:
-    name: API (vet, lint, test -race, vuln, sqlc)
+    name: API (vet, lint, build, vuln, sqlc)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -63,7 +64,8 @@ jobs:
         with:
           version: v2.14.0
           working-directory: apps/api
-      - run: go test -race ./...
+      - run: go build ./...
+      # Testing ditangguhkan (ADR-0011, keputusan owner 2026-09-27): go test -race ./...
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
       - uses: sqlc-dev/setup-sqlc@v4

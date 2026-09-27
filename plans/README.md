@@ -1,5 +1,13 @@
 # Rencana Revamp Indobraga — Indeks
 
+> **PENUNDAAN TESTING — keputusan owner 2026-09-27.** Seluruh pekerjaan pengujian ditunda di
+> semua plan: menulis/menjalankan test unit, komponen, page, kontrak (validasi mock), E2E,
+> visual regression, aksesibilitas otomatis, coverage gate, load/performance test, security scan
+> dinamis, skenario INT, dan verifikasi berbasis test. Butir checklist/DoD yang mensyaratkan test
+> **bukan syarat selesai** sampai owner mengaktifkannya kembali. Pemeriksaan statis tetap wajib
+> karena bukan pengujian: typecheck, lint, format, build, lint & mapping kontrak, `go vet`,
+> `golangci-lint`, `govulncheck`. Test yang sudah ada dibiarkan di repo, tidak dijalankan di CI.
+
 Revamp `indobraga` (NestJS 11 + Prisma 7 + TanStack Start SSR, VPS legacy) menjadi
 `indobraga-revamp`: monorepo **Dimas Monorepo Standard** dengan backend **Go modular monolith**,
 frontend **React 19 SPA**, satu container Docker, MySQL di host, di **VPS baru**, sebagai **repo git
@@ -36,7 +44,7 @@ PLAN-01 ──► PLAN-02 ──┐
    dulu, regenerate tipe, baru kode.
 4. **Ideal tetapi tercatat.** Setiap perbaikan yang mengubah perilaku legacy wajib punya ID `BC-xx`
    di daftar di bawah dan di ADR-0012. Tidak ada perubahan perilaku diam-diam.
-5. **Test adalah bukti.** "Selesai" = test otomatis hijau + checklist DoD plan terpenuhi, bukan
+5. **Test adalah bukti** _(ditunda — lihat PENUNDAAN TESTING di atas)_. "Selesai" = test otomatis hijau + checklist DoD plan terpenuhi, bukan
    "sudah dicoba manual".
 6. **Legacy read-only.** Repo, server, dan database legacy tidak diubah sampai cutover (PLAN-05),
    kecuali langkah housekeeping git di PLAN-01 §1.0.

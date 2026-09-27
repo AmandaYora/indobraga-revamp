@@ -1,7 +1,9 @@
 # ADR-0011: Strategi test & quality gate
 
 ## Status
-Accepted — 2026-09-26
+Accepted — 2026-09-26. **Ditangguhkan (deferred) — keputusan owner 2026-09-27:** semua gate pengujian di
+ADR ini tidak diberlakukan sampai owner mengaktifkannya kembali. Pemeriksaan statis (typecheck,
+lint, format, build, lint & mapping kontrak, `go vet`, `golangci-lint`, `govulncheck`) tetap wajib.
 
 ## Context
 "Selesai" harus dibuktikan otomatis, bukan dicoba manual. Revamp mengganti seluruh kode, sehingga

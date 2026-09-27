@@ -2,6 +2,12 @@
 
 Applies to: whole repository.
 
+> **DEFERRED (owner decision 2026-09-27):** do not write, run, or require tests (unit, component,
+> contract, E2E, visual, a11y, load, coverage) in any plan until the owner re-enables testing.
+> Static checks remain mandatory: typecheck, lint, format, build, contract lint/mapping, `go vet`,
+> `golangci-lint`, `govulncheck`. Existing tests stay in the repo but are not run in CI.
+> The rules below apply again once testing is re-enabled.
+
 - "Done" means automated tests are green in CI plus the plan's Definition of Done — not "tried manually".
 - Frontend: Vitest (unit/component/page) + Testing Library + MSW; every MSW request/response is
   validated against `openapi.yaml`; Playwright E2E + visual regression against the legacy baseline;
