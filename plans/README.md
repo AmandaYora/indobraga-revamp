@@ -135,8 +135,8 @@ retry media yang benar-benar memproses ulang file.
 
 | Plan | Status | Mulai | Selesai |
 |---|---|---|---|
-| PLAN-01 | belum mulai | | |
-| PLAN-02 | belum mulai | | |
+| PLAN-01 | hampir selesai — sisa: review kontrak, branch protection, baseline Lighthouse/header/DB produksi, Final Checklist, merge ke `main` | 2026-09-26 | |
+| PLAN-02 | sedang berjalan — pemulihan desain & paritas setelah verifikasi 2026-09-27 (testing ditangguhkan) | 2026-09-26 | |
 | PLAN-03 | belum mulai | | |
 | PLAN-04 | belum mulai | | |
 | PLAN-05 | belum mulai | | |

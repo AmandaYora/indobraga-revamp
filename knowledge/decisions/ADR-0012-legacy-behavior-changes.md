@@ -39,6 +39,19 @@ ditangguhkan (ADR-0011), kolom ini diisi lokasi implementasi (`file:baris`).
 | BC-27 | Input pencarian top bar admin menjadi pencarian menu | Input legacy tidak berfungsi | _PLAN-02 F4_ |
 | BC-28 | Font di-self-host (tampilan identik) | Tanpa request pihak ketiga, preload lebih cepat | _PLAN-02 F1_ |
 
+### Usulan BC — MENUNGGU PERSETUJUAN DIMAS (belum berlaku)
+
+Ditemukan saat verifikasi & revisi kontrak 2026-09-27. Sampai disetujui, perilaku mengikuti legacy
+kecuali disebut lain di kolom "Status sementara".
+
+| ID | Usulan | Alasan / bukti legacy | Status sementara |
+|---|---|---|---|
+| BC-16 | Callback Google OAuth mengabaikan parameter tambahan dari Google (`scope`, `authuser`, `prompt`, `hd`, …) | Legacy menolak dengan 400 karena `forbidNonWhitelisted` pada `GoogleOAuthCallbackQueryDto`, sehingga alur Google sungguhan kemungkinan gagal di produksi | Kontrak sudah menulis "diabaikan" (`x-unknown-query: ignore`) |
+| BC-17 | Impor XLSX penerima & unduh template XLSX berfungsi | Legacy memanggil `read-excel-file` v9 / `write-excel-file` v4 dengan API lama → impor tidak membaca baris, unduhan tidak terjadi | Sudah diperbaiki di frontend (fitur PRD, bukan perubahan desain) |
+| BC-18 | Reorder dengan ID tak dikenal → 404 `NOT_FOUND` | Legacy 500 (Prisma P2025 tidak ditangkap) | Kontrak mendokumentasikan 500 (paritas) |
+| BC-19 | Tipe JSON kanonik di kontrak (mis. `is_featured` boolean); legacy mengonversi implisit (`"5"`→5) | Frontend selalu mengirim tipe benar; tidak terlihat user | Kontrak tipe kanonik; backend Go boleh tetap toleran |
+| BC-29 | Toast sukses/gagal setelah kembali dari Google OAuth | Legacy tidak memberi umpan balik sama sekali | Mengikuti legacy (tanpa toast); query dibersihkan dari URL |
+
 Kapabilitas yang tidak diubah tetapi dicatat sebagai backlog (tidak dikerjakan tanpa persetujuan)
 ada di `plans/README.md` §Backlog.
 
